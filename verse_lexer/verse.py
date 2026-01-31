@@ -81,6 +81,7 @@ class VerseLexer(RegexLexer):
             (r'\s+', Whitespace),
 
             # Comments
+            (r'^\s*<#>\s*\n', Comment.Multiline, 'indented-comment'),
             (r'#[^\n]*', Comment.Single),
             (r'<#', Comment.Multiline, 'multiline-comment'),
 
@@ -150,6 +151,13 @@ class VerseLexer(RegexLexer):
             (r'#>', Comment.Multiline, '#pop'),    # End comment
             (r'[^<#]+', Comment.Multiline),        # Comment content
             (r'[<#]', Comment.Multiline),          # Single < or #
+        ],
+
+        'indented-comment': [
+            (r'^(?=[ ]{0,3}\S)', Text, '#pop'),
+            (r'^[ ]{4,}', Comment.Multiline),   # Indentation (4+ spaces)
+            (r'[^\n]+', Comment.Multiline),
+            (r'\n', Comment.Multiline),
         ],
 
         'using-block': [
