@@ -121,29 +121,40 @@
         --md-code-bg-color: hsla(var(--md-hue), 15%, 18%, 1);
         --md-code-bg-color--light: hsla(var(--md-hue), 15%, 18%, 0.9);
         --md-code-bg-color--lighter: hsla(var(--md-hue), 15%, 18%, 0.54);
-    }
 
-    /* Style Overrides */
-    .highlight {
+        /* Style Overrides */
+        & .highlight {
 
-        /* --- Specifiers */
-        & .nd {
-            color: var(--keyword-declaration);
-        }
+            /* --- Specifiers and Decorators */
+            & .nd {
+                color: var(--keyword-declaration);
+            }
 
-        & .nn,
-        & .p {
-            color: var(--constant-language);
-        }
+            /* --- Function Calls */
+            & .nf-Call {
+                color: var(--variable);
+            }
 
-        /* --- Declaration Keywords */
-        & .kd {
-            color: var(--keyword-declaration);
-        }
+            /* --- Function Calls */
+            & .n-Identifier,
+            & .nc {
+                color: var(--entity-name-function);
+            }
 
-        /* --- nv */
-        & .nv {
-            color: var(--entity-name-function);
+            & .nn,
+            & .p {
+                color: var(--constant-language);
+            }
+
+            /* --- Declaration Keywords */
+            & .kd {
+                color: var(--keyword-declaration);
+            }
+
+            /* --- nv */
+            & .nv {
+                color: var(--entity-name-function);
+            }
         }
     }
 }

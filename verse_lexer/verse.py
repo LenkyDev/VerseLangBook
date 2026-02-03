@@ -92,12 +92,21 @@ class VerseLexer(RegexLexer):
             (r'<(' + '|'.join(specifiers) + r')(\{[^}]*\})?>', Name.Decorator),
 
             # Data structure declarations (direct syntax)
-            (r'\b(' + '|'.join(data_structure_keywords) + r')(\s+)([a-zA-Z_]\w*)',
-             bygroups(Keyword, Whitespace, Name.Class)),
+            (r'([a-zA-Z_]\w*)(\s*)(:=)(\s*)\b(' + '|'.join(data_structure_keywords) + r')\b',
+             bygroups(Name.Class, Whitespace, Operator, Whitespace, Keyword)),
+
 
             # Function declarations
             (r'\b([a-zA-Z_]\w*)(\s*)(<[^>]+>)?(\s*)(\()',
              bygroups(Name.Function, Whitespace, Name.Decorator, Whitespace, Punctuation)),
+
+            # Typed Variable declaration
+            (r'([a-zA-Z_]\w*)(\s*)(:)(\s*)((?:\[\]|\?)*[a-zA-Z_]\w*(?:\{[^}]*\})?)', 
+             bygroups(Name.Variable, Whitespace, Operator, Whitespace, Name)),
+
+            # Match the identifier 
+            (r'([a-zA-Z_]\w*)(\s*)(:=)', 
+             bygroups(Name.Identifier, Whitespace, Operator)),
 
             # Keywords
             (words(block_keywords, suffix=r'\b'), Keyword),
@@ -171,13 +180,13 @@ class VerseLexer(RegexLexer):
 
         'string-double': [
             (r'<#', Comment.Multiline, 'multiline-comment'), # Comments are allowed inside strings
-            (r'\{', String.Interpol, 'interpolation'),
+            (r'\{', Punctuation, 'interpolation'),
             (r'[^"\\{<]+', String.Double),
             (r'"', String.Double, '#pop'),
         ],
 
         'interpolation': [
-            (r'\}', String.Interpol, '#pop'),
+            (r'\}', Punctuation, '#pop'),
             include('root'), 
         ],
     }
