@@ -10,7 +10,7 @@ Verse is built on three fundamental principles:
 Complex concepts that might require special syntax or constructs in other languages are expressed as regular Verse code. There's no magic—everything is built from the same primitive constructs, creating a uniform and predictable programming model.
 
 - **Just One Language**:
-The same language constructs work at both compile-time and run-time. There's no separate template language, macro system, or preprocessor. What you write is what executes, whether during compilation or at runtime.
+The same language constructs work at both compile-time and run-time. There is no preprocessor. What you write is what executes, whether during compilation or at runtime.
 
 - **Metaverse First**:
 Verse is designed for a future where code runs in a single global simulation—the metaverse. This influences every aspect of the language, from its strong compatibility guarantees to its effect system that tracks side effects and ensures safe concurrent execution.
@@ -73,8 +73,8 @@ M()<decides>:void=
 -->
 <!-- 02 -->
 ```verse
-ValidateInput[Data] # Square braces indicate that this function may fail
-ProcessData(Data)   # Data is only processed if valid, round braces mean must succeed
+ValidateInput[Data] # Square brackets indicate that this function may fail
+ProcessData(Data)   # Data is only processed if valid, parentheses mean must succeed
 ```
 <!-- } -->
 
