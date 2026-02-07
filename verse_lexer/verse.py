@@ -40,8 +40,7 @@ class VerseLexer(RegexLexer):
         'internal', 'reads', 'writes', 'allocates', 'scoped', 'converges',
         'castable', 'concrete', 'unique', 'final_super', 'open', 'closed',
         'native_callable', 'module_scoped_var_weak_map_key', 'epic_internal',
-        'persistable', 'intrinsic', 'final_super_base', 'varies', 'localizes', 
-        'persistent', 'predicts', 'getter', 'setter'
+        'persistable'
     )
 
     # Block-forming keywords (can be followed by :)
@@ -93,20 +92,12 @@ class VerseLexer(RegexLexer):
             (r'<(' + '|'.join(specifiers) + r')(\{[^}]*\})?>', Name.Decorator),
 
             # Data structure declarations (direct syntax)
-            (r'([a-zA-Z_]\w*)(\s*)(:=)(\s*)\b(' + '|'.join(data_structure_keywords) + r')\b',
-             bygroups(Name.Class, Whitespace, Operator, Whitespace, Keyword)),
+            (r'\b(' + '|'.join(data_structure_keywords) + r')(\s+)([a-zA-Z_]\w*)',
+             bygroups(Keyword, Whitespace, Name.Class)),
 
             # Function declarations
             (r'\b([a-zA-Z_]\w*)(\s*)(<[^>]+>)?(\s*)(\()',
              bygroups(Name.Function, Whitespace, Name.Decorator, Whitespace, Punctuation)),
-
-            # Typed Variable declaration
-            (r'([a-zA-Z_]\w*)(\s*)(:)(\s*)((?:\[\]|\?|[a-zA-Z_]\w*|[\{\}])* )', 
-             bygroups(Name.Variable, Whitespace, Punctuation, Whitespace, Name)),
-
-            # Match the identifier 
-            (r'([a-zA-Z_]\w*)(\s*)(:=)', 
-             bygroups(Name.Identifier, Whitespace, Operator)),
 
             # Keywords
             (words(block_keywords, suffix=r'\b'), Keyword),
@@ -180,13 +171,13 @@ class VerseLexer(RegexLexer):
 
         'string-double': [
             (r'<#', Comment.Multiline, 'multiline-comment'), # Comments are allowed inside strings
-            (r'\{', Punctuation, 'interpolation'),
+            (r'\{', String.Interpol, 'interpolation'),
             (r'[^"\\{<]+', String.Double),
             (r'"', String.Double, '#pop'),
         ],
 
         'interpolation': [
-            (r'\}', Punctuation, '#pop'),
+            (r'\}', String.Interpol, '#pop'),
             include('root'), 
         ],
     }
