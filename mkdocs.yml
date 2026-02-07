@@ -41,11 +41,11 @@ markdown_extensions:
  - admonition
  - pymdownx.details
  - footnotes
- - pymdownx.highlight:
-      default_lang: verse
-      linenums: false
-      pygments_style: monokai
- - pymdownx.superfences
+#  - pymdownx.highlight:
+#       default_lang: verse
+#       linenums: false
+#       pygments_style: monokai
+#  - pymdownx.superfences
 
 plugins:
   - search
@@ -62,6 +62,10 @@ plugins:
 extra_css:
   - extra.css
   - css/Verse.css
+
+extra_javascript:
+  - type: module
+    path: js/Verse.js
 
 nav:
   - Home: index.md
