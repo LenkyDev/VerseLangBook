@@ -117,9 +117,7 @@ pip install --upgrade pip
 
 # Install required packages
 echo -e "${YELLOW}Installing MkDocs and dependencies...${NC}"
-pip install mkdocs
-pip install mkdocs-material
-pip install pygments
+pip install -r requirements.txt
 
 # Install the custom Verse lexer
 echo -e "${YELLOW}Installing custom Verse syntax highlighter...${NC}"
