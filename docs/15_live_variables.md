@@ -380,16 +380,17 @@ programming.
 F()<suspends>:void =
     var X:int = 0
 
-    # Suspend until X changes from 0
-    await{X}
+    OldX := X # copy the old value
+
+    # Suspend until X changes from OldX (0)
+    await{X <> OldX}
     Print("X changed to: {X}")
 ```
 
-The target expression is evaluated immediately. If it fails (returns
-`false` or produces failure), the task suspends. Verse tracks which
-variables were read during evaluation. Whenever those variables
-change, the guard is re-evaluated. If it succeeds, execution resumes
-immediately.
+The target expression is evaluated immediately. If it fails, the
+task suspends. Verse tracks which variables were read during
+evaluation. Whenever those variables change, the guard is re-evaluated.
+If it succeeds, execution resumes immediately.
 
 The practical implications are that you can write code that naturally
 expresses "wait for this condition" without manually managing event

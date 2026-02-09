@@ -363,21 +363,19 @@ This conversion creates an array containing all the tuple's elements in order.
 
 When a function has a single array parameter, you can call it with multiple arguments, which automatically form an array:
 
-<!--NoCompile-->
 <!-- 21 -->
 ```verse
 ProcessNumbers(Numbers:[]int):int = Numbers.Length
 
 # All these are equivalent:
-ProcessNumbers[1, 2, 3]           # Multiple args → array
-ProcessNumbers[(1, 2, 3)]         # Tuple literal → array
+ProcessNumbers(1, 2, 3)           # Multiple args → array
+ProcessNumbers((1, 2, 3))         # Tuple literal → array
 Values := (1, 2, 3)
-ProcessNumbers[Values]             # Tuple variable → array
+ProcessNumbers(Values)             # Tuple variable → array
 ```
 
 This "variadic-like" syntax provides convenience while keeping the function signature simple:
 
-<!--NoCompile-->
 <!-- 22 -->
 ```verse
 Sum(Numbers:[]int):int =
@@ -387,20 +385,19 @@ Sum(Numbers:[]int):int =
     Total
 
 # All these work:
-Sum[1, 2, 3, 4]                   # Returns 10
-Sum[(5, 6)]                        # Returns 11
+Sum(1, 2, 3, 4)                   # Returns 10
+Sum((5, 6))                        # Returns 11
 Values := (10, 20, 30)
-Sum[Values]                        # Returns 60
+Sum(Values)                        # Returns 60
 ```
 
 Array conversion only succeeds when **all tuple elements are compatible** with the array's element type:
 
-<!--NoCompile-->
 <!-- 23 -->
 ```verse
 # Homogeneous tuple - all int
 F(X:[]int):int = X.Length
-F[1, 2, 3]                        # Valid
+F(1, 2, 3)                        # Valid
 
 # Subtype compatibility
 entity := class:
@@ -413,27 +410,25 @@ ProcessEntities(E:[]entity):int = E.Length
 
 P := player{ID := 1, Name := "Alice"}
 E := entity{ID := 2}
-ProcessEntities[P, E]             # Valid - player is subtype of entity
+ProcessEntities(P, E)             # Valid - player is subtype of entity
 ```
 
 Functions taking `[]any` accept **any tuple**, regardless of element types:
 
-<!--NoCompile-->
 <!-- 24 -->
 ```verse
 GetLength(Items:[]any):int = Items.Length
 
 # All valid - any tuple works
-GetLength[1, 2.0]                 # Mixed types OK
-GetLength["a", 42, true]          # Different types OK
-GetLength[(1, 2.0, "hello")]      # Explicit tuple OK
+GetLength(1, 2.0)                 # Mixed types OK
+GetLength("a", 42, true)          # Different types OK
+GetLength((1, 2.0, "hello"))      # Explicit tuple OK
 ```
 
 This enables generic functions that work with heterogeneous data.
 
 When tuple elements share a common supertype (via inheritance or interface), they convert to an array of that supertype:
 
-<!--NoCompile-->
 <!-- 25 -->
 ```verse
 interface1 := interface:
@@ -451,7 +446,7 @@ X:class1 = class1{}
 Y:class2 = class2{}
 
 # Valid - both classes implement interface1
-ProcessInterfaces[X, Y]           # Returns 2
+ProcessInterfaces(X, Y)           # Returns 2
 ```
 
 The compiler finds the most specific common supertype and uses it for the array element type.
@@ -460,22 +455,20 @@ Tuple-to-array conversion works with nested structures:
 
 **Nested arrays:**
 
-<!--NoCompile-->
 <!-- 26 -->
 ```verse
 ProcessMatrix(Matrix:[][]int):int = Matrix.Length
 
 # Nested tuples → nested arrays
 Matrix := ((1, 2), (3, 4))
-ProcessMatrix[Matrix]             # Valid
+ProcessMatrix(Matrix)             # Valid
 
 # Or with explicit nesting
-ProcessMatrix[((1, 2), (3, 4))]   # Valid
+ProcessMatrix((1, 2), (3, 4))   # Valid
 ```
 
 **Optional arrays:**
 
-<!--NoCompile-->
 <!-- 27 -->
 ```verse
 ProcessOptional(Items:?[]int)<decides>:int = Items?[0]
@@ -487,13 +480,12 @@ ProcessOptional[Values]           # Valid
 
 **Tuples containing arrays:**
 
-<!--NoCompile-->
 <!-- 28 -->
 ```verse
 ProcessComplex(Data:tuple([]int, int)):int = Data(0).Length
 
 # First element of tuple becomes array
-ProcessComplex[((1, 2), 3)]       # Valid - (1,2) becomes []int
+ProcessComplex(((1, 2), 3))       # Valid - (1,2) becomes []int
 ```
 
 ### Array Slicing
@@ -1154,7 +1146,7 @@ if (InnerMap := NestedMap["numbers"]):
 }
 -->
 
-Maps as keys are currently not supported.
+Maps can be used as keys of other maps if all values and keys from it are comparable.
 
 ### Concatenating Maps
 

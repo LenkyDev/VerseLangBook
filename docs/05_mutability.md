@@ -811,11 +811,20 @@ s1:=struct<computes>{M:int=0}
 <!-- 39 -->
 ```verse
 # OK: <computes> struct allows field mutation
-# s1 := struct<computes>{M:int = 0}
+s1 := struct<computes>{M:int = 0, J:float = 3}
+
 var S1:s1 = s1{}
-set S1.M = 1
-S1.M = 1
+
+Old := S1 # makes a copy of the struct
+
+set S1.M = 1 # makes a copy of the struct, but updates `M` in the process
+
+S1.M = 1 # Succeeds
+Old = S1 # Fails (structs does not pass as references)
 ```
+
+When a new struct is constructed, it is assigned the updated value and copied other fields.
+If there is other places referencing the old struct, they will not have the updated values (unlike classes)
 
 This restriction ensures that only predictable, effect-free structs can be mutated.
 
@@ -844,7 +853,6 @@ Even with a mutable index, you cannot mutate an immutable array:
 <!--NoCompile-->
 <!-- 43 -->
 ```verse
-# ERROR 3509:
 I:int = 2
 A:[]int = array{5, 6, 7}
 set A[I] = 2  # ERROR: A is not var
@@ -918,8 +926,5 @@ if (Item1 = Item2):
 if (Item1 = Item3):
     Print("Same object")  # This doesn't print - different objects
 ```
-<!--verse
-#>
--->
 
 This identity-based equality is crucial for game objects that need distinct identities even when their data is identical. Two monsters might have the same stats, but they're still different monsters.

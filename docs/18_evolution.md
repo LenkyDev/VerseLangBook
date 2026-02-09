@@ -57,7 +57,7 @@ The rules follow a general principle: changes that make types more specific (nar
 
 **Cannot add or remove enumerators from closed enums.** Closed enums (the default) commit to a fixed set of values forever. Code can exhaustively match all cases without a wildcard, so adding cases would break such matches.
 
-**Cannot change between open and closed.** An enum published as closed cannot become open, and vice versa. This affects whether exhaustive matching is possible.
+**Closed enums cannot become open.** An enum published as closed cannot become open. This affects whether exhaustive matching is possible.
 
 **Cannot reorder enumerators.** The order of enum values is part of the public contract.
 

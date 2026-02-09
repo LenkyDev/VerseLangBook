@@ -1341,7 +1341,7 @@ cases:
 <!--versetest-->
 <!-- 91 -->
 ```verse
-# Function with two type par qameters
+# Function with two type parameters
 Pair(X:t, Y:u where t:type, u:type):tuple(t, u) = (X, Y)
 
 # All type parameters inferred
@@ -1860,13 +1860,13 @@ The following type pairs are **not distinct** and cannot be used to
 overload functions:
 
 **1. Optional and Logic.** `?t` and `logic` are not distinct because
-`logic` is equivalent to `?void`:
+`logic` (true or false) is internally equivalent to `?t` (value or false):
 
 <!--NoCompile-->
 <!-- 120 -->
 ```verse
 # ERROR: Not distinct
-F(:?t):void = {}
+F(:?any):void = {}
 F(:logic):void = {}
 ```
 

@@ -994,7 +994,7 @@ Not all types are supported as parameters:
 
 # ERROR: Custom classes not supported
 my_class := class{Value:int}
-# ClassMsg<localizes>(Obj:my_class) : message = "Object"  # ERROR 3509
+# ClassMsg<localizes>(Obj:my_class) : message = "{Object}"  # ERROR 3509
 ```
 
 **Interpolation syntax restrictions:**

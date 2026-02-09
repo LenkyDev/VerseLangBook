@@ -1180,20 +1180,33 @@ A common pattern is to have functions return `?t` where `t` is a type
 parameter, allowing the function to work with any type while
 potentially failing:
 
-<!--NoCompile-->
-<!-- 81 -->
+<!-- 81a -->
 ```verse
-# Function that might produce a value of any type
-MaybeValue(T:type, Condition:logic):?T =
-    if (Condition?):
-        # Cannot construct T generically, return failure
-        false
-    else:
-        false
+# return type `t` must be the same type as the `Value` param type
+MaybeValue(Value:t, Condition:logic where t:type):?t =
+    if (Condition?) then option{Value} else false
 
-# Specific usage
-X:?int = MaybeValue(int, false)  # Returns false as ?int
+# Usage
+X:?int = MaybeValue(5, false)  # Returns false as ?int
+Y:?float = MaybeValue(3.14, true)  # Returns option{3.14} as ?float
 ```
+
+<!--NoCompile-->
+<!-- 81b -->
+```verse
+# `Value` param needs to match the type given on the `T` param. Same for return
+MaybeValue(T:param_type, Value:t, Condition:logic where param_type:type):?T =
+    if (Condition?):
+        return option{Value} # Return the value of param type
+    else:
+        return false # returns empty optional
+
+# Usage
+X:?int = MaybeValue(int, 5, false)  # Returns false as ?int
+Y:?float = MaybeValue(float, 3.14, true)  # Returns option{3.14} as ?float
+Z:?int = MaybeValue(int, 3.14, true) # Err: params types mismatch
+```
+
 
 This pattern is particularly useful for generic containers and factory
 functions that may or may not be able to produce a value.
@@ -1239,7 +1252,7 @@ While `type` enables powerful abstractions, there are some limitations:
 <!-- 84 -->
 ```verse
 # Cannot do this - no runtime type introspection
-# GetFieldNames(T:type):[]string = ???
+# GetFieldNames(T:type):string = ???
 ```
 
 **Type parameters must be inferred or explicit:**

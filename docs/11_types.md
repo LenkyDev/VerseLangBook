@@ -616,53 +616,28 @@ MinFinite:finite = -1.7976931348623157e+308
 
 ### IEEE 754 Edge Cases
 
-**Negative Zero:**
+**Negative and Positive Zero:**
 
-IEEE 754 distinguishes between `+0.0` and `-0.0`. Refinement types
-respect this:
+IEEE 754 distinguishes between `+0.0` and `-0.0`. In verse Zero is just Zero,
+with no distinction between positve or negative.
 
-<!--versetest
-negative := type{_X:float where _X < 0.0}
-
-assert: 
-   negative[-1.0]          # Valid
-   negative[-0.5]          # Valid
-<#
--->
+When any expression evaluates to Zero, the sign is discarded:
 <!-- 34 -->
 ```verse
-# Negative values (excludes both zeros)
-negative := type{_X:float where _X < 0.0}
+# Integer Zero (type{0})
+Value1 := -0
+Value2 := +0
 
-negative[-1.0]          # Valid
-negative[-0.5]          # Valid
-negative[0.0 / -1.0]    # Fails: produces -0.0, not truly negative
+Value1 = Value2 # Succeeds
+-0 = +0         # Succeeds
+
+# Float Zero (type{0.0})
+Value3 := -0.0
+Value4 := +0.0
+
+Value3 = Value4 # Succeeds
+-0.0 = +0.0     # Succeeds
 ```
-<!-- #> -->
-
-The expression `0.0 / -1.0` produces `-0.0`, which is **not** less
-than `0.0` in IEEE 754 semantics, so it fails the constraint.
-
-**Positive vs Zero:**
-
-<!--versetest
-positive := type{_X:float where _X > -0.0}
-
-assert:
-   positive[1.0]   # Valid
-   positive[0.1]   # Valid
-<#
--->
-<!-- 35 -->
-```verse
-# Positive (excludes zero)
-positive := type{_X:float where _X > -0.0}
-
-positive[1.0]   # Valid
-positive[0.1]   # Valid
-positive[0.0]   # Fails: zero not considered positive
-```
-<!-- #> -->
 
 **Floating-Point Precision:**
 
