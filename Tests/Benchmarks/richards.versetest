@@ -1,0 +1,491 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Copyright 2006-2008 the V8 project authors. All rights reserved.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+#       copyright notice, this list of conditions and the following
+#       disclaimer in the documentation and/or other materials provided
+#       with the distribution.
+#     * Neither the name of Google Inc. nor the names of its
+#       contributors may be used to endorse or promote products derived
+#       from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# converted the JavaScript version of richards to Verse
+# http://www.cl.cam.ac.uk/~mr10/Bench.html
+
+# The Richards benchmark simulates the task dispatcher of an
+# operating system.
+
+using {/Verse.org/Tests/VerseTestScriptCmd} # For TestUtils
+
+COUNT:int = 1000
+
+# These two constants specify how many times a packet is queued and
+# how many times a task is put on hold in a correct run of richards.
+# They don't have any meaning a such but are characteristic of a
+# correct run so if the actual queue or hold count is different from
+# the expected there must be a bug in the implementation.
+EXPECTED_QUEUE_COUNT:int = 2322
+EXPECTED_HOLD_COUNT:int = 928
+
+ID_IDLE:int       = 0
+ID_WORKER:int     = 1
+ID_HANDLER_A:int  = 2
+ID_HANDLER_B:int  = 3
+ID_DEVICE_A:int   = 4
+ID_DEVICE_B:int   = 5
+NUMBER_OF_IDS:int = 6
+
+KIND_DEVICE:int   = 0
+KIND_WORK:int     = 1
+
+DATA_SIZE:int = 4
+
+IsEven(X:int)<computes><decides>:void =
+    R := X / 2
+    X = Floor(R) * 2
+
+LowestBit(X:int)<computes>:int =
+    if (IsEven[X]) then 0 else 1
+
+Rshift1(X:int)<computes>:int =
+    R := X / 2 or Err("UNREACHABLE")
+    Floor(R)
+
+Rshift(X:int, Count:int)<transacts>:int =
+    var Result:int = X
+    for (I := 1..Count) { set Result = Rshift1(Result) }
+    Result
+
+Lshift(X:int, Count:int)<transacts>:int =
+    var Result:int = X
+    for (I := 1..Count) { set Result *= 2 }
+    Result
+
+BitValue(Bit:int)<transacts>:int = Lshift(1, Bit)
+
+Xor(_X:int, _Y:int)<transacts>:int =
+    var X:int = _X
+    var Y:int = _Y
+    var CurrentBitValue:int = 1
+    var Result:int = 0
+    for (I := 0..31):
+        XBit := LowestBit(X)
+        YBit := LowestBit(Y)
+        if ((XBit + YBit) = 1) then set Result += CurrentBitValue
+
+        set CurrentBitValue = CurrentBitValue * 2
+        set Y = Rshift1(Y)
+        set X = Rshift1(X)
+    return Result
+
+
+# A scheduler can be used to schedule a set of tasks based on their relative
+# priorities.  Scheduling is done by maintaining a list of task control blocks
+# which holds tasks and the data queue they are processing.
+scheduler := class 
+{
+    var QueueCount:int = 0
+    var HoldCount:int = 0
+    var Blocks:[]?task_control_block = for (I:=0..NUMBER_OF_IDS-1) { false }
+    var List:?task_control_block = false
+    var CurrentTcb:?task_control_block = false
+    var CurrentId:int = 424242
+
+    # Add an idle task to this scheduler.
+    # @param {int} id the identity of the task
+    # @param {int} priority the task's priority
+    # @param {Packet} queue the queue of work to be processed by the task
+    # @param {int} count the number of times to schedule the task
+    AddIdleTask(Id:int, Priority:int, TheQueue:?packet, Count:int)<transacts>:void =
+        AddRunningTask(Id, Priority, TheQueue, idle_task{Scheduler:=Self, V1:=1, Count:=Count})
+
+    # Add a work task to this scheduler.
+    # @param {int} id the identity of the task
+    # @param {int} priority the task's priority
+    # @param {Packet} queue the queue of work to be processed by the task
+    AddWorkerTask(Id:int, Priority:int, TheQueue:packet)<transacts>:void =
+        AddTask(Id, Priority, option{TheQueue}, worker_task{Scheduler:=Self, V1:=ID_HANDLER_A, V2:=0})
+
+    # Add a handler task to this scheduler.
+    # @param {int} id the identity of the task
+    # @param {int} priority the task's priority
+    # @param {Packet} queue the queue of work to be processed by the task
+    AddHandlerTask(Id:int, Priority:int, TheQueue:packet)<transacts>:void = 
+        AddTask(Id, Priority, option{TheQueue}, handler_task{Scheduler:=Self})
+
+    # Add a handler task to this scheduler.
+    # @param {int} id the identity of the task
+    # @param {int} priority the task's priority
+    # @param {Packet} queue the queue of work to be processed by the task
+    AddDeviceTask(Id:int, Priority:int, TheQueue:?packet)<transacts>:void =
+        AddTask(Id, Priority, TheQueue, device_task{Scheduler:=Self})
+
+    # Add the specified task and mark it as running.
+    # @param {int} id the identity of the task
+    # @param {int} priority the task's priority
+    # @param {Packet} queue the queue of work to be processed by the task
+    # @param {Task} task the task to add
+    AddRunningTask(Id:int, Priority:int, TheQueue:?packet, Task:task)<transacts>:void =
+        AddTask(Id, Priority, TheQueue, Task)
+        CurrentTcb?.SetRunning() or Err("UNREACHABLE")
+
+    # Add the specified task to this scheduler.
+    # @param {int} id the identity of the task
+    # @param {int} priority the task's priority
+    # @param {Packet} queue the queue of work to be processed by the task
+    # @param {Task} task the task to add
+    AddTask(Id:int, Priority:int, TheQueue:?packet, Task:task)<transacts>:void =
+        set CurrentTcb = option{MakeTCB(List, Id, Priority, TheQueue, Task)}
+        set List = CurrentTcb
+        (set Blocks[Id] = CurrentTcb) or Err("UNREACHABLE")
+
+    # Execute the tasks managed by this scheduler.
+    Schedule()<transacts>:void = 
+        set CurrentTcb = List
+        loop:
+            if (Current := CurrentTcb?):
+                if (Current.IsHeldOrSuspended[]):
+                    set CurrentTcb = Current.Link
+                else:
+                    set CurrentId = Current.Id
+                    set CurrentTcb = Current.Run()
+            else:
+                break
+
+    # Release a task that is currently blocked and return the next block to run.
+    # @param {int} id the id of the task to suspend
+    Release(Id:int)<decides><transacts>:task_control_block =
+        TCB := Blocks[Id]?
+        TCB.MarkAsNotHeld()
+        CurrentTcb? or Err("UNREACHABLE")
+        if (TCB.Priority > CurrentTcb?.Priority) then TCB else CurrentTcb?
+
+    # Block the currently executing task and return the next task control block
+    # to run.  The blocked task will not be made runnable until it is explicitly
+    # released, even if new work is added to it.
+    HoldCurrent()<transacts>:?task_control_block =
+        set HoldCount += 1
+        if (TCB := CurrentTcb?):
+            TCB.MarkAsHeld()
+            TCB.Link
+        else:
+            Err("UNREACHABLE")
+
+    # Suspend the currently executing task and return the next task control block
+    # to run. If new work is added to the suspended task it will be made runnable.
+    SuspendCurrent()<transacts>:?task_control_block = 
+        CurrentTcb?.MarkAsSuspended() or Err("UNREACHABLE")
+        CurrentTcb
+
+    # Add the specified packet to the end of the worklist used by the task
+    # associated with the packet and make the task runnable if it is currently
+    # suspended.
+    # @param {Packet} packet the packet to add
+    Queue(Packet:packet)<decides><transacts>:task_control_block =
+        T := Blocks[Packet.Id]?
+        set QueueCount += 1
+        set Packet.Link = false
+        set Packet.Id = CurrentId
+        TCB := CurrentTcb? or Err("UNREACHABLE")
+        T.CheckPriorityAdd(TCB, Packet)
+}
+
+
+EState := module
+{
+    # The task has packets left to process.
+    Runnable<public>:int = 0
+
+    # The task is not currently running.  The task is not blocked as such and may
+    # be started by the scheduler.
+    Suspended<public>:int = 1
+
+    # The task is blocked and cannot be run until it is explicitly released.
+    Held<public>:int = 2
+}
+
+bit_set := class
+{
+    var Value:int = 0
+
+    Clear()<transacts>:void =
+        set Value = 0
+
+    Has(Bit:int)<transacts><decides>:void =
+        LowestBit(Rshift(Value, Bit)) = 1
+
+    Add(Bit:int)<transacts>:void =
+        if (not Has[Bit]):
+            set Value += BitValue(Bit)
+
+    Remove(Bit:int)<transacts>:void =
+        if (Has[Bit]):
+            set Value -= BitValue(Bit)
+
+    HasOnly(V:int)<transacts><decides>:void =
+        Value = V
+}
+
+task_control_block := class<transacts>
+{
+    Link:?task_control_block
+    Id:int
+    Priority:int
+    var Queue:?packet
+    Task:task
+    State:bit_set = bit_set{}
+
+    SetRunning()<transacts>:void = State.Clear()
+    MarkAsNotHeld()<transacts>:void = State.Remove(EState.Held)
+    MarkAsHeld()<transacts>:void = State.Add(EState.Held)
+    IsHeldOrSuspended()<transacts><decides>:void = State.Has[EState.Held] or State.HasOnly[BitValue(EState.Suspended)]
+    MarkAsSuspended()<transacts>:void = State.Add(EState.Suspended)
+    MarkAsRunnable()<transacts>:void = State.Add(EState.Runnable)
+    IsSuspendedAndRunnable()<transacts><decides>:void = State.HasOnly[BitValue(EState.Suspended) + BitValue(EState.Runnable)]
+
+    # Runs this task, if it is ready to be run, and returns the next task to run.
+    Run()<transacts>:?task_control_block = 
+        var Packet:?packet = false
+        if (IsSuspendedAndRunnable[]):
+            set Packet = Queue
+            set Queue = Packet?.Link or Err("UNREACHABLE")
+            State.Clear()
+            if (Queue?):
+                State.Add(EState.Runnable)
+        Task.Run(Packet)
+
+    # Adds a packet to the worklist of this block's task, marks this as runnable if
+    # necessary, and returns the next runnable object to run (the one
+    # with the highest priority).
+    CheckPriorityAdd(InputTask:task_control_block, Packet:packet)<transacts>:task_control_block =
+        if (Queue?):
+            set Queue = Packet.AddTo(Queue)
+        else:
+            set Queue = option{Packet}
+            MarkAsRunnable()
+            if (Priority > InputTask.Priority) { return Self }
+        InputTask
+}
+
+# A task control block manages a task and the queue of work packages associated
+# with it.
+# @param {TaskControlBlock} link the preceding block in the linked block list
+# @param {int} id the id of this block
+# @param {int} priority the priority of this block
+# @param {Packet} queue the queue of packages to be processed by the task
+# @param {Task} task the task
+# @constructor
+MakeTCB<constructor>(Link:?task_control_block, Id:int, Priority:int, Queue:?packet, Task:task)<transacts> := task_control_block
+{
+    Link := Link
+    Id := Id
+    Priority := Priority
+    Queue := Queue
+    Task := Task
+    State := block:
+        Result := bit_set{}
+        Result.Add(EState.Suspended)
+        if (Queue?):
+            Result.Add(EState.Runnable)
+        Result
+}
+
+task := class<abstract>
+{
+    Scheduler:scheduler
+    Run(Packet:?packet)<transacts>:?task_control_block
+}
+
+idle_task := class(task)
+{
+    # An idle task doesn't do any work itself but cycles control between the two
+    # device tasks.
+    # @param {Scheduler} scheduler the scheduler that manages this task
+    # @param {int} v1 a seed value that controls how the device tasks are scheduled
+    # @param {int} count the number of times this task should be scheduled
+    # @constructor
+
+    var V1:int
+    var Count:int
+
+    Run<override>(Packet:?packet)<transacts>:?task_control_block = 
+        set Count -= 1
+        if (Count = 0):
+            return Scheduler.HoldCurrent()
+
+        if (IsEven[V1]):
+            set V1 = Rshift1(V1)
+            option{Scheduler.Release[ID_DEVICE_A]}
+        else:
+            set V1 = Xor(Rshift1(V1), 0xD008)
+            option{Scheduler.Release[ID_DEVICE_B]}
+}
+
+device_task := class(task)
+{
+    # A task that suspends itself after each time it has been run to simulate
+    # waiting for data from an external device.
+    # @param {Scheduler} scheduler the scheduler that manages this task
+    # @constructor
+
+    var V1:?packet = false
+    
+    Run<override>(Packet:?packet)<transacts>:?task_control_block = 
+        if (Packet?):
+            set V1 = Packet
+            Scheduler.HoldCurrent()
+        else:
+            if (P := V1?):
+                set V1 = false
+                option{Scheduler.Queue[P]}
+            else:
+                Scheduler.SuspendCurrent()
+}
+
+
+worker_task := class(task)
+{
+    # A task that manipulates work packets.
+    # @param {Scheduler} scheduler the scheduler that manages this task
+    # @param {int} v1 a seed used to specify how work packets are manipulated
+    # @param {int} v2 another seed used to specify how work packets are manipulated
+    # @constructor
+
+    var V1:int
+    var V2:int
+
+    Run<override>(Packet:?packet)<transacts>:?task_control_block = 
+        if (P := Packet?):
+            if (V1 = ID_HANDLER_A):
+                set V1 = ID_HANDLER_B
+            else:
+                set V1 = ID_HANDLER_A
+            set P.Id = V1
+            set P.A1 = 0
+            for (I := 0..DATA_SIZE-1):
+                set V2 += 1
+                if (V2 > 26) { set V2 = 1 }
+                (set P.A2[I] = V2) or Err("UNREACHABLE")
+            option{Scheduler.Queue[P]}
+        else:
+            Scheduler.SuspendCurrent()
+}
+
+
+handler_task := class(task)
+{
+    # A task that manipulates work packets and then suspends itself.
+    # @param {Scheduler} scheduler the scheduler that manages this task
+    # @constructor
+
+    var V1:?packet = false
+    var V2:?packet = false
+
+    Run<override>(Packet:?packet)<transacts>:?task_control_block = 
+        if (P := Packet?):
+            if (P.Kind = KIND_WORK):
+                set V1 = P.AddTo(V1)
+            else:
+                set V2 = P.AddTo(V2)
+
+        if (P1 := V1?):
+            Count := P1.A1
+            if (Count < DATA_SIZE):
+                if (V := V2?):
+                    set V2 = V.Link
+                    set V.A1 = P1.A2[Count] or Err("UNREACHABLE")
+                    set P1.A1 = Count + 1
+                    return option{Scheduler.Queue[V]}
+            else:
+                set V1 = P1.Link
+                return option{Scheduler.Queue[P1]}
+
+        return Scheduler.SuspendCurrent()
+}
+
+#/* --- *
+# * P a c k e t
+# * --- */
+
+packet := class
+{
+    # A simple package of data that is manipulated by the tasks.  The exact layout
+    # of the payload data carried by a packet is not importaint, and neither is the
+    # nature of the work performed on packets by the tasks.
+    # 
+    # Besides carrying data, packets form linked lists and are hence used both as
+    # data and worklists.
+    # @param {Packet} link the tail of the linked list of packets
+    # @param {int} id an ID for this packet
+    # @param {int} kind the type of this packet
+    # @constructor
+    var Link:?packet
+    var Id:int
+    Kind:int
+    var A1:int = 0
+    var A2:[]int = for (I:=1..DATA_SIZE) do 0
+
+    AddTo(Queue:?packet)<transacts>:?packet = 
+        set Link = false
+        if (Q := Queue?):
+            var Next:packet = Q
+            var I:int := 0
+            loop:
+                if (Peek := Next.Link?):
+                    set I += 1
+                    set Next = Peek
+                else:
+                    break
+            set Next.Link = option{Self}
+            Queue
+        else:
+            option{Self} 
+}
+
+RunRichards()<transacts><decides>:void =
+    Scheduler:scheduler = scheduler{}
+    Scheduler.AddIdleTask(ID_IDLE, 0, false, COUNT)
+
+    var Queue:packet = packet{Link:=false, Id:=ID_WORKER, Kind:=KIND_WORK}
+    set Queue = packet{Link:=option{Queue}, Id:=ID_WORKER, Kind:=KIND_WORK}
+    Scheduler.AddWorkerTask(ID_WORKER, 1000, Queue)
+
+    set Queue = packet{Link:=false, Id:=ID_DEVICE_A, Kind:=KIND_DEVICE}
+    set Queue = packet{Link:=option{Queue}, Id:=ID_DEVICE_A, Kind:=KIND_DEVICE}
+    set Queue = packet{Link:=option{Queue}, Id:=ID_DEVICE_A, Kind:=KIND_DEVICE}
+    Scheduler.AddHandlerTask(ID_HANDLER_A, 2000, Queue)
+
+    set Queue = packet{Link:=false, Id:=ID_DEVICE_B, Kind:=KIND_DEVICE}
+    set Queue = packet{Link:=option{Queue}, Id:=ID_DEVICE_B, Kind:=KIND_DEVICE}
+    set Queue = packet{Link:=option{Queue}, Id:=ID_DEVICE_B, Kind:=KIND_DEVICE}
+    Scheduler.AddHandlerTask(ID_HANDLER_B, 3000, Queue)
+
+    Scheduler.AddDeviceTask(ID_DEVICE_A, 4000, false)
+
+    Scheduler.AddDeviceTask(ID_DEVICE_B, 5000, false)
+
+    Scheduler.Schedule()
+
+    Scheduler.QueueCount = EXPECTED_QUEUE_COUNT and Scheduler.HoldCount = EXPECTED_HOLD_COUNT
+
+assert:
+    for (I := 1..2):
+        RunRichards[]

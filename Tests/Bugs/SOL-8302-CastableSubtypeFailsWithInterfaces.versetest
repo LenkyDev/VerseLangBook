@@ -1,0 +1,17 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Property generator fails to create the castable_subtype(root) property type due to it assuming class
+root := interface {}
+
+wrapper(t:castable_subtype(root)) := class:
+    Type:subtype(t)
+    Wrapped:type{_(:t):void}
+    Wrapper(Arg:root):void =
+        if (X := Type[Arg]):
+            Wrapped(X)
+
+example := class:
+    var Subscriptions:[]type{_(:root):void} = ()
+    Register(t:castable_subtype(root), F(:t):void):void =
+        set Subscriptions += array. wrapper(t){Type := t, Wrapped := F}.Wrapper
+    Invoke(Args:[]?root):void = {}

@@ -1,0 +1,464 @@
+# --- Public ---
+assert_valid
+{
+    A := class:
+        
+        myMember<public>:int
+
+    B := class(A):
+        myFunction(param:A):int=
+            param.myMember
+}
+
+assert_valid
+{
+    A := class:
+        
+        myMember<public>:int
+
+    B := class:
+        myFunction(param:A):int=
+            param.myMember
+}
+
+assert_valid
+{
+    A := class:
+        
+        myFunction<public>():int=
+            5
+
+    B := class(A):
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+assert_valid
+{
+    A := class:
+        
+        myFunction<public>():int=
+            5
+
+    B := class:
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+# --- Private ---
+assert_semantic_error(3593)
+{
+    A := class:
+        
+        myMember<private>:int = 7
+
+    B := class(A):
+        myFunction():int=
+            myMember
+}
+
+assert_semantic_error(3593)
+{
+    A := class:
+        
+        myMember<private>:int = 8
+
+    B := class:
+        myFunction(param:A):int=
+            param.myMember
+}
+
+assert_semantic_error(3593)
+{
+    A := class:
+        
+        myFunction<private>():int=
+            5
+
+    B := class(A):
+        myOtherFunction():int=
+            myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    A := class:
+        
+        myFunction<private>():int=
+            5
+    
+    B := class:
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+# --- Protected ---
+assert_valid
+{
+    A := class:
+        
+        myMember<protected>:int = 7
+
+    B := class(A):
+        myFunction():int=
+            myMember
+}
+
+assert_semantic_error(3593)
+{
+    A := class:
+        
+        myMember<protected>:int = 8
+
+    B := class:
+        myFunction(param:A):int=
+            param.myMember
+}
+
+assert_valid
+{
+    A := class:
+        
+        myFunction<protected>():int=
+            5
+
+    B := class(A):
+        myOtherFunction():int=
+            myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    A := class:
+        
+        myFunction<protected>():int=
+            5
+    
+    B := class:
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+# --- Internal ---
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := class:
+                # default access := internal
+                myMember:int
+
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := class:
+                
+                myMember<internal>:int
+
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+assert_semantic_error(3593, 3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class:
+                # default access := internal
+                myMember:int
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class<internal>:
+                
+                myMember<internal>:int
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+assert_semantic_error(3593)
+{
+    M := module:
+        A<public> := class<public>:
+            myMember<internal>:int
+}
+
+assert_semantic_error(3593)
+{
+    M := module:
+        A<public> := class<public>:
+            # This is implicitly declared <internal>, so it's logically the same test as above.
+            myMember:int
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(M):
+        snippet:
+            A<public> := class<public>:
+                myMember<internal>:int
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(M):
+        snippet:
+            A<public> := class<public>:
+                # This is implicitly declared <internal>, so it's logically the same test as above.
+                myMember:int
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := class:
+                # default access := internal
+                myFunction():int=
+                    5
+
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := class:
+                
+                myFunction<internal>():int=
+                    5
+
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class:
+                # default access := internal
+                myFunction():int=
+                    5
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class:
+                
+                myFunction<internal>():int=
+                    5
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_semantic_error(3593, 3593, 3593, 3593):
+    vpackage(Localhost,/localhost,?Scope:=InternalAPI):
+        snippet:
+            # Error on use of `epic_internal`
+            class1 := class<epic_internal>:
+                Property<epic_internal>:int
+            Main():void =
+                # Error on use of `Property`
+                X := class1{Property := 1}
+
+# --- type (Static) Method ---
+
+assert_semantic_error(3593)
+{
+    A := module:
+        myFunction():int=
+            5
+    
+    B := class:
+        otherFunction():int=
+            A.myFunction()    
+}
+
+assert_semantic_error(3593)
+{
+    A := module:
+        
+        myFunction<internal>():int=
+            5
+    
+    B := class:
+        otherFunction():int=
+            A.myFunction()    
+}
+
+assert_valid
+{
+    A := module:
+        
+        myFunction<public>():int=
+            5
+    
+    B := class:
+        otherFunction():int=
+            A.myFunction()    
+}
+
+# --- Ensure single access level ---
+
+assert_semantic_error(3543, 3594):
+    A := module:
+        myFunction<private><protected>():int=
+            return (42)
+
+assert_semantic_error(3543):
+    A := class:
+        myFunction<public><internal>():int=
+            return (42)
+
+assert_semantic_error(3543, 3594):
+    A := module:
+        myData<public><private><protected>:int = 42
+            
+assert_semantic_error(3543):
+    A := class:
+        myData<public><private><protected><internal>:int = 42
+
+# Allow ambiguity as long as only one choice is accessible
+<#   
+# Doesn't work for types
+assert_valid:
+    vmodule(X):
+        snippet:
+            A<public> := class{}
+    vmodule(Y):
+        snippet:
+            A<internal> := class{}
+    vmodule(Z):
+        snippet:        
+            using{ X }
+            using{ Y }
+            B := class(A){} # Should not be ambiguous and refer to X.A since Y.A is inaccessible
+#>
+
+# Functions are ok.
+assert_valid:
+    vmodule(X):
+        snippet:
+            A<public>(W:int):int = W
+    vmodule(Y):
+        snippet:
+            A<internal>(W:int):tuple(int,int) = (W, W)
+    vmodule(Z):
+        snippet:        
+            using{ X }
+            using{ Y }
+            B(W:int):int = A(W) # Should not be ambiguous and refer to X.A since Y.A is inaccessible
+
+# A local type with hidden functions also works (SOL-5589)
+assert_valid:
+    vmodule(Y):
+        snippet:
+            A<internal>(W:int):int = W
+    vmodule(Z):
+        snippet:        
+            using{ Y }
+            A := class{}
+            B := class(A){}
+
+# The accessibility of members with no default value must be no less than the class's constructor.
+assert_valid                {access_test_c1<public>         := class {AccessTestX<public>:int}}
+assert_semantic_error(3593) {access_test_c2<public>         := class {AccessTestX<internal>:int}}
+assert_semantic_error(3593) {access_test_c3<public>         := class {AccessTestX<protected>:int}}
+assert_semantic_error(3593) {access_test_c4<public>         := class {AccessTestX<private>:int}}
+assert_semantic_error(3593) {access_test_c5<public>         := class {AccessTestX<epic_internal>:int}}
+
+assert_valid                {access_test_c6 <internal>      := class {AccessTestX<public>:int}}
+assert_valid                {access_test_c7 <internal>      := class {AccessTestX<internal>:int}}
+assert_semantic_error(3593) {access_test_c8 <internal>      := class {AccessTestX<protected>:int}}
+assert_semantic_error(3593) {access_test_c9 <internal>      := class {AccessTestX<private>:int}}
+# Note: access_test_c10 is in epic_internal scope itself, so marking AccessTestX <epic_internal> does not restrict access to it any further 
+assert_valid                {access_test_c10<internal>      := class {AccessTestX<epic_internal>:int}}
+
+assert_valid                {access_test_c21<epic_internal> := class{AccessTestX<public>:int}}
+assert_semantic_error(3593) {access_test_c22<epic_internal> := class{AccessTestX<internal>:int}}
+assert_semantic_error(3593) {access_test_c23<epic_internal> := class{AccessTestX<protected>:int}}
+assert_semantic_error(3593) {access_test_c24<epic_internal> := class{AccessTestX<private>:int}}
+assert_valid                {access_test_c25<epic_internal> := class{AccessTestX<epic_internal>:int}}
+
+assert_valid:
+    class1 := class<protected> {}
+
+assert_semantic_error(3593):
+    class1 := class<protected> {}
+    Main():void = class1{}
+
+assert_valid:
+    class1 := class<protected> {}
+    class2 := class(class1) {}
+    Main():void = class2{}
+
+assert_semantic_error(3594):
+    class1 := class<private>:
+        F():void = class1{}
+
+assert_semantic_error(3594):
+    class1 := class<private> {}
+    F():void = class1{}
+
+assert_semantic_error(3594):
+    struct1 := struct<protected> {}
+
+assert_semantic_error(3594):
+    struct1 := struct<private> {}
+
+assert_semantic_error(3594):
+    interface1 := interface<protected> {}
+
+assert_semantic_error(3594):
+    interface1 := interface<private> {}
+
+assert_semantic_error(3593, 3593):
+    interface1 := interface:
+        F<private>():void
+    class1 := class(interface1):
+        F<override>():void = {}

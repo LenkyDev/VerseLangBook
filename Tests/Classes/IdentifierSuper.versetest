@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Use super
+assert_valid:
+    ClassA := class:
+        data:int
+
+        getAnswerA(): int=
+        {
+            return (42)
+        }
+
+    ClassB := class(ClassA):
+        instanceMethod():void=
+        {
+            super{data := 0}.getAnswerA()
+            super{data := 0}.data
+        }
+
+        getSuper(): type=
+        {
+            return (super)
+        }

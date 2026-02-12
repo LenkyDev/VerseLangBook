@@ -1,0 +1,6 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# -> is only allowed in type contexts.
+
+assert_valid{F(X:int):int=X; G:int->int=F}
+assert_semantic_error(3549){X:type = int->int}

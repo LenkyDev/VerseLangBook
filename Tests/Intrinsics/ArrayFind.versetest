@@ -1,0 +1,6 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{not array{1,2,3,1,2,3}.Find[0]}
+assert{    array{1,2,3,1,2,3}.Find[1]=0}
+assert{    array{1,2,3,1,2,3}.Find[2]=1}
+assert{    array{1,2,3,1,2,3}.Find[3]=2}

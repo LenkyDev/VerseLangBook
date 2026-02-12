@@ -1,0 +1,1 @@
+assert_semantic_error(3549){ f():void= set x:int += 0 }

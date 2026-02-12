@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# where in implicit type parameters: just test that the syntax is valid, more
+# tests in ParametricFunctions.versetest
+assert_valid{F(X:t where t:type):t=X}
+assert_valid{F(X:t, Y:u where t:type, u:type):tuple(t,u)=(X,Y)}
+assert_valid{F(X:t where t:subtype(comparable)):t=X}
+
+# where in general expression contexts: not yet supported.
+assert_semantic_error(3502){F():void=1 where 2}
+assert_semantic_error(3552,3502,3524){F():void=for(X:=1..2 where 3){4}}
+
+# where next to a named parameter: the name is still part of the containing tuple
+assert_valid:
+    F(X:t where t:type):void = G(X)
+    G(X:t, (?Y:int = 0) where t:type):void = {}

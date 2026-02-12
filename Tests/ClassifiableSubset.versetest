@@ -1,0 +1,380 @@
+using { /Verse.org/Verse }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+##################################################
+# Verify compile semantics.
+##################################################
+
+# Calling the constructor must be doable in class initialization and in functions.  
+assert_valid<depends_on_library>:
+    Foo():void=
+        C:classifiable_subset(any) := MakeClassifiableSubset()
+
+    wrapper_class := class:
+        C:classifiable_subset(any) := MakeClassifiableSubset()
+
+# Calling the constructor with any castable types is doable for classifable_subset(any). 
+assert_valid<depends_on_library>:
+    base_type := class<castable>(){}
+    other_base_type := class<castable>{}
+
+    Foo():void=
+        C:classifiable_subset(any) := MakeClassifiableSubset(array{base_type{}, other_base_type{}})
+
+    wrapper_class := class:
+        C:classifiable_subset(any) := MakeClassifiableSubset(array{base_type{}, other_base_type{}})
+
+# Calling the constructor must be doable in class initialization and in functions.  
+assert_valid<depends_on_library>:
+    base_type := class<castable>(){}
+    
+    Foo():void=
+        C:classifiable_subset(base_type) := MakeClassifiableSubset()
+
+    wrapper_class := class:
+        C:classifiable_subset(base_type) := MakeClassifiableSubset()
+
+
+# Calling the constructor must be doable in class initialization and in functions.  
+assert_valid<depends_on_library>:
+    base_type := class<castable>(){}
+    
+    Foo():void=
+        C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, base_type{}})
+
+    wrapper_class := class:
+        C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, base_type{}})
+
+
+# Calling the constructor must be doable in class initialization and in functions.  
+assert_valid<depends_on_library>:
+    base_type := class<castable>(){}
+    derived_type := class(base_type){}
+
+    Foo():void=
+        C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, derived_type{}})
+
+    wrapper_class := class:
+        C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, derived_type{}})
+
+# Subtyping classifiable_subset should not be possible
+assert_semantic_error<depends_on_library>(3593, 3569):
+    base_type := class<castable>(){}
+    derived_classifiable_subset := class(classifiable_subset(base_type)){}
+
+# Creating a classifiable_subset via any other method than MakeClassifiableSubset should not be possible.
+assert_semantic_error<depends_on_library>(3593, 3593):
+    base_type := class<castable>(){}
+    
+    wrapper_class := class:
+        C:classifiable_subset(base_type) := classifiable_subset(base_type){}
+
+    Foo():void=
+        C:classifiable_subset(base_type) := classifiable_subset(base_type){}
+
+# Subtyping classifiable_subset_key should not be possible
+assert_semantic_error<depends_on_library>(3593, 3569):
+    derived_classifiable_subset_key(t:type) := class(classifiable_subset_key(t)){}
+
+# Creating a classifiable_subse_key should not be possible.
+assert_semantic_error<depends_on_library>(3593, 3593):
+    base_type := class<castable>(){}
+    
+    wrapper_class := class:
+        K:classifiable_subset_key(base_type) := classifiable_subset_key(base_type){}
+
+    Foo():void=
+        K:classifiable_subset_key(base_type) := classifiable_subset_key(base_type){}
+
+# Subtyping classifiable_subset_var should not be possible
+assert_semantic_error<depends_on_library>(3593, 3569):
+    base_type := class<castable>(){}
+    derived_classifiable_subset_var := class(classifiable_subset_var(base_type)){}
+
+# Creating a classifiable_subset_var via any other method than MakeClassifiableSubsetVar should not be possible.
+assert_semantic_error<depends_on_library>(3593, 3593):
+    base_type := class<castable>(){}
+    
+    wrapper_class := class:
+        C:classifiable_subset_var(base_type) := classifiable_subset_var(base_type){}
+
+    Foo():void=
+        C:classifiable_subset_var(base_type) := classifiable_subset_var(base_type){}
+
+# The element types in the constructor call must be of type base_type
+assert_semantic_error<depends_on_library>(3509, 3509):
+    base_type := class<castable>(){}
+    other_base_type := class<castable>{}
+
+    wrapper_class := class:
+        C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, other_base_type{}})
+
+    Foo():void=
+        C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, other_base_type{}})
+
+# Cannot add an element of the wrong base type. 
+assert_semantic_error<depends_on_library>(3509, 3509):
+    base_type := class<castable>(){}
+    other_base_type := class<castable>{}
+
+    wrapper_class := class:
+        var C:classifiable_subset(base_type) := MakeClassifiableSubset()
+
+        block:
+            C.Add(other_base_type{})
+
+    Foo():void=
+        var C:classifiable_subset(base_type) := MakeClassifiableSubset()
+        C.Add(other_base_type{})
+
+##################################################
+# Element test types
+##################################################
+
+base_type := class<castable>(){}
+derived_type := class(base_type){}
+derived_type2 := class(base_type){}
+
+other_base_type := class<castable>{}
+
+##################################################
+# Add
+##################################################
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    C1:classifiable_subset_var(base_type) = MakeClassifiableSubsetVar()    
+    C2:classifiable_subset_var(base_type) = MakeClassifiableSubsetVar()
+
+    Key1 := C1.Add(base_type{})
+    C2.Write(C1.Read())
+    
+    # Removing the element from the original sets should succeed 
+    C1.Remove[Key1]
+
+    # Removing the element from the copied set should also succeed 
+    C2.Remove[Key1]
+
+
+##################################################
+# Contains
+##################################################
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}})
+    C.Contains[base_type]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}})
+    not C.Contains[derived_type]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{derived_type{}})
+    C.Contains[base_type]
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    var C:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    not C.Contains[base_type]
+    
+    Key := C.Add(base_type{})
+    C.Contains[base_type]
+    
+    C.Remove[Key]
+    not C.Contains[base_type]
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    var C:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    not C.Contains[base_type]
+
+    Key1 := C.Add(base_type{})
+    Key2 := C.Add(derived_type{})
+    Key3 := C.Add(derived_type{})
+    C.Contains[base_type]
+    C.Contains[derived_type]
+
+    C.Remove[Key1]
+    C.Contains[base_type]
+    C.Contains[derived_type]
+
+    C.Remove[Key2]
+    C.Contains[base_type]
+    C.Contains[derived_type]
+
+    C.Remove[Key3]
+    not C.Contains[base_type]
+    not C.Contains[derived_type]
+
+##################################################
+# ContainsAll
+##################################################
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset()
+    not C.ContainsAll[array{base_type}]
+    not C.ContainsAll[array{base_type, derived_type}]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}})
+    not C.ContainsAll[array{base_type, derived_type}]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, base_type{}, base_type{}})
+    not C.ContainsAll[array{base_type, derived_type}]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, derived_type{}})
+    C.ContainsAll[array{base_type, derived_type}]
+
+##################################################
+# ContainsAny
+##################################################
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset()
+    not C.ContainsAny[array{base_type}]
+    not C.ContainsAny[array{base_type, derived_type}]
+    
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, base_type{}, base_type{}})
+    not C.ContainsAny[array{derived_type}]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, derived_type{}})
+    C.ContainsAny[array{base_type, derived_type}]
+
+##################################################
+# Operator '+'
+##################################################
+
+assert:
+    C1:classifiable_subset(base_type) := MakeClassifiableSubset()
+    not C1.Contains[base_type]
+
+    C2:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}})
+    C2.Contains[base_type]
+
+    C3 := C1 + C2
+    C3.Contains[base_type]
+
+assert:
+    C1:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}})
+    C1.Contains[base_type]
+
+    C2:classifiable_subset(base_type) := MakeClassifiableSubset(array{derived_type{}})
+    C2.Contains[derived_type]
+
+    C3 := C1 + C2
+    C3.Contains[base_type]
+    C3.Contains[derived_type]
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    C1:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    Key1 := C1.Add(base_type{})
+
+    C2:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    Key2 := C2.Add(base_type{})
+
+    # C3 is the union of C1 and C2
+    C3:classifiable_subset_var(base_type) = MakeClassifiableSubsetVar()
+    C3.Write(C1 + C2)
+    
+    # Removing the elements from the original sets should succeed 
+    C1.Remove[Key1]
+    C2.Remove[Key2]
+
+    # Removing the elements from the union set should also succeed 
+    C3.Remove[Key1]
+    C3.Remove[Key2]
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    C1:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    Key1 := C1.Add(base_type{})
+    C1.Contains[base_type]
+
+    C2:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    Key2 := C2.Add(base_type{})
+    C2.Contains[base_type]
+
+    C3:classifiable_subset_var(base_type) = MakeClassifiableSubsetVar()
+    C3.Write(C1 + C2)
+    C3.Contains[base_type]
+
+    C1.Remove[Key1]
+    not C1.Contains[base_type]
+    C3.Contains[base_type]
+
+    C3.Remove[Key1]
+    C3.Contains[base_type]
+    
+    C2.Remove[Key2]
+    not C2.Contains[base_type]
+    C3.Contains[base_type]
+
+    C3.Remove[Key2]
+    not C3.Contains[base_type]
+
+##################################################
+# FilterByType
+##################################################
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}})
+    C.Contains[base_type]
+    not C.Contains[derived_type]
+    not C.FilterByType(derived_type).Contains[base_type]
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    C:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    C.Add(base_type{})
+    C.Contains[base_type]
+    FC := C.FilterByType(base_type)
+    FC.Contains[base_type]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, derived_type{}})
+    C.Contains[base_type]
+    C.Contains[derived_type]
+    not C.Contains[derived_type2]
+    FC := C.FilterByType(derived_type2)
+    not FC.Contains[base_type]
+    not FC.Contains[derived_type]
+    not FC.Contains[derived_type2]
+
+assert:
+    C:classifiable_subset(base_type) := MakeClassifiableSubset(array{base_type{}, derived_type{}, derived_type2{}})
+    C.Contains[base_type]
+    C.Contains[derived_type]
+    C.Contains[derived_type2]
+    FC := C.FilterByType(derived_type2)
+    FC.Contains[base_type]
+    not FC.Contains[derived_type]
+    FC.Contains[derived_type2]
+
+# TODO: update once `ref` keyword exists, https://jira.it.epicgames.com/browse/SOL-7982.
+assert:
+    C:classifiable_subset_var(base_type) := MakeClassifiableSubsetVar()
+    Key1 := C.Add(base_type{})
+    Key2 := C.Add(derived_type{})
+    Key3 := C.Add(derived_type2{})
+    C.Contains[base_type]
+    C.Contains[derived_type]
+    C.Contains[derived_type2]
+
+    FC:classifiable_subset_var(base_type)= MakeClassifiableSubsetVar()
+    FC.Write(C.FilterByType(derived_type2))
+    FC.Contains[base_type]
+    not FC.Contains[derived_type]
+    FC.Contains[derived_type2]
+
+    not FC.Remove[Key1]
+    not FC.Remove[Key2]
+    FC.Remove[Key3]
+
+    not FC.Contains[base_type]
+    not FC.Contains[derived_type]
+    not FC.Contains[derived_type2]

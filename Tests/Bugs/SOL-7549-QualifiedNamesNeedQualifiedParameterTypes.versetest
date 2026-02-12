@@ -1,0 +1,38 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Qualified names must include qualified parameter types
+
+A1 := module:
+    class1<public> := class:
+        Data1<public>:int
+B1 := module:
+    class1<public> := class:
+        Data1<public>:int
+C1 := module:
+    using {A1}
+    using {B1}
+    F<public>(Arg:(A1:)class1):(B1:)class1 = (B1:)class1{Data1 := 10+Arg.Data1}
+    F<public>(Arg:(B1:)class1):(A1:)class1 = (A1:)class1{Data1 := 20+Arg.Data1}
+
+assert:
+    ObjA:A1.class1 = A1.class1{Data1 := 1}
+    ObjB:B1.class1 = B1.class1{Data1 := 2}
+    C1.F(ObjA).Data1 = 11
+    C1.F(ObjB).Data1 = 22
+
+# Simpler version of the one above, but triggered another error before the fix
+A2 := module:
+    class1<public> := class {}
+B2 := module:
+    class1<public> := class {}
+C2 := module:
+    using {A2}
+    using {B2}
+    F<public>(Arg:(A2:)class1):(B2:)class1 = (B2:)class1{}
+    F<public>(Arg:(B2:)class1):(A2:)class1 = (A2:)class1{}
+
+assert:
+    ObjA:A2.class1 = A2.class1{}
+    ObjB:B2.class1 = B2.class1{}
+    C2.F(ObjA)
+    C2.F(ObjB)

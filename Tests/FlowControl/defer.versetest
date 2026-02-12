@@ -1,0 +1,1122 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# So concurrency features may be tested
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+############################################
+# Helper functions
+Log(Msg:string)<transacts>: void   = {CoroUtils.LogEvent(Msg)}
+GetLogStr()              : string = {return CoroUtils.GetEventLogString()}
+Wait(Ticks:int)<suspends>   : void   = {CoroUtils.WaitTicks(Ticks)}
+Tick(Ticks:int)          : void   = {CoroUtils.Tick(Ticks)}
+
+
+############################################
+# `defer` without early exits
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Immediate method/function
+TestMethod():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+
+assert:
+    TestMethod()
+    GetLogStr() = "ACEDB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Nested `block`
+TestDo():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    block:
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        defer:
+            Log("d")
+        Log("e")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestDo()
+    GetLogStr() = "ACacedbDFEB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `if` block
+TestIf(Num:int):void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    if: # failure test block
+        Log("f1")
+        Num >= 0 # actual test
+        defer:
+            Log("f2")
+        Log("f3")
+        defer:
+            Log("f4")
+        Log("f5")
+    then: # then block
+        Log("t1")
+        defer:
+            Log("t2")
+        Log("t3")
+        defer:
+            Log("t4")
+        Log("t5")
+    else: # else block
+        Log("e1")
+        defer:
+            Log("e2")
+        Log("e3")
+        defer:
+            Log("e4")
+        Log("e5")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestIf(1) # then clause
+    GetLogStr() = "ACf1f3f5t1t3t5t4t2f4f2DFEB"
+
+assert:
+    TestIf(-1) # else clause
+    GetLogStr() = "ACf1e1e3e5e4e2DFEB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `for` block
+TestFor():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    for(i:=0..2):
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        defer:
+            Log("d")
+        Log("e")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestFor()
+    GetLogStr() = "ACacedbacedbacedbDFEB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `loop` block
+TestLoop():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    var Num:int = 0
+    loop:
+        Log("a")
+        if (Num = 3):
+            # purposely breaking before defer encountered within loop
+            break
+        set Num += 1
+        defer:
+            Log("b")
+        Log("c")
+        defer:
+            Log("d")
+        Log("e")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestLoop()
+    GetLogStr() = "ACacedbacedbacedbaDFEB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Test `defer` within a `defer`
+TestDefer():void=
+    Log("A")
+    defer:
+        Log("B")
+        defer:
+            Log("a")
+        Log("C")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestDefer()
+    GetLogStr() = "ADFEBCa"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Test nested early exits across `defer`s
+TestNestedDefer():void=
+    Log("A")
+    loop:
+        Log("B")
+        defer:
+            Log("D")
+            loop:
+                Log("E")
+                defer:
+                    Log("G")
+                Log("F")
+                break
+            Log("H")
+        Log("C")
+        break
+    Log("I")
+
+assert:
+    TestNestedDefer()
+    GetLogStr() = "ABCDEFGHI"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Immediate coroutine
+
+TestCoro()<suspends>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+
+assert:
+    spawn{TestCoro()}
+    GetLogStr() = "ACEDB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Immediate coroutine with branch
+
+TestBranch()<suspends>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    branch:
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        Wait(0) # Return immediately
+        defer:
+            Log("d")
+        Log("e")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    spawn{TestBranch()}
+    GetLogStr() = "ACacedbDFEB"
+
+
+############################################
+# `defer` with `return` early exits
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodReturn():void=
+    Log("A")
+    defer:  # 1st encountered defer
+        Log("B")
+    Log("C")
+    defer:  # 2nd encountered defer
+        Log("D")
+    Log("E")
+    if (2>1):
+        return
+    Log("F")
+    defer:  # not encountered before early exit
+        Log("G")
+    Log("H")
+
+assert:
+    TestMethodReturn()
+    GetLogStr() = "ACEDB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Nested `block`
+TestDoReturn():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    block:
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        if (2>1):
+            return
+        Log("d")
+        defer:
+            Log("e")
+        Log("f")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestDoReturn()
+    GetLogStr() = "ACacbB"
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `if` block
+
+TestIfReturn(Condition1:logic, Condition2:logic):void=
+    Log("A+")
+    defer{Log("A-")}
+    if:
+        Log("B+")
+        defer{Log("B-")}
+        Condition1?
+        Log("C+")
+        defer{Log("C-")}
+    then:
+        Log("D+")
+        defer{Log("D-")}
+        if(Condition2?){return}
+        Log("E+")
+        defer{Log("E-")}
+    else:
+        Log("F+")
+        defer{Log("F-")}
+        if(Condition2?){return}
+        Log("G+")
+        defer{Log("G-")}
+    Log("H+")
+    defer{Log("H-")}
+    return
+
+assert{TestIfReturn(false, false); GetLogStr()="A+B+F+G+G-F-H+H-A-" }
+assert{TestIfReturn(false, true ); GetLogStr()="A+B+F+F-A-" }
+assert{TestIfReturn(true , false); GetLogStr()="A+B+C+D+E+E-D-C-B-H+H-A-" }
+assert{TestIfReturn(true , true ); GetLogStr()="A+B+C+D+D-C-B-A-" }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `loop` block
+TestLoopReturn():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    var Num:int = 0
+    loop:
+        Log("a")
+        if (Num = 42):
+            # Trick semantic analyisis into thinking code following loop *could* be run
+            # Put before any `defer` within loop so only `return` is being tested wrt `defer`
+            break
+        defer:
+            Log("b")
+        Log("c")
+        defer:
+            Log("d")
+        Log("e")
+        if (Num = 2):
+            # purposely returning both after and before some defers encountered within `loop`
+            return
+        set Num += 1
+        Log("f")
+        defer:
+            Log("g")
+        Log("h")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestLoopReturn()
+    GetLogStr() = "ACacefhgdbacefhgdbacedbB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Immediate coroutine
+
+TestCoroReturn()<suspends>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    if (2>1):
+        return
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    spawn{TestCoroReturn()}
+    GetLogStr() = "ACEDB"
+
+
+############################################
+# `defer` with `break` early exits
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `loop` block
+TestLoopBreak():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    var Num:int = 0
+    loop:
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        defer:
+            Log("d")
+        Log("e")
+        if (Num = 2):
+            # purposely breaking both after and before some defers encountered within `loop`
+            break
+        set Num += 1
+        Log("f")
+        defer:
+            Log("g")
+        Log("h")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestLoopBreak()
+    GetLogStr() = "ACacefhgdbacefhgdbacedbDFEB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMultiBreak():void=
+    for (X := 0..3):
+        loop:
+            if (X = 3):
+                break
+            defer:
+                Log("C")
+            if (X = 2):
+                break
+            defer:
+                Log("B")
+            if (X = 1):
+                break
+            defer:
+                Log("A")
+            if (X = 0):
+                break
+        Log(" ")
+
+assert:
+    TestMultiBreak()
+    GetLogStr() = "ABC BC C  "
+
+
+############################################
+# `defer` with fail in failure context early exits
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailOp()<transacts><decides>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    2<1 # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailOp[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailNot()<transacts><decides>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    not 1<2 # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailNot[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Fail()<transacts><decides>:void=
+    2<1
+
+TestMethodFailFunc()<transacts><decides>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    Fail[] # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailFunc[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailIndex()<transacts><decides>:void=
+    Nums := array{0, 1, 2, 3}
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    Nums[4] # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailIndex[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+c0 := class {}
+c1 := class {}
+TestMethodFailCast()<transacts><decides>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    c0[c1{}] # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailCast[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailQuery()<transacts><decides>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    false? # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailQuery[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailOptionalQuery()<transacts><decides>:void=
+    Opt:?string := false
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    defer:
+        Log("D")
+    Log("E")
+    Opt? # Fail
+    Log("F")
+    defer:
+        Log("G")
+    Log("H")
+
+assert:
+    if (TestMethodFailOptionalQuery[]):
+        Log("NoFail")
+    GetLogStr() = "ACE" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestIfFail1(Num:int):void=
+    Log("A")
+    if: # failure test block
+        Log("f1")
+        defer:
+            Log("f2")
+        Log("f3")
+        defer:
+            Log("f4")
+        Log("f5")
+        Num >= 0 # fail
+        Log("f6")
+    then: # then block
+        Log("t1")
+    else: # else block
+        Log("e1")
+    Log("B")
+
+assert:
+    TestIfFail1(-1) # return from fail clause
+    GetLogStr() = "Af1f3f5e1B" # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestIfFail2(Num:int):void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    if: # failure test block
+        Log("f1")
+        defer:
+            Log("f2")
+        Log("f3")
+        defer:
+            Log("f4")
+        Log("f5")
+        Num >= 0 # fail
+        Log("f6")
+    then: # then block
+        Log("t1")
+        defer:
+            Log("t2")
+        Log("t3")
+        defer:
+            Log("t4")
+        Log("t5")
+    else: # else block
+        Log("e1")
+        defer:
+            Log("e2")
+        Log("e3")
+        defer:
+            Log("e4")
+        Log("e5")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestIfFail2(-1) # return from fail clause
+    GetLogStr() = "ACf1f3f5e1e3e5e4e2DFEB"  # Defers do not execute on failure.
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestIfIfFail(Num:int):void=
+    Log("A")
+    if: # failure test block
+        Log("f1")
+        defer:
+            Log("f2")
+        Log("f3")
+        if: # failure test block
+            Log("F1")
+            defer:
+                Log("F2")
+            Log("F3")
+            defer:
+                Log("F4")
+            Log("F5")
+            Num >= 0 # fail
+            Log("F6")
+        then: # then block
+            Log("T1")
+        else: # else block
+            Log("E1")
+        Log("f4")
+        defer:
+            Log("f5")
+        Log("f6")
+        Num >= 0 # fail
+        Log("f7")
+    then: # then block
+        Log("t1")
+    else: # else block
+        Log("e1")
+    Log("B")
+
+assert:
+    TestIfIfFail(-1) # return from fail clause
+    GetLogStr() = "Af1f3F1F3F5E1f4f6e1B"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailInNot()<transacts><decides>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    not block:
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        false? # Fail
+        Log("d")
+        defer:
+            Log("e")
+        Log("f")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    if (TestMethodFailInNot[]):
+        Log("NoFail")
+    GetLogStr() = "ACacDFEBNoFail"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailInOr():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    block
+    {
+        Log("a")
+        defer:
+            Log("b")
+        Log("c")
+        false? # Fail
+        Log("d")
+        defer:
+            Log("e")
+        Log("f")
+    } or Log("g")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestMethodFailInOr()
+    GetLogStr() = "ACacgDFEB"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TestMethodFailInOptional():void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    option:
+        block:
+            Log("a")
+            defer:
+                Log("b")
+            Log("c")
+            false? # Fail
+            Log("d")
+            defer:
+                Log("e")
+            Log("f")
+    Log("D")
+    defer:
+        Log("E")
+    Log("F")
+
+assert:
+    TestMethodFailInOptional()
+    GetLogStr() = "ACacDFEB"
+
+
+############################################
+# `defer` async early exit
+#   - cancel by race or end of async context for `rush` or `branch`
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Race coroutine
+
+TestCoroDefer()<suspends>:void=
+    Log("A")
+    defer:
+        Log("B")
+    Log("C")
+    Wait(4)  # call defer "B" if canceled
+    Log("D")
+    defer:
+        Log("E")
+    Log("G")
+
+
+TestCoroRaceCoro()<suspends>:void=
+    Log("1")
+    defer:
+        Log("2")
+    Log("3")
+    race:
+        TestCoroDefer()  # Subtask 1
+        block:              # Subtask 2
+            Log("4")
+            defer:
+                Log("5")
+            Log("6")
+            Wait(1)  # call defer "5" if canceled
+            Log("7")
+            # Finishes first and cancels subtask 1 mid Wait(4)
+    Log("8")
+
+assert:
+    spawn{TestCoroRaceCoro()}
+    Tick(2)
+    GetLogStr() = "13AC46,75B82,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Race inline concurrency
+
+TestCoroRaceInline()<suspends>:void=
+    Log("A")
+    race:
+        block: # Subtask 1
+            Log("a")
+            defer:
+                Log("b")
+            Wait(4)  # call defer "b" above if canceled
+            Log("c")
+        block: # Subtask 2
+            Log("1")
+            defer:
+                Log("2")
+            Wait(1)  # call defer "2" above if canceled
+            Log("3")
+            # Finishes first and cancels subtask 1 mid Wait(4)
+    Log("B")
+
+assert:
+    spawn{TestCoroRaceInline()}
+    CoroUtils.Tick(2)
+    GetLogStr() = "Aa1,32bB,"
+
+
+############################################
+# Test immediate returning async in `defer` - `branch` and `spawn`
+
+TestCoroY2Z()<suspends>:void=
+    Log("Y")
+    Wait(2)
+    Log("Z")
+
+TestCoroImmediateAsyncInDefer()<suspends>:void=
+    Log("A")
+    race:
+        block:
+            Log("a")
+            defer:
+                Log("b")
+                branch:
+                    Log("M")
+                    Wait(1)
+                    Log("N")
+                Log("c")
+            Wait(4)  # call defer "b"
+            Log("d")
+        block:
+            Log("1")
+            defer:
+                Log("2")
+                spawn {TestCoroY2Z()}
+                Log("3")
+            Wait(1)  # call defer "2"
+            Log("4")
+    Log("B")
+    Wait(3)
+    Log("C")
+
+assert:
+    spawn{TestCoroImmediateAsyncInDefer()}
+    Tick(4)
+
+    # BPVM cancellation does not catch the `branch` child created during unwinding
+    verse_vm_only{ GetLogStr() = "Aa1,42Y3bMcB,,Z,C" }
+    bp_vm_only{ GetLogStr() = "Aa1,42Y3bMcB,N,Z,C" }
+
+
+############################################
+# `defer` Errors and warnings
+
+############################################
+# Warning: Ensure that defer has at least one expression
+# - this is a good catch since it can occur with incorrect indentation
+assert_semantic_error(2001):
+    Log(Msg:string):void={}
+
+    TestEmpty():void=
+        Log("A")
+        defer:
+            #Log("B")
+        Log("C")
+
+
+############################################
+# Error: Ensure that defer is only used within a block:
+#     - routines, block, if then, if else?, for?, loop, branch, spawn (*future)
+assert_semantic_error(3567):
+    Log(Msg:string):void={}
+
+    TestMethod():void=
+        Log("A")
+        defer:
+            Log("B")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string):void={}
+    TakeVoid(Nada:void):void={}
+
+    TestMethod():void=
+        Log("A")
+        TakeVoid(defer{Log("B")})
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string):void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestMethod():void=
+        Log("A")
+        IsEarlyExit[] or defer{Log("B")}
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string):void={}
+
+    TestMethod():void=
+        Log("A")
+        array{defer{Log("B1")}, Log("B2")}
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string)<transacts>:void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestMethod()<transacts><decides>:void=
+        Log("A")
+        not (IsEarlyExit[] and defer{Log("C")})
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string)<transacts>:void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestMethod()<transacts><decides>:void=
+        Log("A")
+        IsEarlyExit[] and defer{Log("C")}
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string)<transacts>:void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestMethod():void=
+        Log("A")
+        if(IsEarlyExit[] and defer{Log("B1")}):
+            Log("B2")
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3567):
+    Log(Msg:string)<transacts>:void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestMethod():void=
+        Log("A")
+        logic{IsEarlyExit[] and defer{Log("B")}}
+        Log("C")
+
+
+############################################
+# Ensure that defer is not last expression in a block
+<# Semantic analysis changed to make this currently not testable
+assert_semantic_error(3567):
+    Log(Msg:string):void={}
+
+    TestMethod():void=
+        Log("A")
+        block:
+            Log("B")
+            defer:
+                Log("C")
+        Log("D")
+#>
+
+
+############################################
+# Ensure that defer disallows any early exit to cross its block boundary
+assert_semantic_error(3566):
+    Log(Msg:string):void={}
+
+    TestEarlyReturn():void=
+        Log("A")
+        defer:
+            Log("B")
+            return
+        Log("C")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+assert_semantic_error(3566):
+    Log(Msg:string):void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestLoop():void=
+        Log("A")
+        loop:
+            Log("B")
+            defer:
+                Log("C")
+                break
+            if (IsEarlyExit[]):
+                break
+            Log("D")
+        Log("E")
+
+
+############################################
+# Ensure that defer disallows any fail to cross its block boundary
+assert_semantic_error(3512):
+    Log(Msg:string)<transacts>:void={}
+    IsEarlyExit()<transacts><decides>:void={}
+
+    TestMethod()<transacts><decides>:void=
+        Log("A")
+        defer:
+            Log("B1")
+            IsEarlyExit[]
+            Log("B2")
+        Log("C")
+
+
+############################################
+# Ensure that defer disallows any async expression
+assert_semantic_error(3512):
+    
+    Coro()<suspends>:void={}
+    Log(Msg:string):void={}
+
+    
+    TestCoro()<suspends>:void=
+        Log("A")
+        defer:
+            Log("B1")
+            Coro()
+            Log("B2")
+        Log("C")
+
+
+# Ensure that defer allows immediate `branch` expression
+assert_valid:
+    
+    Coro()<suspends>:void={}
+    Log(Msg:string):void={}
+
+    
+    TestCoro()<suspends>:void=
+        Log("A")
+        defer:
+            Log("B1")
+            branch:
+                Coro()
+            Log("B2")
+        Log("C")
+
+
+# Ensure that defer allows immediate `spawn` expression
+assert_valid:
+    
+    Coro()<suspends>:void={}
+    Log(Msg:string):void={}
+
+    TestMethod():void=
+        Log("A")
+        defer:
+            Log("B1")
+            spawn { Coro() }
+            Log("B2")
+        Log("C")

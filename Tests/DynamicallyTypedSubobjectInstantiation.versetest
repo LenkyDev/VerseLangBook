@@ -1,0 +1,51 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+
+unique_class := class<unique>{}
+
+unique_class_with_method := class(unique_class):
+    Method():unique_class=Self
+
+parametric_class(t:type) := class:
+    Field:t
+
+parametric_struct(t:type) := struct:
+    Field:t
+
+c0 := class{ParametricSubobject:parametric_class(unique_class                   )=parametric_class(unique_class                   ){Field := unique_class{}                                        }}
+c1 := class{ParametricSubobject:parametric_class(?unique_class                  )=parametric_class(?unique_class                  ){Field := option{unique_class{}}                                }}
+c2 := class{ParametricSubobject:parametric_class([]unique_class                 )=parametric_class([]unique_class                 ){Field := array{unique_class{}}                                 }}
+c3 := class{ParametricSubobject:parametric_class(tuple(unique_class,int)        )=parametric_class(tuple(unique_class,int)        ){Field := (unique_class{},0)                                    }}
+c4 := class{ParametricSubobject:parametric_class([int]unique_class              )=parametric_class([int]unique_class              ){Field := map{0=>unique_class{}}                                }}
+c5 := class{ParametricSubobject:parametric_class([unique_class]int              )=parametric_class([unique_class]int              ){Field := map{unique_class{}=>0}                                }}
+# Doesn't work because of SOL-3738: Invoking a parametric type as an argument to a parametric type isn't allowed in a default value
+#c6 := class{ParametricSubobject:parametric_class(parametric_struct(unique_class))=parametric_class(parametric_struct(unique_class)){Field := parametric_struct(unique_class){Field:=unique_class{}}}}
+c7 := class{ParametricSubobject:parametric_class(tuple()->unique_class          )=parametric_class(tuple()->unique_class          ){Field := unique_class_with_method{}.Method                     }}
+
+assert{A := c0{}; B := c0{}; A.ParametricSubobject.Field<>B.ParametricSubobject.Field}
+assert{A := c1{}; B := c1{}; A.ParametricSubobject.Field<>B.ParametricSubobject.Field}
+assert{A := c2{}; B := c2{}; A.ParametricSubobject.Field<>B.ParametricSubobject.Field}
+assert{A := c3{}; B := c3{}; A.ParametricSubobject.Field<>B.ParametricSubobject.Field}
+assert{A := c4{}; B := c4{}; A.ParametricSubobject.Field<>B.ParametricSubobject.Field}
+assert{A := c5{}; B := c5{}; A.ParametricSubobject.Field<>B.ParametricSubobject.Field}
+#assert{A := c6{}; B := c6{}; A.ParametricSubobject.Field.Field<>B.ParametricSubobject.Field.Field}
+assert{A := c7{}; B := c7{}; A.ParametricSubobject.Field()<>B.ParametricSubobject.Field()}
+
+c8  := class(parametric_class(unique_class                   )){Field<override>:unique_class                    = unique_class{}                                        }
+c9  := class(parametric_class(?unique_class                  )){Field<override>:?unique_class                   = option{unique_class{}}                                }
+c10 := class(parametric_class([]unique_class                 )){Field<override>:[]unique_class                  = array{unique_class{}}                                 }
+c11 := class(parametric_class(tuple(unique_class,int)        )){Field<override>:tuple(unique_class,int)         = (unique_class{},0)                                    }
+c12 := class(parametric_class([int]unique_class              )){Field<override>:[int]unique_class               = map{0=>unique_class{}}                                }
+c13 := class(parametric_class([unique_class]int              )){Field<override>:[unique_class]int               = map{unique_class{}=>0}                                }
+c14 := class(parametric_class(parametric_struct(unique_class))){Field<override>:parametric_struct(unique_class) = parametric_struct(unique_class){Field:=unique_class{}}}
+c15 := class(parametric_class(tuple()->unique_class          )){Field<override>:tuple()->unique_class           = unique_class_with_method{}.Method                     }
+
+assert{A := c8 {}; B := c8 {}; A.Field<>B.Field}
+assert{A := c9 {}; B := c9 {}; A.Field<>B.Field}
+assert{A := c10{}; B := c10{}; A.Field<>B.Field}
+assert{A := c11{}; B := c11{}; A.Field<>B.Field}
+assert{A := c12{}; B := c12{}; A.Field<>B.Field}
+assert{A := c13{}; B := c13{}; A.Field<>B.Field}
+assert{A := c14{}; B := c14{}; A.Field.Field<>B.Field.Field}
+assert{A := c15{}; B := c15{}; A.Field()<>B.Field()}
+

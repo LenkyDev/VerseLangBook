@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+super_class := class{}
+a := class(super_class):
+     Member:int
+b := class(super_class):
+     Member:int
+c := class(super_class):
+     Member:int
+assert:
+     arr:[](subtype(super_class))=array{a, b, c}
+     TestUtils.AreClassesEqual[arr[1], b]

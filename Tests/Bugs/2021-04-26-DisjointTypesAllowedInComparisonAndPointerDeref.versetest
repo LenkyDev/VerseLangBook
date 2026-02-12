@@ -1,0 +1,3 @@
+assert_valid {f()<transacts><decides>:void={(false? or 0)=0; return}}
+assert_valid {f()<transacts><decides>:void={0=(false? or 0); return}}
+assert_semantic_error(3516){f():void={var x:int=0; (false? or x)^; return}}

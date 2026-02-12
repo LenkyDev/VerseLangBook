@@ -1,0 +1,62 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# note: these tests need to assert that the hook is actually getting called. at the moment they
+#       function as a basic sanity check for the codegen/hook runtime to avoid crashes, and will be
+#       expanded in a followup CL.
+
+p(t:type) := class:
+    T:?t = false
+
+a := class:
+    var X:int = 5
+    var Y:p(type) = p(type){}
+    var Z<getter(GetZ)><setter(SetZ)>:int = external{}
+
+    GetZ(:accessor)<transacts>:int = 0
+    SetZ(:accessor, N:int)<transacts>:void = {}
+
+    SleepAndReturn3()<suspends>:int =
+        CoroUtils.WaitTicks(3)
+        3
+
+    SuspendingSet()<suspends>:void =
+        set X = SleepAndReturn3()
+
+assert:
+    T := a{}
+    set T.X = 6
+
+assert:
+    T := a{}
+    Z := set T.X = 6
+
+assert:
+    T := a{}
+    set T.Y = p(type){}
+
+assert:
+    T := a{}
+    Z := set T.Y = p(type){}
+
+assert:
+    T := a{}
+    set T.Z = 6
+
+assert:
+    T := a{}
+    W := set T.Z = 6
+
+assert:
+    T1 := a{}
+    T2 := a{}
+    Z := set T1.X = (W := set T2.X = 5)
+
+assert:
+    T1 := a{}
+    T2 := a{}
+    Z := set T1.Y = (W := set T2.Y = p(type){})
+
+assert:
+    T := a{}
+    spawn { T.SuspendingSet() }
+    CoroUtils.Tick(3)

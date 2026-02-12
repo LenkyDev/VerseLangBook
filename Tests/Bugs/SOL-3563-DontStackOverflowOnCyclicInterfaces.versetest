@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    C<public>(T:type) := 
+        class {
+            Foo(X:T):T = X    
+        }
+
+    I1<public> := interface():
+        Func<public>():tuple(C(I1))
+
+
+assert_semantic_error(3509, 3557, 3557):
+    C<public>(T:subtype(I3)) := 
+        class {
+            Foo(X:T):I3 = X    
+        }
+    I2<public> := interface(I2) { }
+    I3<public> := interface(I3) { }
+
+    I1<public> := interface:
+        Func<public>():tuple(C(I2))

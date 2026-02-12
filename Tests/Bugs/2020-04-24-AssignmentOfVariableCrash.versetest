@@ -1,0 +1,12 @@
+assert_semantic_error(3502):
+    super_class := class {}
+    myObj := class(super_class):
+        objects:[]super_class    
+        crashCompile():otherObj=
+            result:otherObj = otherObj{objA:=Self}        
+            if (firstObject := objects[0]):
+                result.objA := firstObject
+            return(result)
+
+    otherObj := class(super_class):
+        objA:super_class

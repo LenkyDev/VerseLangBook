@@ -1,0 +1,111 @@
+ArrTest_SuperSuper := class {}
+ArrTest_Super := class(ArrTest_SuperSuper) { i:int=0 }
+ArrTest_SubClass := class(ArrTest_Super) { getI():int={return(i)} }
+ArrTest_UnrelatedObj := class(ArrTest_SuperSuper) {}
+
+composeWithDifferingExprs_Test(param:int):void= 
+{
+    Super := ArrTest_Super{}
+    sub := ArrTest_SubClass{}
+
+    Local := 8675
+    # Test composing an array from different expressions
+    intArray := array{42, Super.i, sub.getI(), param + Local - sub.i, makeASuper(1618).i * makeASub(221).getI()}
+}
+
+composeFromJointTypes_Test():[]ArrTest_SuperSuper:=
+{
+    a := ArrTest_Super{}
+    s := ArrTest_SubClass{}
+    o := ArrTest_UnrelatedObj{}
+    
+    # Test that we properly determine the common type           
+    return (array{a,s,makeASuper(1337),makeASub(309),o})
+}
+
+upcastAssignment_Test(iVal:int):[]ArrTest_SuperSuper:=
+{
+    sub := ArrTest_SubClass{i:=iVal}
+    
+    # Test that we can assign an array of sub-types to a super-typed variable          
+    objArry:[]ArrTest_Super := array{sub,makeASub(iVal)}
+    return (objArry)
+}
+
+inferInnerType_Test():int=
+{
+    # Test that an empty array{} def infers the type from its assigning var
+    intArr:[]int := array{}
+    var intSum:int = 0
+    for (i : intArr):
+        set intSum += i
+    return(intSum)
+}
+
+
+makeASuper(iVal:int):ArrTest_Super=  { return(ArrTest_Super{i:=iVal}) }
+makeASub(iVal:int):ArrTest_SubClass= { return(ArrTest_SubClass{i:=iVal}) }
+
+makeFiveMemberArray():[]int:= array{1,2,3,4,5}
+
+getArrayCount(inArr:[]int):int=
+{
+    var count:int = 0
+    for (i : inArr):
+        set count += 1
+    return (count)
+}
+assert:
+    getArrayCount(makeFiveMemberArray()) = 5
+
+assert:
+    myArray := array{1,2,3,4,5}
+    var summation:int=0
+    for (item : myArray):
+        set summation += item
+    summation = 15
+
+assert:
+    iVal := 221
+    objArr:[]ArrTest_SuperSuper := upcastAssignment_Test(iVal)
+    var success:logic = true
+    var count:int = 0
+    var Total:int = 0
+    for (o : objArr):
+        set count += 1
+        set success = if (sub := ArrTest_SubClass[o]) { set Total += sub.i; success } else { false }
+    count > 0 and success = true and Total = count*iVal
+
+# array of disjoint types
+DisjointArray:[]any := array{42, 13.37, true}
+assert{DisjointArray.Length=3}
+
+# Empty array with inferred type.
+assert{array{}=array{}}
+assert{array{}<>array{1}}
+assert{A1:=array{}; A2:=A1+array{1}; A2=array{1}}
+
+# Assigning of wrong array type
+assert_semantic_error(3509): 
+    ObjClass := class { f():void= { arr:[]int := array{Self} }}
+# Using reserved identifier `array` 
+assert_semantic_error(3514): 
+    f():void= { array:int = 35 }
+
+assert_semantic_error(3509){ C:=class {var m0:[]C; f0():void={set m0 =[]C }}}
+assert_semantic_error(3509){ C:=class {f0(a0:[]C)   :void={f0([]C)      }}}
+assert_semantic_error(3510){ C:=class {f0()         :[]C ={return([]C)  }}}
+
+# Test `false` assignment, concatenation, and query throw expected errors
+assert_semantic_error(3509){ C:=class {var IntArray:[]int = false }}
+assert_semantic_error(3509){ IntArray:[]int = false + array{} }
+assert_semantic_error(3509){ f():void= { IntArray:[]int = array{}; if(IntArray?){} }}
+
+class1 := class<unique> {}
+class2 := class(class1) {}
+
+assert:
+    Key := class2{}
+    OtherKey:class1 = Key
+    var X:[class2][]int = map{Key => (1, 2, 3)}
+    X[OtherKey][1] = 2

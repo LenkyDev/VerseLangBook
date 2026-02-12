@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Negative
+assert { Min(-2, -1) = -2 }
+assert { Min(-1, -2) = -2 }
+assert { Min(-1, -1) = -1 }
+
+# Negative/positive mix
+assert { Min(-1, 1) = -1 }
+assert { Min(1, -1) = -1 }
+
+# Positive
+assert { Min(1, 2) = 1 }
+assert { Min(2, 1) = 1 }
+assert { Min(2, 2) = 2 }
+
+# Zero
+assert { Min(-1, 0) = -1 }
+assert { Min(0, -1) = -1 }
+assert { Min(1, 0)  =  0 }
+assert { Min(0, 1)  =  0 }
+assert { Min(0, 0)  =  0 }

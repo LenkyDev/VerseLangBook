@@ -1,0 +1,45 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+test_struct := struct<computes>:
+    A:int
+    B:[int]string
+    C:[]string
+    D:[string]int
+
+test_object := class:
+    var Var:int
+    var Array:[]string
+    var Map:[int]string
+    var Struct:test_struct
+
+verse_vm_todo
+{
+NullTestObject:test_object=MakeNull(test_object)
+}
+
+assert_runtime_error{NullTestObject.Var=0}
+assert_runtime_error{set NullTestObject.Var = 0}
+
+assert_runtime_error{NullTestObject.Array[0]}
+assert_runtime_error{set NullTestObject.Array = array{}}
+assert_runtime_error{set NullTestObject.Array[0] = ""}
+assert_runtime_error{set NullTestObject.Array += array{""}}
+
+assert_runtime_error{NullTestObject.Map[0]}
+assert_runtime_error{set NullTestObject.Map = map{}}
+assert_runtime_error{set NullTestObject.Map[0] = ""}
+
+assert_runtime_error{NullTestObject.Struct.D[""]}
+assert_runtime_error{set NullTestObject.Struct = test_struct{A:=0,B:=map{},C:=array{},D:=map{}}}
+assert_runtime_error{set NullTestObject.Struct.D = map{""=>0}}
+
+assert_runtime_error{array{1}[NullTestObject.Var]=1}
+assert_runtime_error{map{0=>1}[NullTestObject.Var]=1}
+
+assert_runtime_error{var Array:[]int=array{1}; set Array[NullTestObject.Var]=1}
+assert_runtime_error{var Map:[int]int=map{0=>1}; set Map[NullTestObject.Var]=1}
+}

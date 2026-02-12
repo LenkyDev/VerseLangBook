@@ -1,0 +1,5 @@
+assert_semantic_error(3591):
+    C := class { f()<transacts><decides>:void }
+    D := class(C) { f<override>()<transacts><decides>:void={} }
+    Foo()<transacts><decides>:void =
+        D{}.f[]

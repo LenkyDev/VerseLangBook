@@ -1,0 +1,734 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert:
+    var X:[int]int = map{}
+    X = map{}
+    set X[666] = 42
+    X = map{666 => 42}
+
+assert:
+    var X:[int][]int = map{}
+    X = map{}
+    set X[666] = array{42}
+    X = map{666 => array{42}}
+    X[666] = array{42}
+
+    set X[666][0] = 1234
+    X = map{666 => array{1234}}
+    X[666] = array{1234}
+    X = map{666 => array{1234}}
+
+assert:
+    var X:[][int]int = array{map{}}
+    X = array{map{}}
+
+    set X[0] = map{42=>666}
+    X = array{map{42=>666}}
+    X[0] = map{42=>666}
+    X[0][42] = 666
+
+    set X[0][1234] = 4321
+    X = array{map{42=>666, 1234=>4321}}
+    X[0] = map{42=>666, 1234=>4321}
+    X[0][42] = 666
+    X[0][1234] = 4321
+
+    set X[0][42] = 1122
+    X = array{map{42=>1122, 1234=>4321}}
+    X[0] = map{42=>1122, 1234=>4321}
+    X[0][42] = 1122
+    X[0][1234] = 4321
+
+    Y := X[0]
+
+    set X[0][0] = 111
+    X = array{map{42=>1122, 1234=>4321, 0=>111}}
+    X[0] = map{42=>1122, 1234=>4321, 0=>111}
+    X[0][42] = 1122
+    X[0][1234] = 4321
+    X[0][0] = 111
+
+    Y = map{42=>1122, 1234=>4321}
+    Y[42] = 1122
+    Y[1234] = 4321
+
+    set X[0] = map{42=>4242}
+    X = array{map{42=>4242}}
+    X[0] = map{42=>4242}
+    X[0][42] = 4242
+
+    Y = map{42=>1122, 1234=>4321}
+    Y[42] = 1122
+    Y[1234] = 4321
+
+
+assert:
+    var X:[][]int = array{array{1234}}
+    set X[0][0] = 42
+    X = array{array{42}}
+    X[0] = array{42}
+    X[0][0] = 42
+
+    set X[0] = array{666}
+    X = array{array{666}}
+    X[0] = array{666}
+    X[0][0] = 666
+
+the_class := class:
+    var X:[]int = array{0}
+
+assert:
+    C := the_class{}
+    set C.X[0] = 4266642
+
+assert:
+    var X:[]int = array{0, 1}
+    X[0] = 0
+    X[1] = 1
+    set X[0] = 42
+    X[0] = 42
+    X[1] = 1
+    set X[1] = 666
+    X[0] = 42
+    X[1] = 666
+
+struct0 := struct<computes>:
+    A: int = 10
+
+struct1 := struct<computes>:
+    S0 : struct0 = struct0{}
+
+class0 := class:
+    AI : int = 20
+    var AM: int = 20
+
+    BI : struct0 = struct0{}
+    var BM: struct0 = struct0{}
+
+    CI : struct1 = struct1{}
+    var CM: struct1 = struct1{}
+
+struct2 := struct:
+    C0 : class0 = class0{}
+
+struct3 := struct:
+    S2 : struct2 = struct2{}
+
+# testing valid mutability
+assert:
+    var S0 : struct0 = struct0{}
+    S0.A = 10
+
+    # mutate the entire struct
+    set S0 = struct0 { A:= 15 }
+    S0.A = 15
+
+    # mutate an immutable member of the struct
+    set S0.A = 20
+    S0.A = 20
+
+assert:
+    # ensure that the runtime isn't referencing structs
+    SI0 : struct0 = struct0{ A:= 10 }
+    var SI1 : struct0 = SI0
+
+    set SI1.A = 20
+
+    SI0.A = 10
+    SI1.A = 20
+
+    SI2 : struct0 = SI1
+    set SI1.A = 30
+    SI0.A = 10
+    SI1.A = 30
+    SI2.A = 20
+
+assert:
+    # test integer opassign operators
+    var S0 : struct0 = struct0{}
+
+    set S0.A += 10
+    S0.A = 20
+
+    set S0.A -= 3
+    S0.A = 17
+
+    set S0.A *= 4
+    S0.A = 68
+
+assert:
+    # mutable array of structs
+    var A0 : []struct0 = array { struct0{ A:= 10 }, struct0{ A:= 20 } }
+    A0.Length = 2
+    A0[0].A = 10
+    A0[1].A = 20
+
+    # mutate the entire array
+    set A0 = array { struct0{ A:= 30 }, struct0{ A:= 40 }, struct0{ A:= 50 } }
+    A0.Length = 3
+    A0[0].A = 30
+    A0[1].A = 40
+    A0[2].A = 50
+
+    # mutate one entire struct
+    set A0[1] = struct0{ A:= 60 }
+    A0[0].A = 30
+    A0[1].A = 60
+    A0[2].A = 50
+
+    # mutate one immutable member of one struct
+    set A0[2].A = 70
+    A0[0].A = 30
+    A0[1].A = 60
+    A0[2].A = 70
+
+assert:
+    # same test as above but with index being a mutable int
+
+    var Index : int = 0
+    # mutable array of structs
+    var A0 : []struct0 = array { struct0{ A:= 10 }, struct0{ A:= 20 } }
+    A0.Length = 2
+    A0[Index].A = 10
+    A0[Index+1].A = 20
+
+    # mutate the entire array
+    set A0 = array { struct0{ A:= 30 }, struct0{ A:= 40 }, struct0{ A:= 50 } }
+    A0.Length = 3
+    A0[Index].A = 30
+    A0[Index+1].A = 40
+    A0[Index+2].A = 50
+
+    set Index += 1
+
+    # mutate one entire struct
+    set A0[Index] = struct0{ A:= 60 }
+    A0[Index-1].A = 30
+    A0[Index].A = 60
+    A0[Index+1].A = 50
+
+    set Index = 2
+
+    # mutate one immutable member of one struct
+    set A0[Index].A = 70
+    A0[Index-2].A = 30
+    A0[Index-1].A = 60
+    A0[Index].A = 70
+
+assert:
+    # mutable maps
+    var M0 : [int]int = map{ 0=>1, 1=>2 }
+    set M0[1] = 42
+    M0[1] = 42
+
+assert:
+    # Map with values containing mutable members
+    var M0 : [int]class0 = map { 0=>class0{} }
+    M0[0].AM = 20
+
+    set M0[0].AM = 30
+    M0[0].AM = 30
+
+assert:
+    # mutable maps with string keys
+    var M0 : [string]int = map{ "0"=>1, "1"=>2 }
+    set M0["1"] = 42
+    M0["1"] = 42
+
+assert:
+    # Map created from mutable var does not change when the var is changed.
+    var I0 : int = 42
+
+    M0 : [int]int = map { 0=>I0 }
+    M0[0] = 42
+
+    set I0 = 0
+    M0[0] = 42
+
+assert:
+    # mutable maps
+    var M0 : [int]int = map{ 0=>1, 1=>2 }
+
+    if (set M0[0] = 42):
+        set M0[1] = 42
+    M0[1] = 42
+    M0[0] = 42
+
+    if (set M0[3] = 12):
+        set M0[0] = 12
+    M0[0] = 12
+    M0[3] = 12
+
+assert_semantic_error(3509):
+    c0 := class:
+        var M0 : [string]int = map { "0"=>0 }
+    Foo()<decides>:void=
+        C0:=c0{}
+        set C0.M0["0"] = "hello"
+
+assert:
+    # Don't allow new keys to mutable data structures
+    var A0 : []int = array { 0 }
+    not (set A0[1] = 1)
+    not (A0[1] = 1)
+    not (A0[1] <> 1)
+
+assert:
+    # structs are values so if we create an array of structs and mutate one,
+    # we should never see changes through the other
+    S0 := struct0{ A:= 88 }
+
+    var A0 : []struct0 = array { S0, S0 }
+
+    S0.A = 88
+    A0[0].A = 88
+    A0[1].A = 88
+
+    set A0[0].A = 99
+
+    S0.A = 88
+    A0[0].A = 99
+    A0[1].A = 88
+
+assert:
+    # immutable class with some mutable members
+    C0 := class0{}
+    C0.AI = 20
+    C0.AM = 20
+    C0.BI.A = 10
+    C0.BM.A = 10
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 10
+
+    # mutate an int member
+    set C0.AM = 30
+
+    C0.AI = 20
+    C0.AM = 30
+    C0.BI.A = 10
+    C0.BM.A = 10
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 10
+
+    # mutate a struct member
+    set C0.BM = struct0{ A:= 50 }
+
+    C0.AI = 20
+    C0.AM = 30
+    C0.BI.A = 10
+    C0.BM.A = 50
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 10
+
+    # mutate a nested struct member
+    set C0.BM.A = 60
+
+    C0.AI = 20
+    C0.AM = 30
+    C0.BI.A = 10
+    C0.BM.A = 60
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 10
+
+    # mutate a struct
+    set C0.CM = struct1 { S0:= struct0{ A:= 70 } }
+
+    C0.AI = 20
+    C0.AM = 30
+    C0.BI.A = 10
+    C0.BM.A = 60
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 70
+
+    # mutate a nested struct member
+    set C0.CM.S0 = struct0{ A:= 80 }
+
+    C0.AI = 20
+    C0.AM = 30
+    C0.BI.A = 10
+    C0.BM.A = 60
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 80
+
+    # mutate a doubly nested struct member
+    set C0.CM.S0.A = 90
+
+    C0.AI = 20
+    C0.AM = 30
+    C0.BI.A = 10
+    C0.BM.A = 60
+    C0.CI.S0.A = 10
+    C0.CM.S0.A = 90
+
+assert:
+    # mutable tuple
+    var T0 : tuple(int, int) = (10, 20)
+    T0(0) = 10
+    T0(1) = 20
+
+    set T0 = (30, 40)
+    T0(0) = 30
+    T0(1) = 40
+
+assert:
+    C0 := class0{}
+
+    # mutable array of classes
+    var A1 : []class0 = array{ C0, C0, C0 }
+
+    # A1[0].AM, A1[1].AM, and A1[2].AM have the same pointer value
+
+    # mutating one can be observed through the other
+    set A1[0].AM = 30
+    A1[0].AM = 30
+    A1[1].AM = 30
+    A1[2].AM = 30
+
+    set A1[1].AM = 40
+    A1[0].AM = 40
+    A1[1].AM = 40
+    A1[2].AM = 40
+
+    # mutate one of the array elements
+    set A1[1] = class0{}
+
+    # the pointers are no longer equal
+    A1[0].AM = 40
+    A1[1].AM = 20
+    A1[2].AM = 40
+
+    # mutate the entire array
+    A1_1 := A1[1]
+    set A1 = array{ C0, C0, A1_1 }
+    A1[0].AM = 40
+    A1[1].AM = 40
+    A1[2].AM = 20
+
+# we don't yet support mutating elements of a mutable tuple
+assert_semantic_error(3509):
+    f():void=
+        T0 : tuple(int, int) = (50, 60)
+        set T0(0) = 70
+
+# you can't mutate an immutable member of a class, because classes
+# might contain 'unique' pointers, and it's not clear how to 'clone'
+# an object in this situation without surprising effects (like the pointer changing value)
+assert_semantic_error(3509):
+    classX := class { AI : int = 20 }
+    f()<transacts><decides>:void=
+        CX : classX = classX{}
+        CX.AI = 20
+        set CX.AI = 30
+        CX.AI = 30
+
+# Only members of pure structs can be mutated through a pointer.
+assert_valid               { s := struct<computes>{M:int=0}; F()<transacts><decides>:void={var S:s=s{}; set S.M = 1; S.M=1} }
+assert_semantic_error(3509){ s := struct      {M:int=0}; F()<transacts><decides>:void={var S:s=s{}; set S.M = 1; S.M=1} }
+
+# you're not allowed to have an immutable class in the 'middle' of the left hand assignment expression
+assert_semantic_error(3509):
+    struct0 := struct<computes> { A: int = 10 }
+    struct1 := struct<computes> { S0 : struct0 = struct0{} }
+    class0 := class<computes> { CI : struct1 = struct1{} }
+    struct2 := struct<computes> { C0 : class0 = class0{} }
+    struct3 := struct<computes> { S2 : struct2 = struct2{} }
+
+    f()<transacts><decides>:void=
+        S3 : []struct3 = array{ struct3{}, struct3{} }
+        set S3[1].S2.C0.CI.S0.A = 7
+
+# it's fine to assign to the entire array, or to a nested member of a pointer member of a class
+assert:
+    var S3 : []struct3 = array{ struct3{}, struct3{} }
+    S3_1 := S3[1]
+    set S3 = array{ struct3{}, struct3{}, S3_1 }
+    set S3[0].S2.C0.CM = struct1{}
+    set S3[0].S2.C0.CM.S0.A = 77
+
+    S3[0].S2.C0.CM.S0.A = 77
+
+# can't mutate an immutable array, even with a mutable index
+assert_semantic_error(3509):
+    f()<decides>:void=
+        I : int = 2
+        A : []int = array{ 5, 6, 7 }
+        set A[I] = 2
+
+# can't mutate an immutable array, even with a mutable index
+assert_semantic_error(3509):
+    s0 := struct { A: []int = array{ 5, 6, 7 } }
+    f():void=
+        I : int = 2
+        S0 : s0 = s0{}
+        if(set S0.A[I] = 2):
+
+assert:
+    M0 : []int = array { 0, 1 }
+    var MapOfArrays : [int][]int = map { 0=>M0, 1=>M0 }
+    set MapOfArrays[0][1] = 42
+    MapOfArrays[0][1] = 42
+    MapOfArrays[1][1] = 1
+
+assert:
+    M0 : [string]logic = map { "test"=>true, "false"=>false }
+    var MapOfMaps : [int][string]logic = map { 0=>M0, 1=>M0 }
+    set MapOfMaps[0]["test"] = false
+    MapOfMaps[0]["test"] = false
+    MapOfMaps[1]["test"] = true
+
+assert:
+    # Check iteration order doesn't change when mutating a map.
+    var M0 : [string]int = map{ "a"=>3, "b"=>1, "c"=>2 }
+
+    set M0["a"] = 0
+
+    var i:int = 0
+    for(Value:M0):
+        i = Value
+        set i = i + 1
+
+    i = 3
+    set M0["c"] = 0
+    set M0["a"] = 2
+
+    for(Value:M0):
+        set i = i - 1
+        i = Value
+
+    i = 0
+    set M0 = ConcatenateMaps(M0, map{"a" => 2, "d"=>3})
+    set M0["c"] = 1
+    set M0["b"] = 0
+
+    Keys := array {"b", "c", "a", "d"}
+    for ((Key->Value):M0):
+        Key = Keys[i]
+        i = Value
+        set i = i + 1
+
+assert:
+    # check mutation does not impact order for equality
+    var M0 : [string]int = map{ "a"=>3, "b"=>1, "c"=>2 }
+    set M0["a"] = 0
+    M0=map{"a"=>0, "b"=>1, "c"=>2}
+    M0<>map{"b"=>1, "c"=>2, "a"=>0}
+
+assert:
+    # make sure doing a lookup doesn't incidentally add the key.
+    M0:[int]int := map{ }
+
+    not (M0[0] = 0)
+    not (M0[0] <> 1)
+
+assert:
+    # Make sure you can create a var with an empty map.
+    var M0:[int]string = map{}
+
+    set M0[0] = "hello"
+    M0[0] = "hello"
+
+assert:
+    # check new keys have the correct ordering
+
+    var M : [int]int = map{ 2=>2 }
+
+    set M[1] = 1
+    set M[0] = 0
+
+    var Keys:[]int = array { 2, 1, 0 }
+    var Index:int = 0
+    for (Key->Value : M):
+        Keys[Index] = Key
+        set Index += 1
+
+    M = map { 2=>2, 1=>1, 0=>0 }
+
+assert:
+    var M:[int]int = map { }
+
+    set M[0] = 0
+    set M[2] = 1
+    set M[1] = 5
+    set M[7] = 1
+    set M[5] = 42
+
+    M = map { 0=>0, 2=>1, 1=>5, 7=>1, 5=>42 }
+
+assert:
+    var M:[int]int = map{ 2=>2, 1=>3 }
+
+    set M[0] = 1
+    set M[1] = 0
+
+    M = map { 2=>2, 1=>0, 0=>1 }
+
+assert:
+    var M:[int]int = map {2=>4, 5=>5, 4=>2}
+
+    set M[0] = 1
+    set M[3] = 12
+
+    M = map { 2=>4, 5=>5, 4=>2, 0=>1, 3=>12 }
+
+assert_semantic_error(3515):
+    c0 := class:
+        var M0:=map{}
+
+assert:
+    var M : [int]struct0 = map{}
+    set M[0] = struct0{ A:=5 }
+    M[0].A = 5
+
+# Verse VM gives a better third error here - many overloads matching
+# (:ref false, :false) at Key[Index], compared to the BPVM, which considers
+# Key[Index] to be a type cast.
+bp_vm_only {
+assert_semantic_error(3515, 3515, 3552):
+    # This shouldn't crash
+    c0 := class:
+        var M : [int]int = map{ 2=>2 }
+
+    Foo()<decides>:void=
+        C0:=c0{}
+        set C0.M[1] = 1
+        set C0.M[0] = 0
+
+        var Keys := array { 2, 1, 0 }
+        var Index := 0
+        for (Key->Value : C0.M):
+            Keys[Index] = Key
+            set Index += 1
+}
+
+verse_vm_only {
+assert_semantic_error(3515, 3515, 3518):
+    # This shouldn't crash
+    c0 := class:
+        var M : [int]int = map{ 2=>2 }
+
+    Foo()<decides>:void=
+        C0:=c0{}
+        set C0.M[1] = 1
+        set C0.M[0] = 0
+
+        var Keys := array { 2, 1, 0 }
+        var Index := 0
+        for (Key->Value : C0.M):
+            Keys[Index] = Key
+            set Index += 1
+}
+
+base_struct := struct<computes>:
+    TheField: int = 10
+
+nested_struct := struct<computes>:
+    Field:[]base_struct = array{base_struct{}}
+
+c1 := class:
+    var TheField: int = 10
+
+assert:
+    var S0:[]nested_struct = array{nested_struct{}}
+
+    set S0[0].Field[0].TheField = 20
+    S0[0].Field[0].TheField = 20
+
+    S:nested_struct = nested_struct{Field := array{base_struct{TheField := 42}}}
+    S.Field[0].TheField = 42
+
+    set S0[0] = S
+    set S0[0].Field[0].TheField = 666
+    S0[0].Field[0].TheField = 666
+    S.Field[0].TheField = 42
+
+    var VarB:base_struct = base_struct{}
+    B:base_struct = VarB
+    VarB.TheField = 10
+    B.TheField = 10
+
+    set VarB = B
+    VarB.TheField = 10
+    B.TheField = 10
+
+    set VarB.TheField = 666
+    VarB.TheField = 666
+    B.TheField = 10
+
+the_struct := struct<computes>:
+    X:int = 42
+    A:[]int = array{1}
+
+assert:
+    var S:the_struct = the_struct{}
+    S.X = 42
+    set S.X += 666
+    S.X = 708
+
+    S.A = array{1}
+    A := S.A
+    A = array{1}
+    set S.A += array{42}
+    A = array{1}
+    S.A = array{1, 42}
+    S.X = 708
+
+    SCopy := S
+    SCopy.X = 708
+    SCopy.A = array{1, 42}
+
+    set S.A += array{666}
+    A = array{1}
+    S.A = array{1, 42, 666}
+    set S.X += 2
+    S.X = 710
+
+    SCopy.X = 708
+    SCopy.A = array{1, 42}
+
+    set S.A[0] += 9
+    S.A = array{10, 42, 666}
+    SCopy.A = array{1, 42}
+    A = array{1}
+
+assert:
+    var Ss:[]the_struct = array{the_struct{}}
+
+    Ss[0].X = 42
+    Ss[0].A = array{1}
+
+    SCopy := Ss[0]
+
+    set Ss[0].X *= 2
+    set Ss[0].A[0] *= 42
+    Ss[0].X = 84
+    Ss[0].A = array{42}
+
+    set Ss[0].A += array{666}
+    Ss[0].X = 84
+    Ss[0].A = array{42, 666}
+
+    SCopy.X = 42
+    SCopy.A = array{1}
+
+# Map nested in a struct nested in a class var
+
+map_struct := struct<computes>:
+    Map:[int]int
+
+map_class := class:
+    var Struct:map_struct = map_struct{Map := map{3 => 5}}
+
+assert:
+    MC := map_class{}
+    set MC.Struct.Map[8] = 13
+    MC.Struct.Map = map{3 => 5, 8 => 13}
+
+# disallow `set` outside of assignment:
+assert_semantic_error(3682) { F():void = { var X:int = 3; set X } }
+assert_semantic_error(3682) { F():void = { var A:[int]int = map{}; if (set A[4]) {} } }
+assert_semantic_error(3682) { F():void = { var A:[int]int = map{}; if (set A[set A[5]] = 6) {} } }
+assert_semantic_error(3682):
+	G()<transacts>:void = {}
+	F():void =
+		var A:[int]int = map{}
+		if (set A[block { G(); set A[5] }] = 6) {}

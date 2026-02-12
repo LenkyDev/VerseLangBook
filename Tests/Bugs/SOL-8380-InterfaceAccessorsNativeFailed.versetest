@@ -1,0 +1,48 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Testing the definitions in \Engine\Restricted\NotForLicensees\Source\Programs\Solaris\VerseTestScriptCmd\Verse\SOL-8380-InterfacesAccessors.native.verse
+
+# No inheritance, and accessors, mostly here for reference
+assert:
+    Object : SOL8380_class_only_accessors = SOL8380_class_only_accessors{}
+    Object.Value = 1421
+    set Object.Value = 124
+    Object.Value = 11124
+
+GetValue(Object:SOL8380_interface):int = Object.Value
+
+# Inherit from interface, override with accessors
+verse_vm_todo
+{
+assert:
+    Object : SOL8380_class_direct_accessors = SOL8380_class_direct_accessors{}
+    Object.Value = 1422
+    GetValue(Object) = 1422
+    set Object.Value = 224
+    Object.Value = 11224
+    GetValue(Object) = 11224
+}
+
+# Inherit from interface, no override
+assert:
+    Object : SOL8380_class_direct = SOL8380_class_direct{}
+    Object.Value = 423
+    GetValue(Object) = 423
+    set Object.Value = 324
+    Object.Value = 324
+    GetValue(Object) = 324
+
+verse_vm_todo
+{
+# Inherit from class, that inherited from interface, override with accessors
+assert:
+    Object : SOL8380_class_indirect_accessors = SOL8380_class_indirect_accessors{}
+    Object.Value = 1424
+    GetValue(Object) = 1424
+    set Object.Value = 244
+    Object.Value = 11244
+    GetValue(Object) = 11244
+
+}

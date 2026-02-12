@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+SOL3887Message<localizes>(S:string) : message = "--{S}--"
+
+assert:
+
+	Msgs := array:
+		SOL3887Message("One")
+		SOL3887Message("Two")
+		SOL3887Message("Three")
+
+	Localize(Msgs[0]) = "--One--"
+	Localize(Msgs[1]) = "--Two--"
+	Localize(Msgs[2]) = "--Three--"

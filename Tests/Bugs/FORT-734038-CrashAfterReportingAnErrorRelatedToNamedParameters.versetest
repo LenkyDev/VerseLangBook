@@ -1,0 +1,13 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Stripped down example that crashed the compiler after reporting an error about named parameters followed by unnamed parameters 
+
+assert_semantic_error(3629, 3509):
+    device := class:
+        OnBegin()<suspends>:void = ()
+
+    hello_world_device := class(device):
+        EmptyFunction():void = {}
+        AwaitTrue<public>(?Timeout:float = 1.0, OutputFunc : t -> void, ExtraData : t where t:type)<suspends>:void= ()
+        OnBegin<override>()<suspends>:void=           
+            AwaitTrue(EmptyFunction, ())  

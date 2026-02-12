@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Negative
+assert { Max(-2, -1) = -1 }
+assert { Max(-1, -2) = -1 }
+assert { Max(-1, -1) = -1 }
+
+# Negative/positive mix
+assert { Max(-1, 1) = 1 }
+assert { Max(1, -1) = 1 }
+
+# Positive
+assert { Max(1, 2) = 2 }
+assert { Max(2, 1) = 2 }
+assert { Max(2, 2) = 2 }
+
+# Zero
+assert { Max(-1, 0) =  0 }
+assert { Max(0, -1) =  0 }
+assert { Max(1, 0)  =  1 }
+assert { Max(0, 1)  =  1 }
+assert { Max(0, 0)  =  0 }

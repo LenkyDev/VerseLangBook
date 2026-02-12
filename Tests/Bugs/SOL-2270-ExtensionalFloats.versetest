@@ -1,0 +1,128 @@
+assert { 1.0/0.0 = 1.0/0.0 }
+assert { 0.0/0.0 = 0.0/0.0 }
+
+IsExtensionalForValue(Candidate(value:float)<transacts>:float, Value:float, AnotherValue:float)<transacts><decides>:void =
+    Value <> AnotherValue or Candidate(Value) = Candidate(AnotherValue)
+
+IsExtensional(Candidate(value:float)<transacts>:float)<transacts><decides>:void =
+    IsExtensionalForValue[Candidate, 0.0, 0.0]
+    IsExtensionalForValue[Candidate, 0.0, 1.0]
+    IsExtensionalForValue[Candidate, 0.0, -0.0]
+    IsExtensionalForValue[Candidate, 0.0, 0.0/-1.0]
+    IsExtensionalForValue[Candidate, 0.0, 0.0*-1.0]
+    IsExtensionalForValue[Candidate, 0.0, -1.0*0.0]
+    IsExtensionalForValue[Candidate, 0.0, 0.0/0.0]
+    IsExtensionalForValue[Candidate, 0.0, 1.0/0.0]
+    IsExtensionalForValue[Candidate, 0.0, -1.0/0.0]
+    IsExtensionalForValue[Candidate, 0.0/0.0, 0.0/0.0]
+    IsExtensionalForValue[Candidate, 0.0/0.0, 1.0/0.0]
+    IsExtensionalForValue[Candidate, 0.0/0.0, -1.0/0.0]
+    IsExtensionalForValue[Candidate, 1.0/0.0, 0.0/0.0]
+    IsExtensionalForValue[Candidate, 1.0/0.0, 1.0/0.0]
+    IsExtensionalForValue[Candidate, 1.0/0.0, -1.0/0.0]
+
+IsOrdered(Value:float, AnotherValue:float)<transacts><decides>:void =
+    Value < AnotherValue or Value = AnotherValue or Value > AnotherValue
+
+IsOrderingConsistent(Value:float, AnotherValue:float)<transacts><decides>:void =
+    logic{Value < AnotherValue or Value = AnotherValue} = logic{Value <= AnotherValue} and
+    logic{Value > AnotherValue or Value = AnotherValue} = logic{Value >= AnotherValue}
+    
+Identity(value:float)<transacts>:float = value
+
+Add(value:float)<transacts>:float = value + 1.0
+
+DivBy(value:float)<transacts>:float = 1.0 / value
+
+assert { IsExtensional[Identity] }
+assert { IsExtensional[Add] }
+assert { IsExtensional[DivBy] }
+
+assert { IsExtensionalForValue[DivBy, 0.0, -0.0] }
+assert { IsExtensionalForValue[DivBy, 0.0, -0.0] }
+assert { IsExtensionalForValue[DivBy, 0.0, 0.0/-1.0] }
+
+assert { not IsOrdered[0.0/0.0, -1.0/0.0] }
+assert { not IsOrdered[0.0/0.0, -10000000000.0] }
+assert { not IsOrdered[0.0/0.0, 0.0] }
+assert { not IsOrdered[0.0/0.0, 10000000000.0] }
+assert { not IsOrdered[0.0/0.0, 1.0/0.0] }
+
+assert { IsOrderingConsistent[0.0/0.0, -1.0/0.0] }
+assert { IsOrderingConsistent[0.0/0.0, -10000000000.0] }
+assert { IsOrderingConsistent[0.0/0.0, 0.0] }
+assert { IsOrderingConsistent[0.0/0.0, 10000000000.0] }
+assert { IsOrderingConsistent[0.0/0.0, 1.0/0.0] }
+
+assert { not (0.0/0.0 < 0.0/0.0) }
+assert { not (-10000000000.0 < -10000000000.0) }
+assert { not (0.0 < 0.0) }
+assert { not (10000000000.0 < 10000000000.0) }
+assert { not (1.0/0.0 < 1.0/0.0) }
+
+assert { -1.0/0.0 < -10000000000.0 }
+assert { -10000000000.0 < 0.0 }
+assert { 0.0 < 10000000000.0 }
+assert { 10000000000.0 < 1.0/0.0 }
+
+assert { not (0.0/0.0 >= -1.0/0.0) }
+assert { not (0.0/0.0 >= -10000000000.0) }
+assert { not (0.0/0.0 >= 0.0) }
+assert { not (0.0/0.0 >= 10000000000.0) }
+assert { not (0.0/0.0 >= 1.0/0.0) }
+
+assert { 0.0/0.0 <= 0.0/0.0 }
+assert { -10000000000.0 <= -10000000000.0 }
+assert { 0.0 <= 0.0 }
+assert { 10000000000.0 <= 10000000000.0 }
+assert { 1.0/0.0 <= 1.0/0.0 }
+
+assert { -1.0/0.0 <= -10000000000.0 }
+assert { -10000000000.0 <= 0.0 }
+assert { 0.0 <= 10000000000.0 }
+assert { 10000000000.0 <= 1.0/0.0 }
+
+assert { not (-1.0/0.0 < 0.0/0.0) }
+assert { not (-10000000000.0 < 0.0/0.0) }
+assert { not (0.0 < 0.0/0.0) }
+assert { not (10000000000.0 < 0.0/0.0) }
+assert { not (1.0/0.0 < 0.0/0.0) }
+
+assert { not (0.0/0.0 > 0.0/0.0) }
+assert { not (-10000000000.0 > -10000000000.0) }
+assert { not (0.0 > 0.0) }
+assert { not (10000000000.0 > 10000000000.0) }
+assert { not (1.0/0.0 > 1.0/0.0) }
+
+assert { -10000000000.0 > -1.0/0.0 }
+assert { 0.0 > -10000000000.0 }
+assert { 10000000000.0 > 0.0 }
+assert { 1.0/0.0 > 10000000000.0 }
+
+assert { not (-1.0/0.0 <= 0.0/0.0) }
+assert { not (-10000000000.0 <= 0.0/0.0) }
+assert { not (0.0 <= 0.0/0.0) }
+assert { not (10000000000.0 <= 0.0/0.0) }
+assert { not (1.0/0.0 <= 0.0/0.0) }
+
+assert { 0.0/0.0 >= 0.0/0.0 }
+assert { -10000000000.0 >= -10000000000.0 }
+assert { 0.0 >= 0.0 }
+assert { 10000000000.0 >= 10000000000.0 }
+assert { 1.0/0.0 >= 1.0/0.0 }
+
+assert { -10000000000.0 >= -1.0/0.0 }
+assert { 0.0 >= -10000000000.0 }
+assert { 10000000000.0 >= 0.0 }
+assert { 1.0/0.0 >= 10000000000.0 }
+
+assert:
+    m:[float]string = map{0.0 => "hello", -1.0 * 0.0 => "world"}
+    m[0.0] = "world"
+
+assert:
+    m := map{0.0 => "hello", -1.0 * 0.0 => "world"}
+    m[0.0] = "world"
+
+AtZero(m:[float]string)<transacts><decides>:string=m[0.0]
+assert{AtZero[map{0.0 => "hello", -1.0 * 0.0 => "world"}] = "world"}

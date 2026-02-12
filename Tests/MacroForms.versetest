@@ -1,0 +1,37 @@
+sum_v0(nums:[]int):int =
+    var curSum:int = 0
+    for(n:nums). set curSum += n  # Mathematical style
+    return curSum
+
+assert{sum_v0( array{1,2,3,4} ) = 10}
+
+sum_v1(nums:[]int):int =
+    var curSum:int = 0
+    for:
+        n:nums
+    do:
+        set curSum += n
+    return curSum
+
+assert{sum_v1( array{1,2,3,4} ) = 10}
+
+assert_semantic_error(3544)            { f()      :void={  for(){}  } }
+assert_semantic_error(3560)      { f(xs:[]int):void={  for(:xs){}  } }
+assert_semantic_error(3524)            { f(xs:[]int):void={  for(x:int=1){}  } }
+assert_semantic_error(3524)            { f()      :void={  for(x:=1){}  } }
+assert_semantic_error(3532, 3532, 3532){ f(xs:[]int):void={  for(x:xs;x:xs;x:xs){}  } }
+
+# This error is not great; ideally, we would say something about too many clauses in call to
+# macro 'for'
+assert_semantic_error(3605){ f(xs:[]int):void={  for{x:xs}{}  } }
+
+assert_syntax_error(3100){ "f(xs:[]int):void=\{  for(x:xs) of\{\} do\{\}  \}" }
+assert_semantic_error(3559){ x:logic=logic{1<2}do{q:=1} }
+assert_syntax_error(3100){ "x:logic=logic do \{1<2\}" }
+
+# Test invalid macro names
+assert_semantic_error(3545){ F():void=0{} }
+assert_semantic_error(3545){ F():void=(0,1){} }
+assert_semantic_error(3545){ F():void=array{0,1}{} }
+assert_semantic_error(3545){ F():void=(0+1){} }
+assert_semantic_error(3502){ F():void=for of(X:=0){X} }

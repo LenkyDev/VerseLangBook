@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+class1 := class:
+    Property1:int
+
+interface1 := interface:
+    F<public>(:class1):class1
+
+Apply(F(:t):t, X:t where t:type):t = F(X)
+
+class2 := class(interface1):
+	F<override>(X:class1):class1 = X
+
+assert:
+    X := class2{}
+    Apply(X.F, class1{Property1 := 19}).Property1 = 19

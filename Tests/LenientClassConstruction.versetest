@@ -1,0 +1,139 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# test lenient var evaluation in block
+a_test<public> := class:
+    block:
+        set ValueOfADuringBlock = A
+    A<public>:int
+    var ValueOfADuringBlock<public>:int = -1
+
+assert:
+    T := a_test{ A := 1 }
+    T.A = 1
+    T.ValueOfADuringBlock = 1
+
+# test over 64 field object to stress emergent type's bitmap
+b_test<public> := class:
+    block:
+        set Val1 = A + 1; set Val2 = A + 2; set Val3 = A + 3; set Val4 = A + 4; set Val5 = A + 5; set Val6 = A + 6; set Val7 = A + 7; set Val8 = A + 8; set Val9 = A + 9; set Val10 = A + 10
+        set Val11 = A + 11; set Val12 = A + 12; set Val13 = A + 13; set Val14 = A + 14; set Val15 = A + 15; set Val16 = A + 16; set Val17 = A + 17; set Val18 = A + 18; set Val19 = A + 19; set Val20 = A + 20
+        set Val21 = A + 21; set Val22 = A + 22; set Val23 = A + 23; set Val24 = A + 24; set Val25 = A + 25; set Val26 = A + 26; set Val27 = A + 27; set Val28 = A + 28; set Val29 = A + 29; set Val30 = A + 30
+        set Val31 = A + 31; set Val32 = A + 32; set Val33 = A + 33; set Val34 = A + 34; set Val35 = A + 35; set Val36 = A + 36; set Val37 = A + 37; set Val38 = A + 38; set Val39 = A + 39; set Val40 = A + 40
+        set Val41 = A + 41; set Val42 = A + 42; set Val43 = A + 43; set Val44 = A + 44; set Val45 = A + 45; set Val46 = A + 46; set Val47 = A + 47; set Val48 = A + 48; set Val49 = A + 49; set Val50 = A + 50
+        set Val51 = A + 51; set Val52 = A + 52; set Val53 = A + 53; set Val54 = A + 54; set Val55 = A + 55; set Val56 = A + 56; set Val57 = A + 57; set Val58 = A + 58; set Val59 = A + 59; set Val60 = A + 60
+        set Val61 = A + 61; set Val62 = A + 62; set Val63 = A + 63; set Val64 = A + 64; set Val65 = A + 65; set Val66 = A + 66; set Val67 = A + 67; set Val68 = A + 68; set Val69 = A + 69; set Val70 = A + 70
+    A<public>:int
+    var Val1<public>:int = -1; var Val2<public>:int = -1; var Val3<public>:int = -1; var Val4<public>:int = -1; var Val5<public>:int = -1; var Val6<public>:int = -1; var Val7<public>:int = -1; var Val8<public>:int = -1; var Val9<public>:int = -1; var Val10<public>:int = -1
+    var Val11<public>:int = -1; var Val12<public>:int = -1; var Val13<public>:int = -1; var Val14<public>:int = -1; var Val15<public>:int = -1; var Val16<public>:int = -1; var Val17<public>:int = -1; var Val18<public>:int = -1; var Val19<public>:int = -1; var Val20<public>:int = -1
+    var Val21<public>:int = -1; var Val22<public>:int = -1; var Val23<public>:int = -1; var Val24<public>:int = -1; var Val25<public>:int = -1; var Val26<public>:int = -1; var Val27<public>:int = -1; var Val28<public>:int = -1; var Val29<public>:int = -1; var Val30<public>:int = -1
+    var Val31<public>:int = -1; var Val32<public>:int = -1; var Val33<public>:int = -1; var Val34<public>:int = -1; var Val35<public>:int = -1; var Val36<public>:int = -1; var Val37<public>:int = -1; var Val38<public>:int = -1; var Val39<public>:int = -1; var Val40<public>:int = -1
+    var Val41<public>:int = -1; var Val42<public>:int = -1; var Val43<public>:int = -1; var Val44<public>:int = -1; var Val45<public>:int = -1; var Val46<public>:int = -1; var Val47<public>:int = -1; var Val48<public>:int = -1; var Val49<public>:int = -1; var Val50<public>:int = -1
+    var Val51<public>:int = -1; var Val52<public>:int = -1; var Val53<public>:int = -1; var Val54<public>:int = -1; var Val55<public>:int = -1; var Val56<public>:int = -1; var Val57<public>:int = -1; var Val58<public>:int = -1; var Val59<public>:int = -1; var Val60<public>:int = -1
+    var Val61<public>:int = -1; var Val62<public>:int = -1; var Val63<public>:int = -1; var Val64<public>:int = -1; var Val65<public>:int = -1; var Val66<public>:int = -1; var Val67<public>:int = -1; var Val68<public>:int = -1; var Val69<public>:int = -1; var Val70<public>:int = -1
+
+assert:
+    T := b_test{ A := 0 }
+    T.Val1 = 1
+    T.Val10 = 10
+    T.Val20 = 20
+    T.Val30 = 30
+    T.Val40 = 40
+    T.Val50 = 50
+    T.Val60 = 60
+    T.Val70 = 70
+
+# test lenient native var evaluation in block
+assert:
+    T := c_test{ A := 1 }
+    T.A = 1
+    T.ValueOfADuringBlock = 1
+
+# test intializing in different orders to create different chains of initializing emergent types (to test caching)
+d_test<public> := class:
+    A<public>:int = 0
+    B<public>:string = ""
+    C<public>:float = 0.0
+    D<public>:[]int = array{0}
+
+assert:
+    T := d_test{D:=array{1}}
+    T.A = 0
+    T.B = ""
+    T.C = 0.0
+    T.D = array{1}
+    U := d_test{C:=1.0, B:="One"}
+    U.A = 0
+    U.B = "One"
+    U.C = 1.0
+    U.D = array{0}
+    W := d_test{A:=1, B:="One", C:=1.0}
+    W.A = 1
+    W.B = "One"
+    W.C = 1.0
+    W.D = array{0}
+    V := d_test{A:=1, B:="One", C:=1.0, D:=array{1}}
+    V.A = 1
+    V.B = "One"
+    V.C = 1.0
+    V.D = array{1}
+    X := d_test{D:=array{1}, C:=1.0, B:="One", A:=1}
+    X.A = 1
+    X.B = "One"
+    X.C = 1.0
+    X.D = array{1}
+    Y := d_test{C:=1.0, D:=array{1}, A:=1, B:="One"}
+    Y.A = 1
+    Y.B = "One"
+    Y.C = 1.0
+    Y.D = array{1}
+    Z := d_test{B:="One", A:=1, D:=array{1}, C:=1.0}
+    Z.A = 1
+    Z.B = "One"
+    Z.C = 1.0
+    Z.D = array{1}
+
+# test lenient native self via ctor func calls
+# TODO: We are in the open, then we converted a VVM string into a native string, and try to move it into the object (this is closed)
+#       This fails because we go back to the open to try and mark that we moved a thing and our closed code asserts
+#
+#       This kind of failure should occur for strings, maps, structs... our options to fix are:
+#           - move more stuff into the WriteImpl Lambda?
+<#
+assert:
+    T := e_test{}
+    T.A = 10
+    T.B = "10"
+#>
+
+# test nested class/struct usage in ctor
+assert:
+    T := f_test{}
+    T.F.A[0].A = 10
+    T.F.A[0].B = 0
+    T.F.B[0].A = 0
+    T.F.B[0].B = 20
+
+#test `SetField` on deeply mutable struct in ctor
+# TODO: Deep-mutability of native structs not implemented yet!
+<#
+assert:
+    T:g_test := g_test{}
+    T.G.A = 10
+#>
+
+# lenient const evaluation in block
+# TODO: We should update semantic analysis to allow this in the VerseVM (good chance it `just works` with the new lenient initialization logic)
+<# 
+verse_vm_only {
+b_test<public> := class:
+    B<public>:int
+    A<public>:[]int
+
+assert:
+    T := b_test:
+        B := T.A[0], #Script Error 3502: not implemented yet
+        A := array{1}
+    T.B = 1
+}
+#>

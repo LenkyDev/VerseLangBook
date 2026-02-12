@@ -1,0 +1,9 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Validate various forms of Yield produce and error 
+assert_syntax_error(3101){"f():void=\{ yield         \}"}
+assert_syntax_error(3101){"f():int =\{ yield 0       \}"}
+assert_syntax_error(3101){"f():int =\{ yield (0)     \}"}
+assert_syntax_error(3101){"f():int =\{ yield(0)\{\}  \}"}
+
+# No round trip tests as Yield is not supported yet 

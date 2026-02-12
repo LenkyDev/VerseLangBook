@@ -1,0 +1,444 @@
+<#>
+    These tests were converted from Tim's parser test suite as of May 20, 2020.
+    The tests that are commented out fail as of August 6, 2020.
+
+    Unimplemented operators (produce a syntax error):
+    * pre-fix ..
+    * post-fix !
+    * in-fix >>
+    * in-fix [ (e.g. `[a]b`)
+    * in-fix &
+    * in-fix |
+    * in-fix calls (e.g. `a dot b`)
+
+    Tests that fail:
+    * `assert_syntax_error(<#S21#>3100){"f():void=return 123"`}
+
+    AJS: Updated with Tim's syntax changes on 2021/04/19.
+
+
+# Arrays.
+assert_valid_syntax             {""}
+assert_syntax_error(<#S70#>3100){";"}
+assert_syntax_error(<#S70#>3100){";;"}
+assert_valid_syntax             {"array:\n 1,2;"}
+assert_valid_syntax             {"array:\n 1,2;\n"}
+assert_valid_syntax             {"array:\n 1\n 2"}
+assert_valid_syntax             {"array:\n 1,2"}
+assert_valid_syntax             {"array:\n 1,2\n"}
+
+# Comment errors.
+assert_valid_syntax             {""}
+assert_valid_syntax             {" "}
+assert_valid_syntax             {"\t"}
+assert_valid_syntax             {"\n"}
+assert_valid_syntax             {"\<\#abc\#\>"}
+assert_valid_syntax             {"\n\<\#\n\#\>\n123"}
+assert_valid_syntax             {"\<\#\{0oFF\}\#\>"}
+assert_valid_syntax             {"\"X\{0oFF\}X\""}
+assert_syntax_error(<#S04#>3100){"\<\#blah"}
+assert_syntax_error(<#S04#>3100){"\<\#blah\<\#blah\#\>"}
+assert_syntax_error(<#S02#>3100){"\<\#\{0o08\}"}
+assert_valid_syntax             {"\<\#blah\<\#blah\#\>\#\>"}
+assert_syntax_error(<#S05#>3100){"\#\>"}
+assert_syntax_error(<#S05#>3100){"\#\#\>"}
+assert_syntax_error(<#S05#>3100){"\# \#\>"}
+assert_valid_syntax             {"\#abc"}
+assert_valid_syntax             {"\<\#\>"}
+assert_valid_syntax             {"\<\#\> $\n $\n $"}
+assert_syntax_error(<#S05#>3100){"\<\#\>\n \#\>"}
+assert_syntax_error(<#S04#>3100){"\<\#\>\n \<\#"}
+assert_syntax_error(<#S04#>3100){"\# \<\#"}
+assert_valid_syntax             {"\# \<\# \#\> $"}
+assert_valid_syntax             {"\#\{0o03\}"}
+assert_valid_syntax             {"\<\#\>\{0o03\}"}
+assert_valid_syntax             {"\<\#\>\n 1\n 2\{0o03\}"}
+assert_syntax_error(<#S02#>3100){"\<\#\{0oFF\}"}
+assert_syntax_error(<#S01#>3100){"\{0oEF\}"}
+
+# Constant errors.
+assert_valid_syntax             {"0"}
+assert_valid_syntax             {"123178239817238123"}
+assert_valid_syntax             {"0x123178239817238123"}
+assert_syntax_error(<#S15#>3100){"0x1AG"}
+assert_syntax_error(<#S78#>3100){"0x1A$"}
+assert_valid_syntax             {"0x1A\{0o08\}"}
+#assert_valid_syntax             {"0x,0m,0kg"}
+assert_valid_syntax             {"0uFFFFF"}
+assert_valid_syntax             {"0u10FFFF"}
+assert_syntax_error(<#S19#>3100){"0u010FFFF"}
+assert_valid_syntax             {"1e2,1e2f16,1e2f32,1e2f64"}
+assert_syntax_error(<#S17#>3101){"1e2f64m"}
+assert_syntax_error(<#S17#>3101){"1e2m"}
+assert_valid_syntax             {"0oFF,\"A\{0oFF\}B\""}
+assert_syntax_error(<#S18#>3100){"0o100"}
+assert_syntax_error(<#S18#>3100){"0o0FF"}
+assert_syntax_error(<#S18#>3100){"\"A\{0o101\}B\""}
+assert_syntax_error(<#S19#>3100){"0u110000"}
+assert_valid_syntax             {"0u0"}
+assert_valid_syntax             {"0uFF"}
+assert_valid_syntax             {"0u10FFFF"}
+assert_syntax_error(<#S19#>3100){"0u110000"}
+assert_syntax_error(<#S19#>3100){"0u0000000"}
+assert_syntax_error(<#S70#>3100){".0"}
+assert_syntax_error(<#S70#>3100){"."}
+assert_syntax_error(<#S70#>3100){".a"}
+
+# Identifier errors.
+assert_valid_syntax             {"a.b"}
+assert_valid_syntax             {"b\<a\>"}
+assert_valid_syntax             {"a.c\<b\>"}
+assert_valid_syntax             {"a and /b"}
+assert_valid_syntax             {"a.(/c/d:)b"}
+assert_valid_syntax             {"a.(c:)b"}
+assert_syntax_error(<#S23#>3100){"a.(c)b"}
+assert_syntax_error(<#S20#>3100){"a.+"}
+assert_syntax_error(<#S20#>3100){"a.1"}
+assert_syntax_error(<#S77#>3100){"123 return"}
+assert_syntax_error(<#S78#>3100){"a 1"}
+assert_valid_syntax             {"(a:)b"}
+assert_syntax_error(<#S20#>3100){"(a:)1"}
+assert_valid_syntax             {"(a)+1"}
+assert_syntax_error(<#S78#>3100){"or 3"}
+assert_syntax_error(<#S21#>3100){"do:int"}
+assert_syntax_error(<#S24#>3100){"operator'abc"}
+assert_syntax_error(<#S24#>3100){"operator'\<\#'"}
+assert_valid_syntax             {"operator'\<='"}
+assert_valid_syntax             {"/path/a/b"}
+assert_syntax_error(<#S20#>3100){"/path/7"}
+assert_syntax_error(<#S26#>3100){"/!"}
+assert_syntax_error(<#S26#>3100){"/ab@!"}
+assert_syntax_error(<#S26#>3100){"/@ab"}
+
+# Text errors.
+assert_syntax_error(<#S31#>3100){"''"}
+assert_valid_syntax             {"'''"}
+assert_valid_syntax             {"'a'"}
+assert_valid_syntax             {"'\\r'"}
+assert_valid_syntax             {"'\\\\'"}
+assert_valid_syntax             {"'''"}
+assert_syntax_error(<#S31#>3100){"'ab'"}
+assert_syntax_error(<#S31#>3100){"'a\\r"}
+assert_syntax_error(<#S31#>3100){"'\\r\\n'"}
+assert_valid_syntax             {"'\\''"}
+assert_syntax_error(<#S78#>3100){"''''"}
+assert_valid_syntax             {"\"Hello\""}
+assert_syntax_error(<#S32#>3100){"\"Hello"}
+assert_syntax_error(<#S32#>3100){"\"Hel\nlo\""}
+assert_valid_syntax             {"\"ab\\rd\""}
+assert_syntax_error(<#S34#>3100){"\"ab\\$cd\""}
+assert_syntax_error(<#S24#>3100){"operator'ab\{0x21\}d'"}
+assert_valid_syntax             {"\"Hello, \{name\}. Math \{1+2,3,\"x\"\}. \{x:int=3\}.\""}
+assert_valid_syntax             {"\"\{x:int\}\"=\"032\" and x"}
+assert_valid_syntax             {"\"\\\< \\\> \\\\ \\r \\n \\t\""}
+
+# Documentation attribute delimiting errors.
+assert_valid_syntax             {"@attr\nx:=3,x:int"}
+assert_syntax_error(3101)       {"@<doc;Hello> x:=3; x:int"}  # Needs more markup support
+assert_valid_syntax             {"@A.B.C blah\<C\>"}
+assert_syntax_error(<#S74#>3100){"@"}
+
+# Precedence errors.
+assert_valid_syntax             {"1\<=2\<=3"}
+assert_valid_syntax             {"1\>2\<3"}
+assert_valid_syntax             {"2\<=3=4"}
+assert_valid_syntax             {"2\>=3=4"}
+assert_valid_syntax             {"a+b\>c+d\<e+f"}
+assert_valid_syntax             {"1=2\<\>3"}
+assert_valid_syntax             {"1\>=2\<=3"}
+#assert_syntax_error(<#S60#>3100){"1=2\<=3"}
+assert_syntax_error(<#S60#>3100){"1\<=2\>=3"}
+assert_valid_syntax             {"x\>3:int"}
+assert_valid_syntax             {"1=2:3"}
+#assert_syntax_error(<#S60#>3100){"1=2\<3"}
+assert_valid_syntax             {":nat\<7,:int\<a\>-\>int"}
+assert_valid_syntax             {"a\<b\>\<c\>"}
+assert_valid_syntax             {"a\<b\>\<e\>\<f\>=g"}
+assert_valid_syntax             {"1\<2\<3\>"}
+assert_valid_syntax             {"1=2\<3\>"}
+assert_valid_syntax             {"1=2+3"}
+assert_valid_syntax             {"1=2 and 3"}
+assert_valid_syntax             {"a\<b\>-\>c"}
+assert_valid_syntax             {"a\<b\>-\>c\<d\>-\>e"}
+assert_valid_syntax             {"a-\>b\<c\>-\>d"}
+assert_valid_syntax             {"a-\>b\<c\>"}
+assert_valid_syntax             {"a\<b\>-\>c\<d\>"}
+assert_valid_syntax             {"a-\>b,a\<b\>-\>c,a\<b\>-\>c\<d\>,a\<b\>\<c\>-\>d\<e\>\<f\>"}
+assert_syntax_error(<#S60#>3100){"1+not 2"}
+assert_syntax_error(<#S71#>3100){"[attr]\n not 1"}
+#assert_valid_syntax             {"a:=1+[b]c"}
+assert_valid_syntax             {"@attr x:=1"}
+assert_valid_syntax             {"@attr\nx:=1"}
+assert_valid_syntax             {"@attr\{a:=1\} x:=1"}
+assert_valid_syntax             {"@attr(a:=1)\{b:=1\} x:=1"}
+assert_syntax_error(<#S60#>3100){"1+not 2"}
+
+# Bad or missing expression, block, Keyword errors.
+assert_syntax_error(<#S70#>3100){"]"}
+assert_syntax_error(<#S70#>3100){"\{0o81\}"}
+assert_syntax_error(<#S71#>3100){"if(a)\{b\}else"}
+assert_syntax_error(<#S70#>3100){"]"}
+assert_syntax_error(<#S71#>3100){"[attr]"}
+assert_syntax_error(<#S72#>3100){"@attr"}
+assert_syntax_error(<#S76#>3100){"try\{a\}catch(123)"}
+assert_syntax_error(<#S71#>3100){"ab cd"}
+#assert_syntax_error(<#S78#>3100){"(/b)/a"}
+#assert_valid_syntax             {"[2]int"}
+assert_valid_syntax             {"a[b]"}
+assert_valid_syntax             {"\"ab\\r\\n\\t\\\{\\\}\""}
+assert_syntax_error(<#S72#>3100){"@Doc:Hello"}
+assert_syntax_error(<#S72#>3100){"@hostname"}
+
+# Expression grouping errors.
+assert_syntax_error(<#S81#>3100){"(\{0o81\}"}
+assert_syntax_error(<#S81#>3100){"(1,2]"}
+assert_syntax_error(<#S80#>3100){"abc("}
+assert_syntax_error(<#S80#>3100){"abc(def"}
+assert_syntax_error(<#S82#>3100){"f(1,2]"}
+assert_syntax_error(<#S83#>3100){"a[b)"}
+assert_syntax_error(<#S85#>3100){"[2)int"}
+assert_syntax_error(<#S84#>3100){"f\{1,2]"}
+assert_syntax_error(<#S84#>3100){"m\{a\}do\{b]"}
+assert_syntax_error(<#S84#>3100){"x:int=\>\{2,3]"}
+assert_syntax_error(<#S86#>3100){"\"ab\{2]"}
+assert_syntax_error(<#S86#>3100){"\"ab\{2,$"}
+assert_syntax_error(<#S86#>3100){"\"abc\{d]\""}
+assert_syntax_error(<#S88#>3100){"array:\n 3\n )"}
+
+# Good.
+assert_valid_syntax             {"a.b"}
+assert_valid_syntax             {"bag\{\}"}
+assert_valid_syntax             {"bag\{1\}"}
+assert_valid_syntax             {"bag\{1,2\}"}
+#assert_valid_syntax             {"[]\{'x'\}"}
+#assert_valid_syntax             {"[]\{'x'|'y'\}"}
+#assert_valid_syntax             {"[n]'x'"}
+#assert_valid_syntax             {"[n]\{'x'|'y'\}"}
+assert_valid_syntax             {"for(a:b,c)\{d*e,f+g\}"}
+assert_valid_syntax             {"1+2*3,+4,-4"}
+#assert_valid_syntax             {"1m + 2cm"}
+assert_valid_syntax             {"a or b and c or not ddd"}
+#assert_valid_syntax             {"-x*+x,[1]2,[]3"}
+assert_valid_syntax             {"1,2"}
+assert_valid_syntax             {"1;2;"}
+assert_valid_syntax             {"1;2,3;4"}
+assert_valid_syntax             {"1\n2"}
+assert_valid_syntax             {"array\{1,2\}"}
+assert_valid_syntax             {"1*2+3*4,1+2+3,\"Hi\",a and b,as[2],c\<d,0x123ABC"}
+assert_valid_syntax             {"operator'+'(1,2),prefix'?'[int]"}
+assert_valid_syntax             {"123,456.789,0.2"}
+#assert_valid_syntax             {"3.14fm"}
+assert_valid_syntax             {"not 123"}
+assert_valid_syntax             {"not 1=2"}
+#assert_valid_syntax             {"0,1,-a,+b,?^t,\<\#a\#\>[1]2,3[4]=5,(1;2;),:t,/xs,not 123,/a/b,/a@b/c"}
+#assert_valid_syntax             {"[1]2-\>*3-\>+4"}
+assert_valid_syntax             {"3+4\<-5"}
+assert_valid_syntax             {"1+2\<3+4\<-5"}
+assert_valid_syntax             {"1:t"}
+#assert_valid_syntax             {"\<a:b'c`e$f\>,\<List:=1=2\>,[int]3,Actor\<Engine\>,[attr]x:=3"}
+assert_valid_syntax             {"block:=\{1; 2;\}"}
+assert_valid_syntax             {"/bob-smith@my-host.com,/epic,\"\{/a\}\""}
+assert_valid_syntax             {"/a/sha256'FDED'/(/d:)c/e"}
+assert_syntax_error(<#S25#>3100){"/a/b/(q:)c/e"}
+assert_syntax_error(<#S26#>3100){"/(/b:)a"}
+assert_syntax_error(<#S20#>3100){"/a/(/c:)(/d:)b"}
+#assert_syntax_error(<#S25#>3100){"/a/b&c"}
+assert_valid_syntax             {"if:=2,if(1)\{2\}"}
+assert_valid_syntax             {"let(x:=3)\{x+1\}"}
+assert_valid_syntax             {"let\{x:=3\}do\{x+1\}"}
+assert_valid_syntax             {"let\{x:=3\}do x+1"}
+assert_valid_syntax             {"if(x:=3)\{x+1\}else\{x-1\}"}
+assert_valid_syntax             {"if(x:=3)then\{x+1\}else\{x-1\}"}
+assert_valid_syntax             {"if(x:=3) then x+1 else x-1"}
+assert_valid_syntax             {"if(1)\{2\}else\{3\}"}
+assert_valid_syntax             {"try:=3,try\{1\},try\{1\}catch(2)\{3\}"}
+assert_valid_syntax             {"a\{b\},(c)\{d\}"}
+assert_valid_syntax             {"not x,f(1,2),f(1)\{2\}"}
+assert_valid_syntax             {"if\{1\} then \{2\}"}
+assert_valid_syntax             {"if\{1\} then \{2\} else \{3\}"}
+assert_valid_syntax             {"a:\n b\n c\nuntil:\n d\n e\nblah"}
+assert_valid_syntax             {"a:\n b\n\tc\nblah"}
+assert_syntax_error(<#S89#>3100){" a:\n  b\n\t c\nblah"}
+assert_valid_syntax             {"1..2,x:=0..9,for(x:=0..9,y:='A'..'Z') \{x+y\}"}
+assert_valid_syntax             {"let(x:=3)\{x+1\},let\{x:=3\}do\{x+1\}"}
+assert_valid_syntax             {"1\n2\nx+y\nblah"}
+assert_valid_syntax             {"if:=1,then:=3,else:=5,try:=123"}
+assert_valid_syntax             {"'x',0u1234\<\#,[a]\{b,c\}\#\>"}
+assert_valid_syntax             {"a.b,operator'+',operator'+'\<e\>,a.operator'*',a.b\<c\>,a.operator'-='\<b\>"}
+#assert_valid_syntax             {"1,..(2,3),..xs:[]int,..:arr,..(xs:=array\{1,2\}),4"}
+assert_valid_syntax             {"capture\{x+1\},code\{x,&x,&&x\}"}
+assert_valid_syntax             {"array\{1,2\},array:\n  1\n  2\n"}
+assert_valid_syntax             {"1=2"}
+assert_valid_syntax             {"a\<fancy\>,a\<private\>=c"}
+assert_valid_syntax             {"9e23,9e+23,9e-23,9e0,9e-1,9e-2,5e-3,2e-4"}
+assert_valid_syntax             {"123.4,12.34,1.234,0.1234,0.012340,0.3300"}
+#assert_valid_syntax             {"1.2fm,3.14fha"}
+assert_valid_syntax             {"\"ßädÄ55 2©3ಅ4𠜎 (ಠ_ಠ) ¯\\\\_(ツ)_/¯\""}
+#assert_valid_syntax             {"f(x&y:int):int"}
+#assert_valid_syntax             {"x:int | a:=x+1 | x\<\>3"}
+assert_valid_syntax             {"macro\n\{\n1\n2\n\{3\}\}\n"}
+#assert_valid_syntax             {"a\<b&c"}
+assert_valid_syntax             {"f(x:int):int,f():int=\{1; 2;\},f():void=\{1; 2;\}"}
+assert_valid_syntax             {"1,&1,&x:int"}
+assert_valid_syntax             {"1+2-3*4/5,123\{m/s\}"}
+assert_valid_syntax             {"x:int,y:int where x\<10,y\>10,z\<10"}
+#assert_valid_syntax             {"m(a)\<b\>\{c\},m(a)\<b\>\<c\>"}
+assert_valid_syntax             {"(1+2)(3) \{4\}"}
+#assert_valid_syntax             {"for(a) \{ if(b) then for(c) \{ d do e until f\}\}"}
+#assert_valid_syntax             {"for(a) \{ if(b) then for(c) \{ d else e until f\}\}"}
+assert_valid_syntax             {"for(x:xs)\<par\> \{ print(x) \}"}
+assert_valid_syntax             {"(1+2)(3) \{ 4 \}"}
+assert_valid_syntax             {"1 or 2 and not 3 and 4 or not 5"}
+#assert_valid_syntax             {"tail(xs:[n]t where n:nat\>0, t:type):void=xs[n-1]"}
+assert_syntax_error(<#S76#>3100){"if'abc'"}
+assert_valid_syntax             {"do:=3"}
+assert_valid_syntax             {"print of x+1"}
+assert_valid_syntax             {"print of \{x+1\}"}
+assert_valid_syntax             {"a\<b\>\<c\>"}
+assert_valid_syntax             {"a;b;c"}
+assert_valid_syntax             {"a;"}
+assert_syntax_error(<#S70#>3100){"a;;"}
+assert_syntax_error(<#S70#>3100){"a;;b;;c"}
+assert_syntax_error(<#S71#>3100){"for(x:xs)\{"}
+assert_syntax_error(<#S71#>3100){"for(x:xs)\{\r"}
+assert_valid_syntax             {"(a)and(b)"}
+assert_valid_syntax             {"(a:)andy"}
+assert_syntax_error(<#S71#>3100){"(a)do"}
+#assert_syntax_error(<#S71#>3100){"a.do:=3"}
+#assert_syntax_error(<#S21#>3100){"a.do+3"}
+#assert_syntax_error(<#S21#>3100){"a.(b:)do:=3"}
+#assert_syntax_error(<#S21#>3100){"a.(b:)do+3"}
+#assert_valid_syntax             {"if(a)then\{b\}do\{c\}until\{d\}else\{e\}"}
+#assert_valid_syntax             {"if(a)then\{b\}do\{c\}until d else e"}
+assert_valid_syntax             {"for(x:xs) \{ wtf \}"}
+assert_valid_syntax             {"mymacro \{\}"}
+assert_syntax_error(<#S77#>3100){"123 do 7"}
+assert_syntax_error(<#S70#>3100){"x\nwhere x:=3"}
+assert_valid_syntax             {"x:=123"}
+assert_valid_syntax             {"for(x:int=0; x\<10; set x+=1) \{ print(x) \}"}
+assert_syntax_error(<#S34#>3100){"\"Hello \\r \\n \\c \\u \\w \\t \""}
+
+# Macro attributes versus identifier qualifiers.
+assert_valid_syntax             {"for\<par\>(x:xs)\{x\}"}
+assert_valid_syntax             {"(/Verse:)for(x:xs)\{x\}"}
+assert_valid_syntax             {"if(1)\{2\}else if(3)\{4\}else\{5\}"}
+assert_valid_syntax             {"if(a)\{b\}else if(c)\{d\} else\{e\}"}
+assert_valid_syntax             {"if(a)\{\n print(a)\n\}\nelse\{\n print(b)\n\}"}
+assert_valid_syntax             {"if(a):\n print(a)\nelse:\n print(b)\n"}
+assert_valid_syntax             {"\"Angle is \{arccos(x)\}\""}
+assert_valid_syntax             {"\"Angle is \{arccos(x)\}, big if true!\""}
+assert_valid_syntax             {"Colors:=enum\{Red,Green,Blue\}"}
+assert_valid_syntax             {"Colors:=enum\n\{\n Red,\n Green,\n Blue\n\}"}
+
+# More.
+#assert_valid_syntax             {"a,a?,a??,a!,a!!,a?!,a!?"}
+#assert_valid_syntax             {"123\>\>print,123\>\>f(x:int):void=x+1"}
+assert_valid_syntax             {"fac(x:nat):int is total[x]=x*fac[x-1] or 0"}
+
+# Macro keys.
+assert_valid_syntax             {"function\{x:int\} \{ :int=x+1 \}"}
+
+# Unimplemented
+assert_syntax_error(3101)      {"array\{continue; break\}"}
+assert_syntax_error(3101)      {"yield 4"}
+
+# Return
+assert_valid_syntax             {"return; return 123;"}
+#assert_syntax_error(<#S21#>3100){"f():void=return 123"}
+assert_valid_syntax             {"f():void=\n return 123"}
+
+# Infix identifiers.
+#assert_valid_syntax             {"(a dot b) + (c cross d)"}
+#assert_valid_syntax             {"a dot b + c cross d"}
+assert_valid_syntax             {"dot(a,b) + cross(c,d)"}
+
+# Strings and comments.
+assert_valid_syntax             {"\"\<\>\""}
+assert_valid_syntax             {"\"\<\#\#\>\""}
+assert_valid_syntax             {"\"\<\#cmt\#\>\""}
+assert_syntax_error(<#S04#>3100){"\"\<\#\""}
+assert_syntax_error(<#S05#>3100){"\"\#\>\""}
+assert_valid_syntax             {"\"\<\#\>\""}
+
+# Printing.
+assert_valid_syntax             {"123 where 4,5"}
+assert_valid_syntax             {"a=\>b"}
+assert_valid_syntax             {"a:=b"}
+assert_valid_syntax             {"a:=\{b\}"}
+assert_valid_syntax             {"a:=\{b,c\}"}
+assert_valid_syntax             {"a:=\{b;\}"}
+assert_valid_syntax             {"a:=\{b;c;\}"}
+assert_syntax_error(<#S77#>3100){"m\{a\},m(a)\{b\}then\{c\}do\{d\}\{e\}"}
+assert_valid_syntax             {"try\{a\}catch(b)\{c\}catch\{d\}"}
+assert_valid_syntax             {"\"Hello, \\r \\\{ \\\} \\\"...\""}
+
+<# $NewParser - Seems to have markup discrepencies or bugs - though not using markup yet anyway
+# Markup delimiting errors.
+assert_syntax_error(<#S41#>3100){"\<(A)\>blah\</A\>"}
+assert_syntax_error(<#S41#>3101){"\<A(B),C(D)\>blah\</C/A\>"}
+assert_valid_syntax             {"\<B.A,D.C\>blah\</C /A \>"}
+assert_syntax_error(<#S41#>3100){"\<(B),C(D)\>blah\</A\>"}
+assert_syntax_error(<#S41#>3100){"\<A(B),(C)\>blah\</A\>"}
+assert_syntax_error(<#S41#>3100){"\<1:Hello\>"}
+assert_syntax_error(<#S41#>3100){"\<(B):Hello\>"}
+assert_syntax_error(<#S41#>3100){"\<B+C:Hello\>"}
+assert_syntax_error(<#S41#>3100){"\<B$:Hello\>"}
+assert_syntax_error(<#S41#>3100){"\<A B:Hello\>"}
+assert_syntax_error(<#S41#>3100){"\<A of:Hello>"}
+assert_syntax_error(<#S44#>3100){"\<B\>Hello\</"}
+assert_syntax_error(<#S44#>3100){"\<B\>Hello\</2"}
+assert_syntax_error(<#S44#>3100){"\<B\>Hello\</2\>"}
+assert_syntax_error(<#S43#>3100){"\<B\>Hello\</C\>"}
+assert_syntax_error(<#S44#>3100){"\<B\>Hello\</B"}
+assert_syntax_error(<#S46#>3100){"\<B:\>whoops"}
+assert_syntax_error(<#S46#>3100){"\<B:\> \<\#hi\#\> whoops"}
+assert_valid_syntax             {"\<B\>Hello\</B\>"}
+assert_valid_syntax             {"\<B,I:Hello\>"}
+assert_valid_syntax             {"\<B,I\>Hello\</I/B\>"}
+assert_syntax_error(<#S43#>3100){"\<B,I\>Hello\</B\>"}
+assert_syntax_error(<#S44#>3100){"\<B,I\>Hello\</I\>"}
+assert_valid_syntax             {"\<B\{x:=1\}\>Hello\</B\>"}
+assert_valid_syntax             {"\<B\{x:=1\},I\{y:=2\}:Hello\>"}
+assert_valid_syntax             {"\<A,B\{x:=1\}:Hello\>(2)"}
+assert_syntax_error(<#S41#>3100){"\<A(1):Hello\>"}
+
+# Markup content errors.
+assert_syntax_error(<#S51#>3100){"\<B:Hello"}
+assert_syntax_error(<#S52#>3100){"\<B\>Hello\>"}
+assert_syntax_error(<#S52#>3100){"\<B\>Hello"}
+assert_syntax_error(<#S45#>3100){"@Hello)"}
+assert_syntax_error(<#S45#>3100){"x:int\<Hello)"}
+assert_valid_syntax             {"\<B:\>\n"}
+assert_valid_syntax             {"\<B:\>\n   Hello\nGoodbye"}
+assert_valid_syntax             {"\<B:\> "}
+assert_valid_syntax             {"\<B:\>\#Hello"}
+assert_valid_syntax             {"\<B:\>\<\#Hello\#\>"}
+assert_valid_syntax             {"\<B:\> \<\#hi\#\> \#there"}
+assert_syntax_error(<#S54#>3100){"\<B:\>\n Hello\n There\>"}
+assert_syntax_error(<#S57#>3100){"\<B\>Hel&abc]lo\</B\>"}
+assert_syntax_error(<#S58#>3100){"\<List:1~2\>"}
+
+assert_syntax_error(<#S74#>3100){"\<B\>Hello\<"}
+assert_syntax_error(<#S74#>3100){"\<B:abc\n\<\#\>\n \<\> \n\<\>"}
+assert_valid_syntax             {"\<B:abc\n\<\#\>\n \<\> \ndef\>"}
+assert_valid_syntax             {"\<B\>Hel&abc;lo\</B\>"}
+assert_valid_syntax             {"\<B\>Hel\n&abc\nlo\</B\>"}
+assert_valid_syntax             {"\<List:~1~2\>"}
+assert_syntax_error(<#S64#>3100){"\<not 2\>"}
+assert_syntax_error(<#S64#>3101){"\<if(a)\{B\}\>blah\</if\>"}
+assert_syntax_error(<#S64#>3100){"\</a@b:c\>"}
+assert_syntax_error(<#S41#>3100){"\<B@Verse/Markup\>Hello\</B\>"}
+
+assert_valid_syntax             {"\<(/Verse/Markup:)B\>Hello\</B\>"}
+assert_valid_syntax             {"\<B:Hello\>,\<B,I:Hi\>"}
+assert_valid_syntax             {"\<M:Hello, \{name\}. Feeling \<B:bold\>?\>"}
+assert_valid_syntax             {"\<http://www.epicgames.com\>"}
+assert_valid_syntax             {"\<B\>bold\</B\>,\<B:bold\>,\<A\>bc\<D\>ef\</D\>gh\</A\>,f(\<M\>hello\</M\>)"}
+assert_valid_syntax             {"\<a\{b\}:Hello\>"}
+assert_syntax_error(<#S41#>3100){"\<A(B)\{C\}\>Hello\</A\>"}
+assert_valid_syntax             {"\<a\{b\},c\{d\}:Hello\>"}
+assert_valid_syntax             {"\<a\{b\}\>blah\</a\>"}
+assert_valid_syntax             {"\<a.(b:)C\>blah\</C\>"}
+assert_valid_syntax             {"\<B:\>"}
+#>
+

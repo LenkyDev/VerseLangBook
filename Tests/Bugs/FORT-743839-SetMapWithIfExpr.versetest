@@ -1,0 +1,19 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+MyClass := class:
+    var MyInt : int = 0
+
+assert:
+    var TestMap : [string]MyClass = map
+    {
+        "Alice" => MyClass{},
+        "Bob" => MyClass{},
+        "Charlie" => MyClass{}
+    }
+
+    if (set TestMap["Alice"].MyInt = if (1 = 1) {1} else {0}) {}
+    if (set TestMap["Charlie"].MyInt = if (1 = 0) {3} else {2}) {}
+
+    TestMap["Alice"].MyInt = 1
+    TestMap["Bob"].MyInt = 0
+    TestMap["Charlie"].MyInt = 2

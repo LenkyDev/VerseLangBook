@@ -1,0 +1,11 @@
+ReturnsInt()<suspends>:int = 4
+
+ReturnsLogic()<suspends>:logic = false
+
+AsyncFunc()<suspends>:void =
+    # Arms must be coerced to a common supertype
+    Result1 := race{ReturnsInt(), ReturnsLogic()}
+    Result2 := rush{ReturnsLogic(), ReturnsInt()}
+
+assert:
+    spawn{AsyncFunc()}

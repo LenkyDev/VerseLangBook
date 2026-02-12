@@ -1,0 +1,395 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# So concurrency features may be tested
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+auto_qualify_todo
+{
+assert:
+	ProfUtils.GetLastProfileFile() = ""
+	ProfUtils.GetLastProfileRow() = 0
+	profile("TEST0 - Test locus data caching"):
+		1+1 = 2
+
+	#DebugPrint("{ProfUtils.GetLastProfileFile()}")
+	#DebugPrint("{ProfUtils.GetLastProfileRow()}")
+	ProfUtils.GetLastProfileFile() = "profile_simple.versetest"
+	ProfUtils.GetLastProfileRow() = 11   # must match the line number for TEST0 above. 
+
+
+# test that the cached util data is reset between tests
+assert:
+	#DebugPrint("{ProfUtils.GetLastProfileFile()}")
+	#DebugPrint("{ProfUtils.GetLastProfileRow()}")
+	ProfUtils.GetLastProfileFile() = ""
+	ProfUtils.GetLastProfileRow() = 0
+}
+
+############################################
+# Helper functions
+Log(Msg:string) : void =          CoroUtils.LogEvent(Msg)
+GetLogStr() : string =            return CoroUtils.GetEventLogString()
+
+#----------------
+# parsing cases
+
+assert_semantic_error(3560):
+    profile("empty block is not allowed"):
+
+assert_semantic_error(3540):
+    func():int=
+        profile(123):
+            1+1
+
+assert_valid:
+    s:?string = option{"123"}
+    func()<decides>:int=
+        profile(s?):
+            1+1
+
+assert_valid:
+    s:?string = false
+    func()<decides>:int=
+        profile(s?):
+            1+1
+
+# No User Tag with significant whitespace
+assert_valid:
+	some_class := class:
+		func<public>():void=
+			profile:
+				1+1
+
+# No User Tag with brace syntax
+assert_valid:
+	some_class := class:
+		func<public>():void=
+			profile { 1+1 }
+
+# Valid User Tag with significant whitespace
+assert_valid:
+	some_class := class:
+		func<public>():void=
+			profile("ThisIsTheUserTag"):
+				1+1
+
+# Valid User Tag with brace syntax
+assert_valid<depends_on_library>:
+	some_class := class:
+		flerp<public>():int = 123
+		func<public>():void=
+			foo:string = "a {10+1} b"
+			profile("flerp {flerp()}") { 1+1 }
+
+#Valid User Variable Tag 
+assert_valid:
+	some_class := class:
+		func<public>():void=
+			tag:string := "ThisIsTheUserTag"
+			profile(tag) { 1+1 }
+
+# No User Tag but no body
+assert_semantic_error(3544):
+	some_class := class:
+		func<public>():void=
+			profile:
+
+# Valid User Tag but no body
+assert_semantic_error(3544):
+	some_class := class:
+		func<public>():void=
+			profile("ThisIsTheUserTag"):
+
+# No User Tag but no body in brackets
+assert_semantic_error(3544):
+	some_class := class:
+		func<public>():void=
+			profile{}
+
+# Valid User Tag but no body in brackets
+assert_semantic_error(3544):
+	some_class := class:
+		func<public>():void=
+			profile("ThisIsTheUserTag"){}
+
+assert_valid<depends_on_library>:
+	some_class := class:
+		func<public>():void=
+			profile("ThisIsTheUserTag {1+2+3} abc"):
+				1+1
+
+# return value passthrough from the profile macro
+assert_valid:
+	some_class := class:
+		func<public>():int=
+			profile:
+				1+1
+
+# Cases putting profile where it shouldn't be
+assert_semantic_error(3560):
+	profile:
+		some_class := class:
+			func<public>():void=
+				profile:
+					1+1
+
+assert_semantic_error(3560):
+	some_class := class:
+		profile:
+			func<public>():void=
+				profile:
+					1+1
+
+# Cannot use profiles inside initializers - only allowed inside control-blocks
+assert_semantic_error(3675, 3675):
+	my_class_b<public> := class:
+		value_b<public>:int = profile("my_class_b.value_b"){1+2+3}    # 3675
+		value_c<public>:int = block:
+			profile("my_class_b.value_c"){1+2+3}    # 3675
+
+
+# profile through the entirety of a rush block by capturing the Tick
+assert_valid<depends_on_library>:
+	using { /Verse.org/Tests/VerseTestScriptCmd }
+	func_e()<suspends>:void=
+		rush:
+			block:
+				CoroUtils.LogEvent("A")
+				CoroUtils.WaitTicks(2)
+				CoroUtils.LogEvent("B")
+			block:
+				CoroUtils.LogEvent("C")
+				CoroUtils.WaitTicks(2)
+				CoroUtils.LogEvent("D")
+				CoroUtils.WaitTicks(1)
+				CoroUtils.LogEvent("E")
+			block:
+				CoroUtils.LogEvent("F")
+				CoroUtils.WaitTicks(4)
+				CoroUtils.LogEvent("G")
+		CoroUtils.Tick(10)
+
+	func_f():void=	
+		profile("profiling all the gubbins of a race"):
+			spawn{func_e()}
+
+#----------------
+# execution cases
+
+############################
+# Test some of the testing support functions
+assert:
+	ProfUtils.GetNumActiveProfiles() = 0
+	ProfUtils.GetNumStartedProfiles() = 0
+	ProfUtils.GetNumRetiredProfiles() = 0
+	ProfUtils.GetUserTagStr() = ""
+	42 = profile("TEST1"):
+		ProfUtils.GetNumActiveProfiles() = 1
+		ProfUtils.GetNumStartedProfiles() = 1
+		ProfUtils.GetNumRetiredProfiles() = 0
+		ProfUtils.GetUserTagStr() = ""
+		2*(1+2+3+4+5+6)                       # calculate 42 for return from the macro
+	ProfUtils.GetNumActiveProfiles() = 0
+	ProfUtils.GetNumStartedProfiles() = 1
+	ProfUtils.GetNumRetiredProfiles() = 1
+	ProfUtils.GetUserTagStr() = "TEST1"
+
+
+############################
+# Test some of the testing support functions
+assert:
+	ProfUtils.GetNumActiveProfiles() = 0
+	ProfUtils.GetNumStartedProfiles() = 0
+	ProfUtils.GetNumRetiredProfiles() = 0
+	ProfUtils.GetUserTagStr() = ""
+	42 = profile:
+		ProfUtils.GetNumActiveProfiles() = 1
+		ProfUtils.GetNumStartedProfiles() = 1
+		ProfUtils.GetNumRetiredProfiles() = 0
+		ProfUtils.GetUserTagStr() = ""
+		2*(1+2+3+4+5+6)
+	63 = profile:
+		3*(1+2+3+4+5+6)
+	84 = profile:
+		4*(1+2+3+4+5+6)
+	ProfUtils.GetNumActiveProfiles() = 0
+	ProfUtils.GetNumStartedProfiles() = 3
+	ProfUtils.GetNumRetiredProfiles() = 3
+	ProfUtils.GetUserTagStr() = ",,"
+
+############################
+# return from the middle of a profile
+func_return():int=
+	profile("TEST2 - return instead of using a final value"):
+		if (1 = 1):
+			return 123
+	return 0
+assert:
+	func_return() = 123
+
+############################
+assert:
+	profile("TEST3 - long non-suspends code"):
+		var total:int = 0
+		for(value := 0..1000000):
+			set total += value
+
+############################
+# return a result through many profiling macros
+many_profile_layers_class<public> := class:
+	func<public>():int=
+		innerValue := profile("TEST4 - a"):
+			profile("TEST4 - b"):
+				profile("TEST4 - c"):
+					profile("TEST4 - d"):
+						Log("{ProfUtils.GetNumStartedProfiles()}-{ProfUtils.GetNumActiveProfiles()}-{ProfUtils.GetNumRetiredProfiles()}")
+						var value:int = 0;
+						for(i:int := 1..666):
+							set value += i
+						value
+		Log("{ProfUtils.GetNumStartedProfiles()}-{ProfUtils.GetNumActiveProfiles()}-{ProfUtils.GetNumRetiredProfiles()}")
+		innerValue
+
+assert:
+	A:many_profile_layers_class = many_profile_layers_class{}
+	A.func() = 222111
+	#DebugPrint("[{GetLogStr()}]")
+	GetLogStr() = "4-4-04-0-4"
+
+############################
+#Can use profiles in constructors
+my_class_b<public> := class:
+	value_b<public>:int = 1+2+3
+	get_value_b<public>():int = return profile("TEST5 - my_class_b.get_value_b") { value_b }
+
+assert:
+	B := profile("TEST5 - Outer"):
+		BB:my_class_b = my_class_b:
+			value_b := profile("TEST5 - Contruction") { 123 }
+		BB
+	B.get_value_b() = 123
+
+############################
+# Profiling in suspends and defer contexts is allowed as long as you don't profile over a suspends call
+func_f()<suspends>:void=
+	profile("TEST6 - body-F"):
+		Log("A")
+		defer:
+			Log("B")
+			defer:
+				profile("TEST6 - defer-defer-B"):
+					Log("Z")
+			profile("TEST6 - defer-B"):
+				Log("C")
+				var total:int = 0
+				for(val := 0..10000):
+					set total += val
+				Log("D")
+		Log("E")
+	CoroUtils.WaitTicks(1)
+
+assert:
+	spawn { func_f() }
+	CoroUtils.Tick(1);
+	#DebugPrint("[{GetLogStr()}]")
+	GetLogStr() = "AEBCDZ,"
+	#DebugPrint("[{ProfUtils.GetUserTagStr()}]")
+	ProfUtils.GetUserTagStr() = "TEST6 - defer-B,TEST6 - defer-defer-B,TEST6 - body-F"
+
+############################
+func_c()<suspends>:void=
+	profile("TEST7 - body-C"):
+		Log("A")
+	defer:
+		profile("TEST7 - defer-B"):
+			Log("B")
+	profile("TEST7 - body-C"):
+		Log("C")
+	defer:
+		profile("TEST7 - defer-D"):
+			Log("D")
+	profile("TEST7 - body-E"):
+		Log("E")
+	CoroUtils.WaitTicks(1)
+
+assert:
+	spawn { func_c() }
+	CoroUtils.Tick(1);
+	#DebugPrint("[{GetLogStr()}]")
+	GetLogStr() = "ACE,DB"
+	#DebugPrint("[{ProfUtils.GetUserTagStr()}]")
+	ProfUtils.GetUserTagStr() = "TEST7 - body-C,TEST7 - body-C,TEST7 - body-E,TEST7 - defer-D,TEST7 - defer-B"
+
+############################
+# You can profile a spawn because they're not technically suspends code. Same with CoroUtils.Tick as it turns out
+func_d()<suspends>:void=
+	var value:int = 0
+	profile("Begin"):
+		set value += 0
+	CoroUtils.WaitTicks(1)
+	set value += 1	
+	CoroUtils.WaitTicks(1)
+	profile("Middle"):
+		set value += 2
+	CoroUtils.WaitTicks(1)
+	set value += 3
+	CoroUtils.WaitTicks(1)
+	set value += 4
+	CoroUtils.WaitTicks(1)
+	set value += 5
+	CoroUtils.WaitTicks(1)
+	profile("End"):
+		set value += 6
+
+assert:
+	profile("TEST8 - Profile across a spawn"):
+		for(X := 0..50):
+			1 = 1 
+		spawn { func_d() }
+		for(X := 0..50):
+			2 = 2
+		CoroUtils.Tick(5);
+	CoroUtils.Tick(1);			# last tick that brings in "End"
+	#DebugPrint("[{ProfUtils.GetUserTagStr()}]")
+	ProfUtils.GetUserTagStr() = "Begin,Middle,TEST8 - Profile across a spawn,End"
+
+assert:
+	profile("TEST9 - Profile across a spawn"):
+		for(X := 0..50):
+			1 = 1 
+		spawn { func_d() }
+		for(X := 0..50):
+			2 = 2
+	CoroUtils.Tick(5);			# last tick that brings in "End"
+	#DebugPrint("[{ProfUtils.GetUserTagStr()}]")
+	ProfUtils.GetUserTagStr() = "Begin,TEST9 - Profile across a spawn,Middle"
+	ProfUtils.GetNumActiveProfiles() = 0
+
+
+
+# Test version gating
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            profile:int = 42   # 2015 - only a warning because `profile` isn't yet a macro
+
+assert_semantic_error(3514):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2930):
+        snippet:
+            profile:int = 42   # profile is now an innate macro, so we can't use it like this
+
+assert_semantic_error(3506):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            C := class:
+                F():int = 
+                    profile("invalid"):  # unknown identifier as profile doesn't exist
+                        42  
+
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2930):
+        snippet:
+            C := class:
+                F():int = 
+                    profile("invalid") {42}   
+

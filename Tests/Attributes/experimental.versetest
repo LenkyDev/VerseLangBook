@@ -1,0 +1,85 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Basic test of experimental class used with different AllowExperimental levels.
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=true){snippet{@experimental experimental_class := class{}; F(:experimental_class):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; F(:experimental_class):void={}}}}
+
+# Test different kinds of experimental types.
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_struct        := struct{}      ; F(:experimental_struct   ):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_interface     := interface{}   ; F(:experimental_interface):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_enum          := enum{}        ; F(:experimental_enum     ):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_alias         := type{_():void}; F(:experimental_alias    ):void={}}}}
+
+# Test experimental parametric types.
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class(t:type)     := class{}       ; F(:experimental_class(int)):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_struct(t:type)    := struct{}      ; F(:experimental_struct(int)):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_interface(t:type) := interface{}   ; F(:experimental_interface(int)):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_alias(t:type)     := type{_():void}; F(:experimental_alias(int)):void={}}}}
+
+# Test an experimental type used in different contexts.
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; F():?experimental_class=false}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; F():void=experimental_class}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; F():void=experimental_class{}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; F(t:subtype(experimental_class)):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; c := class(experimental_class){}}}}
+
+# Test experimental functions/data.
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental ExperimentalFunction():void={}; F():void=ExperimentalFunction()}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental ExperimentalData:void={}      ; F():void=ExperimentalData}}}
+
+# Test experimental overloaded functions.
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{F(X:int):void={}; @experimental F(X:float):void={}; G():void=F(0)}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{F(X:int):void={}; @experimental F(X:float):void={}; G():void=F(0.0)}}}
+
+# Don't allow experimental locals.
+assert_semantic_error(3553){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{F():void={@experimental X:void = {}}}}}
+
+# Test experimental class fields.
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{c := class{@experimental ExperimentalMethod():void={}}; F(C:c):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{c := class{@experimental ExperimentalMethod():void={}}; F(C:c):void=C.ExperimentalMethod()}}}
+
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{c := class{@experimental     ExperimentalData:void={}}; F(C:c):void={}}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{c := class{@experimental     ExperimentalData:void={}}; F(C:c):void=C.ExperimentalData}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{c := class{@experimental var ExperimentalData:void={}}; F(C:c):void=C.ExperimentalData}}}
+
+# Test experimental enumerators.
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{e := enum{AValue, @experimental ExperimentalEnumerator}; F():e=e.AValue}}}
+assert_semantic_error(2304){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{e := enum{AValue, @experimental ExperimentalEnumerator}; F():e=e.ExperimentalEnumerator}}}
+
+# Test using experimental definitions from other experimental definitions.
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental ExperimentalFunction():void={}; @experimental ExperimentalFunction2():void=ExperimentalFunction()}}}
+assert_valid               {vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ){snippet{@experimental experimental_class := class{}; @experimental ExperimentalFunction():experimental_class=experimental_class{}}}}
+
+# Test that marking overrides @experimental produces an error.
+assert_semantic_error(3553):
+    super_class := class:
+        Method():void={}
+    sub_class := class(super_class):
+        @experimental
+        Method<override>():void={}
+
+# Test that using an override of an @experimental definition produces an error.
+assert_semantic_error(2304):
+    vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=false  ):
+        snippet:
+            c0 := class:
+                @experimental ExperimentalMethod():void={}
+            c1 := class(c0):
+                ExperimentalMethod<override>():void={}
+            Foo(C:c1):void=C.ExperimentalMethod()
+
+# Test that using an experimental definition is flagged correctly in compilation metadata.
+assert_valid(?ExpectUseOfExperimentalDefinition:=false){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=true){snippet{}}}
+assert_valid(?ExpectUseOfExperimentalDefinition:=false){vpackage(P, /Verse.org/A, ?Scope:=PublicAPI, ?AllowExperimental:=true){snippet{@experimental experimental_class := class{}; F(:experimental_class):void={}}}}
+
+assert_valid(?ExpectUseOfExperimentalDefinition:=false){vpackage(P, /Verse.org/A, ?Scope:=InternalUser, ?AllowExperimental:=true){snippet{}}}
+assert_valid(?ExpectUseOfExperimentalDefinition:=false){vpackage(P, /Verse.org/A, ?Scope:=InternalUser, ?AllowExperimental:=true){snippet{@experimental experimental_class := class{}}}}
+assert_valid(?ExpectUseOfExperimentalDefinition:=true ){vpackage(P, /Verse.org/A, ?Scope:=InternalUser, ?AllowExperimental:=true){snippet{@experimental experimental_class := class{}; F(:experimental_class):void={}}}}
+
+assert_valid(?ExpectUseOfExperimentalDefinition:=false):
+    vpackage(P0, /Verse.org/A, ?Scope:=PublicAPI   , ?AllowExperimental:=true                     ){snippet{@experimental experimental_class<public> := class{}}}
+    vpackage(P1, /Verse.org/B, ?Scope:=InternalUser, ?AllowExperimental:=true, ?Dependencies:=(P0)){snippet{F():void={}}}
+
+assert_valid(?ExpectUseOfExperimentalDefinition:=true):
+    vpackage(P0, /Verse.org/A, ?Scope:=PublicAPI   , ?AllowExperimental:=true                     ){snippet{@experimental experimental_class<public> := class{}}}
+    vpackage(P1, /Verse.org/B, ?Scope:=InternalUser, ?AllowExperimental:=true, ?Dependencies:=(P0)){snippet{F(:A.experimental_class):void={}}}

@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+TestStringToString(Value:string, ExpectedString:string)<reads><decides>:void=
+    String := ToString(Value)
+    if (String <> ExpectedString):
+        DebugPrint("TestStringToString expected {ExpectedString}, but got {String}")
+    String = ExpectedString
+
+assert{TestStringToString["", ""]}
+assert{TestStringToString["abc", "abc"]}
+assert{TestStringToString["abc{0o00}def", "abc{0o00}def"]}
+assert{TestStringToString["\t\n\r\"\#\&\'\<\>\\\{\}\~", "\t\n\r\"\#\&\'\<\>\\\{\}\~"]}
+assert{TestStringToString["{0o08}{0o09}{0o0a}{0o0b}", "{0o08}{0o09}{0o0a}{0o0b}"]}
+assert{TestStringToString["Smiley face: 😀, rocket: 🚀", "Smiley face: 😀, rocket: 🚀"]}

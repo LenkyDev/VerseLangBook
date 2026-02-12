@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Restricted }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+MyParametricClass(t:type):= class {
+    MyMethod(X:t):t = X
+}
+
+assert:
+    # This shouldn't crash
+    Types := for (I:=1..4) { MyParametricClass(int) }
+    TestUtils.AreClassesEqual[Types[0], MyParametricClass(int)]
+    TestUtils.AreClassesEqual[Types[0], Types[1]]
+    TestUtils.AreClassesEqual[Types[0], Types[2]]
+    TestUtils.AreClassesEqual[Types[0], Types[3]]

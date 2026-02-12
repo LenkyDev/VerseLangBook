@@ -1,0 +1,201 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{ /Verse.org/Tests/VerseTestScriptCmd }
+
+# Pruned down interesting case from reproduction steps.
+interface1(t:type) := interface:
+    Clone()<transacts>:t
+
+class1 := class(interface1(class1)):
+    Prop1:int
+    # Generate a coercion to `interface1`'s `Clone`.
+    Clone<override>()<transacts>:class1 = class1:
+        Prop1 := Prop1
+
+class2 := class(class1):
+    Prop2:int
+    # Override `class1`'s `Clone`, but do not generate a coercion to
+    # `interface1`'s `Clone`.
+    Clone<override>()<transacts>:class2 = class2:
+        Prop1 := Prop1 + 1
+        Prop2 := Prop2
+
+assert:
+    X := class1{Prop1 := 13}
+    Y:interface1(class1) = X
+    Z := Y.Clone()
+    X.Prop1 = Z.Prop1
+
+assert:
+    X := class1{Prop1 := 13}
+    Y := X.Clone()
+    X.Prop1 = Y.Prop1
+
+assert:
+    X := class2{Prop1 := 13, Prop2 := 19}
+    Y:interface1(class1) = X
+    Z := Y.Clone()
+    X.Prop1 + 1 = Z.Prop1
+
+assert:
+    X := class2{Prop1 := 13, Prop2 := 19}
+    Y:class1 = X
+    Z := Y.Clone()
+    X.Prop1 + 1 = Z.Prop1
+
+assert:
+    X := class2{Prop1 := 13, Prop2 := 19}
+    Y := X.Clone()
+    X.Prop1 + 1 = Y.Prop1
+
+# Repeated parametric type overrides.
+immediate1(t:type) := class<abstract>:
+    Do():t
+
+immediate2(t:type) := class(immediate1(?t)):
+    Do<override>():?t = false
+
+immediate3 := class(immediate2(int)):
+    Result:int
+    # Generate a coercion both to `immediate2`'s `Do` as well as to
+    # `immediate1`'s `Do`.  Both are required as `immediate3`'s overridden
+    # definition does not match `immediate2`'s prototype.  Without the coercion
+    # to `immediate1`'s `Do`, a mismatch between the boxed `?any` produced by
+    # `immediate2(int).Do` and boxed `?int` expected to be produced by
+    # `immediate1(?int).Do` occurs.
+    Do<override>():?int = option{Result}
+
+int_ref := class:
+    var Contents:int = 0
+
+Test1(Arg:immediate1(?int), Output:int_ref):void =
+    Y := Arg.Do()
+    if:
+        set Output.Contents += Y?
+
+Test2(Arg:immediate2(int), Output:int_ref):void =
+    Y := Arg.Do()
+    if:
+        set Output.Contents += Y?
+
+Test3(Arg:immediate3, Output:int_ref):void =
+    Y := Arg.Do()
+    if:
+        set Output.Contents += Y?
+
+assert:
+    Output := int_ref{}
+    X := immediate3{Result := 1}
+    # Invoke through `immediate1`.
+    Test1(X, Output)
+    Output.Contents = 1
+    # Invoke through `immediate2`.
+    Test2(X, Output)
+    Output.Contents = 2
+    # Invoke through `immediate3`.
+    Test3(X, Output)
+    Output.Contents = 3
+
+# `suspends` overrides (producing `task` classes) combined with parametric type
+# and narrowing overrides.
+suspending1(t:type) := interface:
+    Await()<suspends>:t
+
+suspending2 := class(suspending1([]int)):
+    # Generate a coercion to `suspending1`'s `Await`.  Generate another `task`
+    # class for the coercion.  This class name must not collide with the
+    # override's `task` class name.
+    Await<override>()<suspends>:[]int = (1, 2, 3)
+
+suspending3 := class(suspending2):
+    # Generate a coercion to `suspending2`'s `Await`.  Generate another `task`
+    # class for the coercion.  This class name must not collide with the
+    # override's `task` class name.  Note this function requires a coercion to
+    # `suspending2`'s `Await`, but not to `suspending1`'s `Await` (in fact,
+    # adding one breaks conversion from the boxed type required by `suspending1`
+    # - `suspending1([]int).Await` is expected to produce a boxed `[]int`, but
+    # would produce a boxed `tuple(int, int)`).
+    Await<override>()<suspends>:tuple(int, int) = (4, 5)
+
+int_array_ref := class:
+    var Contents:[]int = ()
+
+Test1(Arg:suspending1([]int), Output:int_array_ref)<suspends>:void =
+    set Output.Contents += Arg.Await()
+
+Test2(Arg:suspending2, Output:int_array_ref)<suspends>:void =
+    set Output.Contents += Arg.Await()
+
+Test3(Arg:suspending3, Output:int_array_ref)<suspends>:void =
+    set Output.Contents += Arg.Await()
+
+assert:
+    Output := int_array_ref{}
+    X := suspending3{}
+    # Invoke through `suspending1`.
+    spawn{Test1(X, Output)}
+    Output.Contents = (4, 5)
+    # Invoke through `suspending2`.
+    spawn{Test2(X, Output)}
+    Output.Contents = (4, 5, 4, 5)
+    # Invoke through `suspending3`.
+    spawn{Test3(X, Output)}
+    Output.Contents = (4, 5, 4, 5, 4, 5)
+
+class4(t:type) := class<abstract>:
+    Get():t
+
+class5(t:type) := class(class4([]t)):
+    Get<override>():[]t = ()
+
+class6(t:type) := class(class5(t)):
+    Result:t
+    Get<override>():tuple(t, t) = (Result, Result)
+
+class7 := class(class6(int)):
+    Get<override>():tuple(int, int) = (1, 2)
+
+assert:
+    A:class7 = class7{Result := 3}
+    A.Get() = (1, 2)
+    B:class6(int) = A
+    B.Get() = (1, 2)
+    C:class5(int) = B
+    C.Get() = (1, 2)
+    D:class4([]int) = C
+    D.Get() = (1, 2)
+
+class8(t:type) := class<abstract>:
+    Get():t
+
+class9 := class(class8([]int)):
+    Get<override>():tuple(int, int) = (1, 2)
+
+assert:
+    X := class9{}
+    X.Get() = (1, 2)
+    Y:class8([]int) = X
+    Y.Get() = (1, 2)
+
+class10(t:type) := class:
+    Put(:t):void = {}
+
+class11(t:type) := class(class10(tuple(t, t))):
+    Put<override>(:tuple(t, t)):void = {}
+
+class12(t:type) := class(class11(t)):
+    Put<override>(:[]t):void = {}
+
+class13 := class(class12(int)):
+    var Result:[]int = ()
+    Put<override>(X:[]int):void = set Result = X
+
+assert:
+    A:class13 := class13{}
+    A.Put(1, 2); A.Result = (1, 2)
+    B:class12(int) = A
+    B.Put(3, 4); A.Result = (3, 4);
+    C:class11(int) = B
+    C.Put(5, 6); A.Result = (5, 6)
+    D:class10(tuple(int, int)) = C
+    D.Put(7, 8); A.Result = (7, 8)

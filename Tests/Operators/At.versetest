@@ -1,0 +1,113 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+SomeFuncThatTakesInt(I : int)<decides> : int =
+    return I
+
+assert:
+    R := SomeFuncThatTakesInt at {42}
+    R = 42
+
+assert:
+    R := SomeFuncThatTakesInt at 42
+    R = 42
+
+assert:
+    R := SomeFuncThatTakesInt at:
+        42
+    R = 42
+
+assert:
+    R := SomeFuncThatTakesInt at. 42
+    R = 42
+
+# TODO: We should make this error better, at the minute it says:
+#   This function parameter expects a value of type int,
+#   but this argument is an incompatible value of type int.
+assert_semantic_error(3512, 3509, 3545):
+    Bar(I : int)<transacts><decides> : int = I
+    Foo():void=
+        option:
+            R := Bar at {int}:
+                42
+            R = 42
+
+SomeFuncThatTakesArray(A : []int)<decides> : int =
+    var Result : int = 0
+    for (E : A):
+        set Result += E
+    return Result
+
+assert:
+    R := SomeFuncThatTakesArray at array:
+        42
+        -13
+        53
+        10
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray at array:
+        SomeFuncThatTakesInt[42]
+        -13
+        53
+        10
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray at array:
+        42
+        -13
+        53
+        block:
+            5 + 5
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray at array:
+        42,
+        -13,
+        53,
+        10
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray at array:
+        42;
+        -13;
+        53;
+        10
+    R = 92
+
+SomeFuncThatTakesMap(M : [int]int)<decides> : int =
+    if:
+        E := M[42]
+    then:
+        return E
+    else:
+        Err("Unreachable")
+
+assert:
+    R := SomeFuncThatTakesMap at map:
+        42 => 13
+        -13 => 53
+    R = 13
+
+assert:
+    R := SomeFuncThatTakesMap at:
+        map:
+            42 => 13
+            -13 => 53
+    R = 13
+
+SomeFuncThatTakesMultipleArgs(I : int, F : float)<decides> : float =
+    return 1.0 * I + F
+
+assert:
+    R := SomeFuncThatTakesMultipleArgs at:
+        (42, 42.0)
+
+# TODO: We should make this error better, at the minute it says:
+#   Function definitions with `[` and `]` are disallowed; did you mean `(...)<decides>`
+assert_semantic_error(3621):
+    SomeFuncDefinedUsingOfSyntax at {I:int} : int =
+        return I

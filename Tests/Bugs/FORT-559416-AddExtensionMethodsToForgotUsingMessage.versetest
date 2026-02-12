@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{/Verse.org/Tests/VerseTestScriptCmd}
+
+assert_semantic_error(3506):
+
+    ModuleA<public> := module:
+
+        ModuleA_1<public> := module:
+            my_class_a<public> := class<concrete>:
+    
+        ModuleA_2<public> := module:
+    
+            using { ModuleA_1 }
+    
+            (MyClass:my_class_a).TestMethod<public>():void=
+                i:= 0
+
+    using { ModuleA.ModuleA_1 }
+
+    Foo()<transacts><decides>:void = 
+        MyTest:= my_class_a{}
+        MyTest.TestMethod()
+

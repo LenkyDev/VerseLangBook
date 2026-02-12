@@ -1,0 +1,6 @@
+# Path tests
+# Import bad module name
+assert_semantic_error(3587):
+    vmodule(Bob):
+        snippet:
+            using{ /Verse.org/VerseTests/Gertrude }

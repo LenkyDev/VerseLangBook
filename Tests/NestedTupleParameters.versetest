@@ -1,0 +1,118 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+Func<public>(A:int, (B:int, C:int), D:int):int =
+    A + B + C + D
+
+assert:
+    Func(1, (2, 3), 4) = 10
+
+assert:
+    X := (2, 3)
+    Func(1, X, 4) = 10
+
+assert:
+    X := (1, (2, 3), 4)
+    Func(X) = 10
+
+LocalNestedTupleParameters := module:
+    int_ref<public> := class:
+        var Contents<public>:int = 0
+    G<public>(A:int, (B:tuple(int, int), C:tuple(int, int, int)), D:tuple(int, int, int, int), Result:int_ref)<suspends>:void =
+        set Result.Contents = A + B(0) + B(1) + C(0) + C(1) + C(2) + D(0) + D(1) + D(2) + D(3)
+
+assert:
+    Result := LocalNestedTupleParameters.int_ref{}
+    spawn. LocalNestedTupleParameters.G(1, ((2, 3), (4, 5, 6)), (7, 8, 9, 10), Result)
+    CoroUtils.Tick(1)
+    Result.Contents = 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10
+
+assert:
+    Result := LocalNestedTupleParameters.int_ref{}
+    X := ((2, 3), (4, 5, 6))
+    spawn. LocalNestedTupleParameters.G(1, X, (7, 8, 9, 10), Result)
+    CoroUtils.Tick(1)
+    Result.Contents = 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10
+
+assert:
+    Result := LocalNestedTupleParameters.int_ref{}
+    X := (1, ((2, 3), (4, 5, 6)), (7, 8, 9, 10), Result)
+    spawn. LocalNestedTupleParameters.G(X)
+    CoroUtils.Tick(1)
+    Result.Contents = 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10
+
+assert_semantic_error(3624, 3624):
+    # Refined `int`s and `float`s cannot yet be defined in the domain of a
+    # function.
+    G<public>(A:int, ((B:int where B > 0), C:int), D:int where D > 0):int =
+        A + B + C + D
+
+assert:
+    ExternalNestedTupleParameters.F(1, (2, 3), 4) = 10
+
+assert:
+    X := (2, 3)
+    ExternalNestedTupleParameters.F(1, X, 4) = 10
+
+assert:
+    X := (1, (2, 3), 4)
+    ExternalNestedTupleParameters.F(X) = 10
+
+assert:
+    NativeNestedTupleParameters.F(1, (2, 3), 4) = 10
+
+assert:
+    X := (2, 3)
+    NativeNestedTupleParameters.F(1, X, 4) = 10
+
+assert:
+    X := (1, (2, 3), 4)
+    NativeNestedTupleParameters.F(X) = 10
+
+F(A:int, (B:int, C:int), D:int):int =
+    A + B + C + D
+
+G(A:int, T:tuple(int, int), D:int):int =
+    A + T(0) + T(1) + D
+
+H(A:int, (B:int, (C:int, D:int)), E:int):int =
+    A + B + C + D + E
+
+I(A:int, (B:int, (C:int, D:int)), E:int, (FF:int, GG:int, (HH:int, II:int))):int =
+    A + B + C + D + E + FF + GG + HH + II
+
+assert:
+    T := (2,3)
+
+    F(1, (2, 3), 4) = 10
+    F(1, T, 4) = 10
+
+    G(1, (2, 3), 4) = 10
+    G(1, T, 4) = 10
+
+    T2 := (2, (3, 4))
+    H(1, (2, (3, 4)), 5) = 15
+    H(1, T2, 5) = 15
+    T3 := (1, (2, (3, 4)), 5)
+    H(T3) = 15
+
+    T4 := (1, (2, (3, 4)), 5, (6, 7, (8, 9)))
+    T5 := (6, 7, (8, 9))
+    I(1, (2, (3, 4)), 5, (6, 7, (8, 9))) = 45
+    I(T4) = 45
+    I(1, T2, 5, (6, 7, (8, 9))) = 45
+    I(1, T2, 5, T5) = 45
+    I(1, (2, (3, 4)), 5, T5) = 45
+
+
+F2(X:tuple([]int, int))<decides>:int = X(0)[0] + X(0)[1] + X(1)
+F3(A:[]int, B:int)<decides>:int = A[0] + A[1] + B
+
+assert:
+    T := ((3, 4), 5)
+    F2[(1, 2), 3] = 6
+    F2[T] = 12
+
+    F3[(1, 2), 3] = 6
+    F3[T] = 12

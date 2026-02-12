@@ -1,0 +1,145 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Concurrency macros introduces a new scope for each branch.
+
+############ race
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3099):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          race:
+            X:int = Suspends(1)
+            Y:int = Suspends(X+1)
+          Y
+
+assert_semantic_error(3506, 3506):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3100):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          race:
+            X:int = Suspends(1)
+            Y:int = Suspends(X+1)
+          Y
+
+############ rush
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3099):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          rush:
+            X:int = Suspends(1)
+            Y:int = Suspends(X+1)
+          Y
+
+assert_semantic_error(3506, 3506):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3100):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          rush:
+            X:int = Suspends(1)
+            Y:int = Suspends(X+1)
+          Y
+
+############ sync
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3099):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          sync:
+            X:int = Suspends(1)
+            Y:int = Suspends(X+1)
+          Y
+
+assert_semantic_error(3506, 3506):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3100):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          sync:
+            X:int = Suspends(1)
+            Y:int = Suspends(X+1)
+          Y
+
+############ branch
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3099):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          branch:
+            X:int = Suspends(1)
+          X
+
+assert_semantic_error(3506):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3100):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          branch:
+            X:int = Suspends(1)
+          X
+
+############ spawn
+# Ugly code since spawn only accept a function invocation
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3099):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          spawn:
+            Suspends(X:int = 1)
+          X
+
+assert_semantic_error(3506):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3100):
+    snippet:
+      Suspends(I:int)<suspends>:int = I
+      test := class:
+        Test()<suspends>:int =
+          spawn:
+            Suspends(X:int = 1)
+          X
+
+############ From SOL-6137
+assert_valid<depends_on_library>:
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=3099):
+    snippet:
+      GetFalse()<suspends>:false = Err()
+      DoNothing()<suspends>:void = ()
+
+      test := class:
+        var X:int = 0
+        Test()<suspends>:int =
+          race:
+            DoNothing()
+            False:false = GetFalse()
+          set X = int(False(21))
+
+assert_semantic_error<depends_on_library>(3506):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=3100):
+    snippet:
+      GetFalse()<suspends>:false = Err()
+      DoNothing()<suspends>:void = ()
+
+      test := class:
+        var X:int = 0
+        Test()<suspends>:int =
+          race:
+            DoNothing()
+            False:false = GetFalse()
+          set X = int(False(21))
+

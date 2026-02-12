@@ -1,0 +1,312 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{ /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid { T := interface {} }
+assert_valid { T := interface { f():void } }
+assert_valid { T := interface { f():int } }
+assert_valid { T := interface { f(x:int):int } }
+assert_valid { T := interface { f(x:int, y:float):int } }
+assert_valid { T := interface { f0():void, f1():int, f2():float } }
+
+# Expressions in the interface body must be a function definition.
+assert_semantic_error(3585){ T := interface { f():void, f() } }
+assert_semantic_error(3560){ T := interface { 1 } }
+assert_semantic_error(3560){ T := interface { 1+2 } }
+assert_semantic_error(3560){ T := interface { int } }
+assert_semantic_error(3560){ T := interface { []int } }
+assert_semantic_error(3560){ T := interface { :int } }
+
+# Test interface inheritance syntax.
+assert_valid { T := interface() {} }
+assert_valid { T1 := interface {}; T2 := interface(T1) {} }
+assert_valid { T1 := interface {}; T2 := interface {}; T3 := interface(T1, T2) {} }
+assert_semantic_error(3547){ T := interface(1) {} }
+assert_semantic_error(3547){ T := interface("a") {} }
+
+# Test that interfaces can't directly or indirectly inherit from themselves.
+assert_semantic_error(3557){ T := interface(T) {} }
+assert_semantic_error(3557){ T1 := interface(T2) {}; T2 := interface(T1) {} }
+
+# It's ok to inherit the same interface more than once, but not directly.
+# This restriction can be removed.
+assert_semantic_error(3592){ T1 := interface {}; T2 := interface(T1, T1) {} }
+# But indirectly is allowed ...
+assert_valid { T1 := interface {}; T2 := interface(T1) {}; T3 := interface(T1, T2) {} }
+# ... as is diamond inheritence
+assert_valid { T1 := interface {}; T2 := interface(T1) {}; T3 := interface(T1) {}; T4 := interface(T2, T3) {} }
+
+# as above but wth class
+assert_semantic_error(3592){ T1 := interface {}; C0 := class(T1, T1) {} }
+assert_valid { T1 := interface {}; T2 := interface(T1) {}; C0 := class(T1, T2) {} }
+assert_valid { T1 := interface {}; T2 := interface(T1) {}; T3 := interface(T1) {}; C0 := class(T2, T3) {} }
+
+# Test that interfaces can inherit from interfaces declared either before or after them.
+assert_valid { A := interface {}; B := interface(A) {} }
+assert_valid { A := interface(B) {}; B := interface {} }
+
+# Test that interface method declarations can reference classes declared before or after the interface.
+assert_valid { A := interface { f(x:B):void }; B := class {} }
+assert_valid { A := class {}; B := interface { f(x:A):void } }
+
+# Test that members may be either comma, semicolon, or newline separated.
+assert_valid { T := interface {f0():void, f1():int}}
+assert_valid { T := interface {f0():void; f1():int}}
+assert_valid:
+    T := interface:
+        f0():void
+        f1():int
+
+# Test that data members are allowed in an interface definition.
+# Both immutable ...
+assert_valid{ T := interface {m:int}}
+# .. and mutable data members are allowed in interface definitions.
+assert_valid{ T := interface {var m:int}}
+# including with default value
+assert_valid{ T := interface {m:int= 42}}
+assert_valid{ T := interface {var m:int= 42}}
+
+# Test that interface method declarations require an explicit return type.
+assert_semantic_error(3585){ T := interface {f()}}
+assert_semantic_error(3585){ T := interface {f(x:int)}}
+
+# Test that two interfaces with the same name may not be defined.
+assert_semantic_error(3532){ T := interface{}; T := interface{} }
+
+# Test declaring values of a interface.
+assert_valid { T := interface {}; C := class {t:T} }
+assert_valid { T := interface {}; C := class {f(t:T):T={return(t)}} }
+
+# Test declaring class inheritance from a interface.
+assert_valid { T0 := interface {}; T1 := interface {}; C := class(T0, T1) {} }
+
+# Test implicitly using a class as a interface it inherits.
+assert_valid                   { T := interface{}; C := class(T)  { f():T={return(Self)} } }
+assert_valid                   { T := interface{}; C0 := class(T) { f():T={return(Self)} }; C1 := class(C0) { g():T={return(Self)} } }
+assert_semantic_error(3510){ T := interface{}; C := class     { f():T={return(Self)} } }
+
+# Test that declaring class inheritance from a interface but not implementing a interface method is an error.
+assert_semantic_error(3591){ T := interface {f():void}; C := class(T) {} }
+
+# Test that redundant inheritance of a interface produces an error.
+assert_semantic_error(3592){ T := interface {}; C := class(T, T) {} }
+# but not if it's indirect
+assert_valid { T := interface {}; C0 := class(T) {}; C1 := class(C0, T) {} }
+assert_valid { T := interface {}; C0 := class(T) {}; T1 := interface(T) {}; C1 := class(C0, T1) {} }
+
+super_class := class{}
+
+# Test calling a method on a interface.
+T0 := interface { interfaceMethod(x:int):int }
+C0 := class(super_class, T0):
+    y:int
+    interfaceMethod<override>(x:int):int={return(x+y)}
+assert{t:T0=C0{y:=10}; t.interfaceMethod(1) = 11}
+assert{t:T0=C0{y:=10}; t.interfaceMethod(2) = 12}
+assert{t:T0=C0{y:=11}; t.interfaceMethod(2) = 13}
+
+C1 := class(super_class) {}
+
+# Test storing, passing as an argument, and returning interface instances.
+C2 := class:
+    m:T0
+    f():T0={return(m)}
+assert{C2{m:=C0{y:=23}}.f().interfaceMethod(45) = 23+45}
+
+C3 := module:
+    
+    f<public>(a:T0):T0={return(a)}
+assert{C3.f(C0{y:=67}).interfaceMethod(89) = 67+89}
+
+# Test optional interface instances.
+assert{option{C0{y:=12}}?.interfaceMethod(34) = 12+34}
+C4 := class:
+    m:?T0
+    f()<transacts><decides>:T0={return(m?)}
+assert{C4{m:=option{C0{y:=12}}}.f[]}
+assert{C4{m:=option{C0{y:=12}}}.f[].interfaceMethod(34) = 12+34}
+assert{not C4{m:=false}.f[]}
+
+C5 := class:
+    memberinterfaceInstance:?T0=false
+    f0(arginterfaceInstance:T0):T0=
+        (local:)result:T0 = memberinterfaceInstance? or arginterfaceInstance
+        return((local:)result)
+assert{C5{}.f0(C0{y:=0}).interfaceMethod(23) = 23}
+assert{C5{memberinterfaceInstance:=option{C0{y:=1}}}.f0(C0{y:=2}).interfaceMethod(34) = 35}
+
+# Test dynamic casts of class instances to interfaces.
+assert{T0[C0{y:=12}].interfaceMethod(1) = 13}
+assert{not T0[C1{}]}
+
+C6 := module:
+    
+    f<public>(o:super_class)<transacts><decides>:T0={return(T0[o])}
+
+assert{C6.f[C0{y:=12}]}
+assert{not C6.f[C1{}]}
+
+assert_semantic_error(3509){ T  := interface {};                    C := class { f(     )<transacts><decides>:T =T[0]   } }
+assert_valid                   { T0 := interface {}; T1 := interface{}; C := class { f(t0:T0)<transacts><decides>:T1=T1[t0] } }
+
+T1 := interface(T0) { interfaceMethod2(x:float):float }
+C7 := class(T1):
+    y:int
+    z:float
+    interfaceMethod<override>(x:int):int={return x+y}
+    interfaceMethod2<override>(x:float):float={return x+z}
+assert{T0[C7{y:=1,z:=2.0}]}
+assert{T0[C7{y:=1,z:=2.0}].interfaceMethod(3) = 4}
+assert{T1[C7{y:=1,z:=2.0}]}
+assert{T1[C7{y:=1,z:=2.0}].interfaceMethod(3) = 4}
+assert{T1[C7{y:=1,z:=2.0}].interfaceMethod2(3.0) = 5.0}
+
+# Test fallible casts from an interface instance to a class instance.
+T2 := interface{}
+C8 := class(T2) {}
+C9 := class(C8) {}
+C10:= class(T2) {}
+CastInterfaceToClass(t:T2)<transacts><decides>:C8=C8[t]
+assert{CastInterfaceToClass[C8{}]}
+assert{CastInterfaceToClass[C9{}]}
+assert{not CastInterfaceToClass[C10{}]}
+
+# Test fallible casts from an interface instance to another interface instance.
+T3 := interface{}
+T4 := interface{}
+T3T4 := interface(T3,T4){}
+C11 := class(T3T4) {}
+C12 := class(T3) {}
+CastInterfaceToInterface(t:T3)<transacts><decides>:T4=T4[t]
+assert{CastInterfaceToInterface[C11{}]}
+assert{not CastInterfaceToInterface[C12{}]}
+
+# Test that interfaces can't alias classes or enums.
+# See JIRA SOL-1337
+assert_semantic_error(3532){ A := enum{}; A := interface{} }
+assert_semantic_error(3532){ A := class{}; A := interface{} }
+
+# Interfaces can have methods with default implementation
+assert_valid:
+  T := interface { f():int={return(42)} }
+
+# Interfaces can not override anything
+assert_semantic_error(3523, 3523, 3532):
+  T := interface { f():int={return(42)} }
+  TT := interface(T) { f<override>():int={return(24)}}
+
+# Error messages depends on vm since verse vm doesn't implement data members in interfaces yet.
+assert_semantic_error(3523, 3532):
+  T := interface { var v:int= 42 }
+  TT := interface(T) { var v<override>:int= 24 }
+
+# self_class doesn't work anymore.
+assert_semantic_error(3506):
+    T := interface { f0():type=return(self_class) }
+
+# Test that we properly error and recover when a interface inherits from itself
+assert_semantic_error(3557,3506):
+    T := interface(T) {}
+    C := class(T):
+        f():void=C{}.g() # Trying to resolve `g` could result in an infinite loop
+
+# Ensure that interface method signatures are carried over to class implementations
+assert_semantic_error(3532, 3591, 3532):
+    T := interface:
+        f0():int
+    C := class(T):
+        f0():void={}
+
+interface_with_async := interface:
+    f0()<suspends>:int
+class_without_async := class(interface_with_async):
+    f0<override>():int =
+        CoroUtils.LogEvent("class_without_async.f0")
+        1337
+    f1():int = f0()
+
+assert:
+    X0:interface_with_async = class_without_async{}
+    spawn{X0.f0()}
+    CoroUtils.Tick(1)
+    CoroUtils.GetEventLogString() = "class_without_async.f0,"
+    X1:class_without_async = class_without_async{}
+    X1.f1() = 1337
+
+# Verify that we can create an array of elements with the same interface, and use the interface 
+can_do_x:=interface:
+    DoX(msg:string):void
+
+do_x_class := class<allocates>(can_do_x):
+    var Text:[]string = array{}
+
+    DoX<override>(msg:string):void= { set Text += array{msg} }
+
+x_class_type := subtype(do_x_class)
+
+class_a_can_do_x := class<allocates> (can_do_x):
+
+    var Text:string = ""
+    DoX<override>(msg:string):void= { set Text = "A: " + msg }
+
+class_b_can_do_x := class<allocates> (can_do_x):
+
+    var Text:string = ""
+    DoX<override>(msg:string):void= { set Text = "B: " + msg }
+
+assert:
+    X:do_x_class=do_x_class{}
+    Y:class_a_can_do_x = class_a_can_do_x{}
+    Z:class_b_can_do_x = class_b_can_do_x{}
+    CanDoX:[]can_do_x = array{X, Y, Z}
+    for(Item:CanDoX) { Item.DoX("x") }
+    X.Text = array{"x"}
+    Y.Text = "A: x"
+    Z.Text = "B: x"
+
+# Verify that we don't re-introduce an error with subtype and interfaces
+assert_semantic_error(3509):
+    can_do_x:=interface{}
+    do_x_type := subtype(can_do_x)
+    do_x_class := class<computes>(can_do_x) {}
+    X:do_x_class=do_x_class{} 
+    CanDoX:[]do_x_type=array{X}
+
+# Ensure a particular superinterface (rather than a bound)
+assert_semantic_error(3502):
+    interface1 := interface {}
+    interface2 := interface(interface1) {}
+    interface3 := interface(if (false?) {interface1} else {interface2}) {}
+
+# Interface definitions must occur at module scope.
+assert_semantic_error(3502){c         := class    {d         := interface{}}}
+assert_semantic_error(3502){c(t:type) := class    {d         := interface{}}}
+assert_semantic_error(3502){c         := class    {d(u:type) := interface{}}}
+assert_semantic_error(3502){c(t:type) := class    {d(u:type) := interface{}}}
+assert_semantic_error(3502){s         := struct   {d         := interface{}}}
+assert_semantic_error(3502){s(t:type) := struct   {d         := interface{}}}
+assert_semantic_error(3502){i         := interface{d         := interface{}}}
+assert_semantic_error(3502){i(t:type) := interface{d         := interface{}}}
+assert_semantic_error(3502){i         := interface{d(u:type) := interface{}}}
+assert_semantic_error(3502){i(t:type) := interface{d(u:type) := interface{}}}
+assert_semantic_error(3502){F():void            = {d         := interface{}}}
+assert_semantic_error(3502){F():void            = {d(u:type) := interface{}}}
+
+# Ensure additional functions added during type processing don't result in a
+# crash.
+assert_semantic_error(3547, 3598):
+    interface1 := interface:
+        F():(G():void)
+
+# Test that out-of-order definitions work.
+TestE := class(TestC, TestB) {}
+TestD := class(TestB) {}
+TestC := interface(TestA) {}
+TestB := interface(TestA) {}
+TestA := interface {}
+    
+# Interfaces cannot themselves inherit from classes.
+assert_semantic_error(3599):
+    c1 := class{ A():int = 24 }
+    i1 := interface(c1) { B():int }
+    c2 := class(i1) { B<override>():int = 42 }

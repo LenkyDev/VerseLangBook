@@ -1,0 +1,139 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Uses LogEvent() and GetEventLogString()
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+############################################
+# Helper functions
+
+Log(Msg:string) : void =     CoroUtils.LogEvent(Msg)
+GetLogStr() : string   =     return CoroUtils.GetEventLogString()
+
+
+I := class<unique>:
+    i:int
+C := class<unique>:
+    instArray:[]C
+
+    # Have to return optionals... we don't yet have full support for fallable functions (they 
+    # themselves are not failure contexts -- yet!)
+    inst_getObjAtIndex(i:int):?C=
+    {
+        return (option{instArray[i]})
+    }
+
+    inst_getObjAtIndex_self(i:int):?C=
+    {
+        return (option{Self.instArray[i]})
+    }
+
+
+A := class<computes>:
+    i:int
+
+CModule := module:
+    classArray<public>:[]A = array{A{i:=8}, A{i:=6}, A{i:=75}, A{i:=309}}
+    class_getObjAtIndex<public>(i:int):?A=
+    {
+        return (option{classArray[i]})
+    }
+
+    class_getObjAtIndex_self<public>(i:int):?A=
+    {
+        return (option{CModule.classArray[i]})
+    }
+
+    class_getObjArray<public>():[]A:=
+    {
+        return classArray
+    }
+
+assert:
+    myArray := array{0,1,2,3}
+    myArray[3] = 3
+
+# Test out-of-bound access failure
+assert:
+    myArray := array{0,1,2,3}
+    not myArray[5]
+
+assert:
+    myArray := array{0,1,2,3,4,5,6,7}
+    var bSuccess:logic = true
+    var i:int = 0
+    for (item : myArray):
+        if (myArray[i] <> item)
+        {
+            set bSuccess = false
+        }
+        set i += 1
+    bSuccess = true
+
+assert:
+    c1 := C{instArray := array{}}
+    c2 := C{instArray := array{c1}}
+    c3 := C{instArray := array{c2, c1}}
+
+    c3.instArray[1] = c2.inst_getObjAtIndex(0)? and
+    c2.instArray[0] = c1 and 
+    c3.inst_getObjAtIndex_self(1)? = c1
+
+assert:
+    CModule.classArray[0].i = CModule.class_getObjAtIndex(0)?.i and
+    CModule.classArray[2].i = 75 and
+    CModule.classArray[3].i = CModule.class_getObjAtIndex_self(3)?.i
+
+CModule2 := module:
+    classArray<public>:[]A = { for(j:=0..2) { A{i:=j} } }
+    class_getObjAtIndex<public>(i:int):?A=
+    {
+        return (option{classArray[i]})
+    }
+
+    class_getObjAtIndex_self<public>(i:int):?A=
+    {
+        return (option{CModule2.classArray[i]})
+    }
+
+    class_getObjArray<public>():[]A:=
+    {
+        return classArray
+    }
+
+assert:
+    CModule2.class_getObjArray()[0].i = CModule2.classArray[0].i and
+    CModule2.class_getObjArray()[1].i = CModule2.classArray[1].i and
+    CModule2.class_getObjArray()[2].i = CModule2.classArray[2].i
+
+
+# Ensure array index expression is evaluated only once
+assert:
+    myArray := array{"A", "B", "C", "D"}
+    Log(myArray[block {Log("idx"); 2}])
+    GetLogStr() = "idxC"
+
+
+# Ensure that unused result from an array index call does not cause an access violation
+assert:
+    array{"A", "B", "C", "D"}[2]
+    true
+
+# Test calling arrays with a non-nullable pointer type as the element type.
+assert:
+    Object := I{i:=0}
+    array{Object}[0]=Object
+
+# Test calling arrays with an optional non-nullable pointer type as the element type.
+assert:
+    Object := I{i:=0}
+    array{option{Object}}[0]?=Object
+
+# Test calling arrays with a struct as the element type.
+s := struct {X:int}
+assert{array{s{X:=1}}[0].X=1}
+
+# Test calling arrays with negative indices.
+assert{not array{0,1,2,3,4}[-1]}
+assert{not array{0,1,2,3,4}[-100]}
+assert{not array{0,1,2,3,4}[-1000000]}
+assert{not array{0,1,2,3,4}[-1000000000000]}

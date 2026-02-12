@@ -1,0 +1,16 @@
+assert_roundtrip{for(x:xs) {print(x)}}
+assert_roundtrip{for(a, b, c) {d, e, f, g}}
+assert_roundtrip{for(key->value:xs) {key}}
+
+assert_roundtrip{
+for(x:xs):
+    print(x)
+}
+
+# `for` doesn't support `break` though this roundtrips
+assert_roundtrip{
+for(i := 1..(Snake.Positions.Length - 1)):
+    if (BodyPosition := Snake.Positions[i]):
+        break
+}
+

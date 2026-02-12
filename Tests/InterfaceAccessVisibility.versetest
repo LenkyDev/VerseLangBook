@@ -1,0 +1,117 @@
+my_interface<public> := interface<internal>:
+    Foo<public>(X:int):int
+
+internal_class<public> := class(my_interface):
+    Foo<override>(X:int):int = X
+
+assert_semantic_error(3593):
+    MyModule := module:
+        my_interface<public> := interface<internal>:
+            Foo<public>(X:int):int
+
+    my_class := class(MyModule.my_interface):
+        Foo<override>(X:int):int = X
+
+assert_valid:
+    MyModule := module:
+        my_interface<public> := interface<internal>:
+            Foo<public>(X:int):int
+
+        my_other_interface<public> := interface<public>(my_interface):
+            Bar<public>():int
+
+    my_class := class(MyModule.my_other_interface):
+        Foo<override>(X:int):int = X
+        Bar<override>():int = 1
+
+assert_valid:
+    my_interface<public> := interface<internal>:
+        Foo<public>(X:int):int
+
+    my_class := class<public>(my_interface):
+        Foo<override>(X:int):int = X
+
+assert_semantic_error(3594) { my_interface := interface<protected> { Foo<public>():int }}
+assert_semantic_error(3594) { my_interface := interface<private> { Foo<public>():int }}
+assert_semantic_error(3543) { my_interface := interface<public><internal> { Foo<public>():int }}
+assert_valid                { my_interface := interface<public> { Foo<public>():int }}
+assert_valid                { my_interface := interface<internal> { Foo<public>():int }}
+
+assert_valid:
+    vpackage(Root,/Verse.org/Interface/Root,?Scope:=InternalAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
+    vpackage(UserCode,/Verse.org/Interface/Internal,?Scope:=InternalAPI,?Dependencies:=(Root)):
+        snippet:
+            using { /Verse.org/Interface/Root/M0 }
+            my_class := class(my_interface):
+                Foo<override>():int = 1
+
+# Check you can't implement epic internal interfaces from user code.
+assert_semantic_error(3593):
+    vpackage(Root,/Verse.org/Interface/Root,?Scope:=InternalAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
+    vpackage(UserCode,/NotVerse.org/Interface/User,?Dependencies:=(Root)):
+        snippet:
+            using { /Verse.org/Interface/Root/M0 }
+            my_class := class(my_interface):
+                Foo<override>():int = 1
+
+# Check you can use epic_internal interfaces from User code.
+assert_valid:
+    vpackage(Root,/Verse.org/Interface/Root,?Scope:=InternalAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
+    vpackage(UserCode, /NotVerse.org/Interface/User,?Dependencies:=(Root)):
+        snippet:
+            using { /Verse.org/Interface/Root/M0 }
+            Bar(X:my_interface):int = X.Foo()
+
+
+assert_valid:
+    my_interface<public> := interface<internal>:
+        Foo<public>(X:int):int
+
+    my_other_interface<public> := interface<public>(my_interface):
+        Bar<public>(X:int):int
+
+
+assert_valid:
+    MyModule := module:
+        my_interface<public> := interface<internal>:
+            Foo<public>(X:int):int
+
+        internal_class<public> := class<public>(my_interface):
+            Foo<override>(X:int):int = X
+
+    my_class := class(MyModule.internal_class):
+        Foo<override>(X:int):int = X
+
+
+MyModule := module:
+    internal_interface<public> := interface<internal>:
+        Foo<public>(X:int):int
+
+    internal_c<public> := class(internal_interface):
+        Foo<override>(X:int):int = X
+
+assert:
+    C := MyModule.internal_c{}
+    C.Foo(1) = 1
+
+assert_valid:
+    vpackage(Root,/Verse.org/Interface/Root,?Scope:=InternalAPI) { snippet { M0<public> := module { my_interface<public> := interface<epic_internal> { Foo<public>():int }} }}
+    vpackage(InternalCode,/Verse.org/Interface/Internal,?Scope:=InternalAPI,?Dependencies:=(Root)):
+        snippet:
+            using { /Verse.org/Interface/Root/M0 }
+            my_class := class(my_interface):
+                Foo<override>():int = 1
+
+# Check compatibility constraints
+assert_semantic_error(3646):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { i<public> := interface<public>       {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { i<public> := interface<epic_internal>{} } }
+
+assert_semantic_error(3646):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { i<public> := interface<epic_internal>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { i<public> := interface<internal>     {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { i<public> := interface<epic_internal>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { i<public> := interface<public>     {} } }
+

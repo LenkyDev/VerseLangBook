@@ -1,0 +1,25 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{    false = false}
+assert{not false <> false}
+
+assert{not false = true}
+assert{    false <> true}
+
+assert{(false = false) = false}
+assert{(true = true) = true}
+
+# Test comparing logic(false) to other forms of false: (), (?t)(false), array{}, map{}, "".
+assert{X:logic=false; Y:void={}       ; X=Y}
+assert{X:logic=false; Y:tuple()=()    ; X=Y}
+assert{X:logic=false; Y:?int=false    ; X=Y}
+assert{X:logic=false; Y:[]int=array{} ; X=Y}
+assert{X:logic=false; Y:[int]int=map{}; X=Y}
+assert{X:logic=false; Y:string=""     ; X=Y}
+
+assert{X:logic=true; Y:void={}       ; X<>Y}
+assert{X:logic=true; Y:tuple()=()    ; X<>Y}
+assert{X:logic=true; Y:?int=false    ; X<>Y}
+assert{X:logic=true; Y:[]int=array{} ; X<>Y}
+assert{X:logic=true; Y:[int]int=map{}; X<>Y}
+assert{X:logic=true; Y:string=""     ; X<>Y}

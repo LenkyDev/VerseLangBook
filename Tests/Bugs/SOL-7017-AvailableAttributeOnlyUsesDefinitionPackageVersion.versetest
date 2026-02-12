@@ -1,0 +1,131 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test that code uploaded from 30.00 *can't* see the @available{MinUploadedAtFNVersion:=3100} definitions
+assert_semantic_error(3509, 3506, 3506):
+    vpackage(P0, /Verse.org/Simulation, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3100):
+        snippet:
+            agent<public> := class<unique>{}
+
+    vpackage(P1, /Fortnite.com/Devices, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3100, ?Dependencies:=(P0)):
+        snippet:
+            using{/Verse.org/Native}
+            using{/Verse.org/Simulation}
+
+            item_granter_device<public> := class<concrete><final>:
+                @available{MinUploadedAtFNVersion := 3100}
+                GrantItemIndex<public>(Agent:agent, ItemIndex:int):void={}
+
+                @available{MinUploadedAtFNVersion := 3100}
+                GrantItemIndex<public>(ItemIndex:int):void={}
+                
+            hud_message_device<public> := class<concrete><final>:
+                Hide<public>():void={}
+
+                @available{MinUploadedAtFNVersion := 3100}
+                Hide<public>(Agent:agent):void={}
+
+    # The version is 30.00 here                                          \/\/
+    vpackage(P2, /UserPackage, ?Scope:=PublicUser, ?UploadedAtFNVersion:=3000, ?Dependencies:=(P0, P1)):
+        snippet:
+            using{/Fortnite.com/Devices}
+            using{/Verse.org/Simulation}
+            F0(D:hud_message_device):void=D.Hide()
+            F1(D:hud_message_device, A:agent):void=D.Hide(A)
+            F2(D:item_granter_device, A:agent, I:int):void=D.GrantItemIndex(A, I)
+            F3(D:item_granter_device, I:int):void=D.GrantItemIndex(I)
+
+# Test that code uploaded from 31.00 *can* see the @available{MinUploadedAtFNVersion:=3100} definitions
+assert_valid:
+    vpackage(P0, /Verse.org/Simulation, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3100):
+        snippet:
+            agent<public> := class<unique>{}
+
+    vpackage(P1, /Fortnite.com/Devices, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3100, ?Dependencies:=(P0)):
+        snippet:
+            using{/Verse.org/Native}
+            using{/Verse.org/Simulation}
+
+            item_granter_device<public> := class<concrete><final>:
+                @available{MinUploadedAtFNVersion := 3100}
+                GrantItemIndex<public>(Agent:agent, ItemIndex:int):void={}
+
+                @available{MinUploadedAtFNVersion := 3100}
+                GrantItemIndex<public>(ItemIndex:int):void={}
+                
+            hud_message_device<public> := class<concrete><final>:
+                Hide<public>():void={}
+
+                @available{MinUploadedAtFNVersion := 3100}
+                Hide<public>(Agent:agent):void={}
+
+    # The version is 31.00 here                                          \/\/
+    vpackage(P2, /UserPackage, ?Scope:=PublicUser, ?UploadedAtFNVersion:=3100, ?Dependencies:=(P0, P1)):
+        snippet:
+            using{/Fortnite.com/Devices}
+            using{/Verse.org/Simulation}
+            F0(D:hud_message_device):void=D.Hide()
+            F1(D:hud_message_device, A:agent):void=D.Hide(A)
+            F2(D:item_granter_device, A:agent, I:int):void=D.GrantItemIndex(A, I)
+            F3(D:item_granter_device, I:int):void=D.GrantItemIndex(I)
+
+# V1 of this code hardcoded version 3100 and symbol names, Let's do that again with different values
+assert_valid:
+    vpackage(P0, /Verse.org/Simulation, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3200):
+        snippet:
+            someAgent<public> := class<unique>{}
+
+    vpackage(P1, /Fortnite.com/Devices, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3200, ?Dependencies:=(P0)):
+        snippet:
+            using{/Verse.org/Native}
+            using{/Verse.org/Simulation}
+
+            item_granter_device_thingy<public> := class<concrete><final>:
+                @available{MinUploadedAtFNVersion := 3100}
+                GrantThatItemIndex<public>(Agent:someAgent, ItemIndex:int):void={}
+
+                @available{MinUploadedAtFNVersion := 3100}
+                GrantThatItemIndex<public>(ItemIndex:int):void={}
+                
+            hud_message_device_gizmo<public> := class<concrete><final>:
+                Hideout<public>():void={}
+
+                @available{MinUploadedAtFNVersion := 3100}
+                Hideout<public>(Agent:someAgent):void={}
+
+    # The version is 32.00 here                                          \/\/
+    vpackage(P2, /UserPackage, ?Scope:=PublicUser, ?UploadedAtFNVersion:=3200, ?Dependencies:=(P0, P1)):
+        snippet:
+            using{/Fortnite.com/Devices}
+            using{/Verse.org/Simulation}
+            F0(D:hud_message_device_gizmo):void=D.Hideout()
+            F1(D:hud_message_device_gizmo, A:someAgent):void=D.Hideout(A)
+            F2(D:item_granter_device_thingy, A:someAgent, I:int):void=D.GrantThatItemIndex(A, I)
+            F3(D:item_granter_device_thingy, I:int):void=D.GrantThatItemIndex(I)
+
+# The version checking now looks at parent-scope versions as well and takes the maximum min-version
+assert_valid:
+    vpackage(P0, /Verse.org/Simulation, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3200):
+        snippet:
+            agent<public> := class<unique>{}
+
+    vpackage(P1, /Fortnite.com/Devices, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3200, ?Dependencies:=(P0)):
+        snippet:
+            using{/Verse.org/Native}
+            using{/Verse.org/Simulation}
+
+            @available{MinUploadedAtFNVersion := 3100}
+            item_granter_device<public> := class<concrete><final>:
+                @available{MinUploadedAtFNVersion := 3300}                    # removed
+                GrantItemIndex<public>(Agent:agent, ItemIndex:int):void={}
+
+                @available{MinUploadedAtFNVersion := 3200}
+                GrantItemIndex<public>(Agent:agent, ItemIndex:int):void={}
+
+            @available{MinUploadedAtFNVersion := 3300}                        # removed
+            item_granter_device<public> := class<concrete><final>:
+                @available{MinUploadedAtFNVersion := 3200}                    # removed due to parent
+                GrantItemIndex<public>(Agent:agent, ItemIndex:int):void={}
+
+                @available{MinUploadedAtFNVersion := 3200}                    # removed due to parent
+                GrantItemIndex<public>(Agent:agent, ItemIndex:int):void={}
+

@@ -1,0 +1,4 @@
+assert_semantic_error(3506):
+    C := class:
+        c:?C
+        f():void=c.f()

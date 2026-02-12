@@ -1,0 +1,40 @@
+# Must prevent access to undefined and uninitialized variables 
+
+# Rhs of `or` and `and` is not always evaluated, these are from the jira  
+assert_semantic_error(3506){f()<transacts><decides>:int={(true?  or (a:=option{1}?)) and (a=1)}}
+assert_semantic_error(3506){f()<transacts><decides>:int={(false? and (a:=option{1}?)) or (a=1)}}
+assert_semantic_error(3506){f()<transacts><decides>:int={logic{false?, a:=1}; a=1}}  # the , in logic is the same as `and`
+
+# If the operand of not/optional/logic fails then the variable defined in the operand isn't initialized,
+# but evaluation still continues and could access the variable.
+assert_semantic_error(3506){f()<transacts><decides>:int={not (a:=Floor(1/0)); a=1}}
+assert_semantic_error(3506){f()<transacts><decides>:int={option{a:=Floor(1/0)}; a=1}}
+assert_semantic_error(3506){f()<transacts><decides>:int={logic{a:=Floor(1/0)}; a=1}}
+
+# No local definitions can escape from `or` since a or b ~> if(x:=a) {x} else {b}.
+assert_semantic_error (3506){f()<transacts><decides>:int= { ((a:=Floor(1/0)) or (b:=Floor(1/0))); a=1 }}
+assert_semantic_error (3506){f()<transacts><decides>:int= { ((a:=Floor(1/0)) or (b:=Floor(1/0))); b=1 }}
+# Check if-variant
+assert_semantic_error (3506){f()<transacts><decides>:int= { if(a:=Floor(1/0)) { a } else {b:=Floor(1/0)}; a=1 }}
+assert_semantic_error (3506){f()<transacts><decides>:int= { if(a:=Floor(1/0)) { a } else {b:=Floor(1/0)}; b=1 }}
+
+
+# No local defiunitions can escape from `and` since a and b ~> if(a) {b} else {false?}.
+# But definitions in LHS is visible in RHS
+assert_semantic_error (3506){f()<transacts><decides>:int= { ((a:=Floor(1/0)) and (b:=Floor(a/0))); a=1 }}
+assert_semantic_error (3506){f()<transacts><decides>:int= { ((a:=Floor(1/0)) and (b:=Floor(a/0))); b=1 }}
+# Check if-variant
+assert_semantic_error (3506){f()<transacts><decides>:int= { if(a:=Floor(1/0)) {b:=Floor(a/0)} else {false?}; a=1 }}
+assert_semantic_error (3506){f()<transacts><decides>:int= { if(a:=Floor(1/0)) {b:=Floor(a/0)} else {false?}; b=1 }}
+
+# These are old tests that reasons about why `or` must have local scope for both LHS and RHS 
+# Lhs in `or` can fail and the `or`-expression still succeed in which case the variable isn't initialized.
+assert_semantic_error(3506){f()<transacts><decides>:int={((a:=Floor(1/0)) or 1); a=1}}
+# Rhs in `or` might not be evaluated, the variable is not even defined.
+assert_semantic_error(3506){f()<transacts><decides>:int={(1=1 or (a:=1)); a=1}}
+
+# ((a:=..) and (b:=..)) { use a & b } has been used in old code. Change to ; instead
+assert { 0 = if(a:=Floor(2/0); b:=Floor(2/0)) {a+b} else {0}}
+assert { 0 = if(a:=Floor(2/0); b:=Floor(2/2)) {a+b} else {0}}
+assert { 0 = if(a:=Floor(2/1); b:=Floor(2/0)) {a+b} else {0}}
+assert { 3 = if(a:=Floor(2/1); b:=Floor(2/2)) {a+b} else {0}}

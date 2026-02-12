@@ -1,0 +1,11 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# The actual fuzzer test case, for completeness.
+assert_semantic_error(3621, 3502, 3598){A[]:A^}
+
+assert_semantic_error(3502){A:A^ = {}}
+
+assert_semantic_error(3502):
+    c := class:
+        var X:type
+        Y:X^

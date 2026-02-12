@@ -1,0 +1,153 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+i0 := interface {}
+c0 := class {}
+c1 := class(c0, i0) {}
+c2 := class(c1) {}
+s := struct {}
+
+# Test fallible casts between class/interface types.
+assert{c0[c2{}]}
+assert{c1[c2{}]}
+assert{i0[c2{}]}
+assert{c0[c1{}]}
+assert{c1[c1{}]}
+assert{i0[c1{}]}
+assert{c0[c0{}]}
+assert{not c1[c0{}]}
+assert{not i0[c0{}]}
+
+comp_i0 := interface<unique> {}
+comp_c0 := class<unique> {}
+comp_c1 := class<unique>(comp_c0, comp_i0) {}
+comp_c2 := class<unique>(comp_c1) {}
+
+assert{X := comp_c2{}; comp_c0[X] = X}
+assert{X := comp_c2{}; comp_c1[X] = X}
+assert{X := comp_c2{}; comp_i0[X] = X}
+assert{X := comp_c1{}; comp_c0[X] = X}
+assert{X := comp_c1{}; comp_c1[X] = X}
+assert{X := comp_c1{}; comp_i0[X] = X}
+assert{X := comp_c0{}; comp_c0[X] = X}
+
+# Fallible casts to non-class types isn't yet supported.
+assert_semantic_error(3552){ c := class{}; F(C:c)<transacts><decides>:void=logic[C] }
+assert_semantic_error(3509){ c := class{}; F(C:c)<transacts><decides>:void=int[C] }
+assert_semantic_error(3552){ c := class{}; F(C:c)<transacts><decides>:void=void[C] }
+assert_semantic_error(3552){ c := class{}; F(C:c)<transacts><decides>:void=(?int)[C] }
+assert_semantic_error(3552){ c := class{}; s := struct{}; F(C:c)<transacts><decides>:void=s[C] }
+
+# Fallible casts from non-class types isn't yet supported.
+assert_semantic_error(3509){ c := class{}; F()<transacts><decides>:void=c[0] }
+assert_semantic_error(3509){ c := class{}; F()<transacts><decides>:void=c[0.0] }
+assert_semantic_error(3509){ c := class{}; F()<transacts><decides>:void=c[false] }
+assert_semantic_error(3509){ c := class{}; F()<transacts><decides>:void=c[array{1,2}] }
+assert_semantic_error(3509){ c := class{}; F()<transacts><decides>:void=c[option{c{}}] }
+assert_semantic_error(3509){ i := interface{}; F()<transacts><decides>:void=i[0] }
+assert_semantic_error(3509){ i := interface{}; F()<transacts><decides>:void=i[0.0] }
+assert_semantic_error(3509){ i := interface{}; F()<transacts><decides>:void=i[false] }
+assert_semantic_error(3509){ i := interface{}; F()<transacts><decides>:void=i[array{1,2}] }
+assert_semantic_error(3509){ i := interface{}; c := class{}; F()<transacts><decides>:void=i[option{c{}}] }
+assert_semantic_error(3509){ c := class{}; s := struct{}; F()<transacts><decides>:void=c[s{}] }
+
+assert_semantic_error(3512){ i := interface{}; d := class{}; F(D:d):void=i[D] }
+assert_semantic_error(3512){ c := class{}; d := class{}; F(D:d):void=c[D] }
+
+# Test infallible casts. These should produce a compile error if the argument type is not a subtype of the cast type.
+assert{int(0)=0}
+assert{float(0.0)=0.0}
+assert{logic(false)=false}
+
+assert{(?int)(option{0})?=0}
+assert{([]int)(array{1,2,3})=array{1,2,3}}
+
+assert{i0(c1{})}
+assert{c0(c1{})}
+assert{c1(c2{})}
+assert{s(s{})}
+
+assert{void(0)}
+assert{void(0.0)}
+assert{void("0")}
+
+assert_semantic_error(3509){ F():void=int(0.0) }
+assert_semantic_error(3509){ F():void=int(false) }
+
+assert_semantic_error(3509){ c := class{}; F():void=int(c{}) }
+assert_semantic_error(3509){ c := class{}; F():void=([]c)(c{}) }
+
+assert_semantic_error(3509){ c := class{}; d := class{}; F():void=c(d{}) }
+assert_semantic_error(3509){ c := class{}; d := class{}; F():void=d(c{}) }
+
+assert_semantic_error(3509){ c0 := class{}; c1 := class(c0){}; F():void=c1(c0{}) }
+assert_semantic_error(3509){ c0 := class{}; c1 := class(c0){}; F():void=c1(c0{}) }
+
+assert_semantic_error(3509){ i := interface{}; c := class{}; F():void=i(0) }
+assert_semantic_error(3509){ i := interface{}; c := class{}; F():void=i(c{}) }
+
+# ensure that casting class and interface types through type variables applies the values of the
+# variable and not just the metatype of the variable.
+
+base := class{}
+class1 := class(base) {}
+class2 := class(class1) {}
+
+classA := class(base){}
+classB := class(classA){}
+
+assert:
+    X:base := class2{}
+    t := if (true?) then class2 else classB  # t has the type subtype(base)
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 1
+
+assert:
+    X:base := class2{}
+    t := if (false?) then class2 else classB
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 2
+
+assert:
+    X:base := classB{}
+    t := if (true?) then class2 else classB
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 2
+
+assert:
+    X:base := classB{}
+    t := if (false?) then class2 else classB
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 1
+
+iBase := interface{}
+interface1 := interface(iBase) {}
+interface2 := interface(interface1) {}
+class3 := class(interface2){}
+
+interfaceA := interface(iBase){}
+interfaceB := interface(interfaceA){}
+classC := class(interfaceB){}
+
+assert:
+    X:iBase := class3{}
+    t := if (true?) then interface2 else interfaceB  # t has the type subtype(iBase)
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 1
+
+assert:
+    X:iBase := class3{}
+    t := if (false?) then interface2 else interfaceB
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 2
+
+assert:
+    X:iBase := classC{}
+    t := if (true?) then interface2 else interfaceB
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 2
+
+assert:
+    X:iBase := classC{}
+    t := if (false?) then interface2 else interfaceB
+    Z := if (Y := t[X]) then 1 else 2
+    Z = 1

@@ -1,0 +1,13 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_syntax_error(3100){"a of:="}
+assert_syntax_error(3100){"a of."}
+
+assert_syntax_error(3100){"a in:="}
+assert_syntax_error(3100){"a in."}
+
+assert_syntax_error(3100){"a then:="}
+assert_syntax_error(3100){"a then."}
+
+assert_syntax_error(3100){"a until:="}
+assert_syntax_error(3100){"a until."}

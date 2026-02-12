@@ -1,0 +1,4 @@
+assert:
+    var A:[]int=array{}
+    B:=if (true?):
+        set A += array{0}

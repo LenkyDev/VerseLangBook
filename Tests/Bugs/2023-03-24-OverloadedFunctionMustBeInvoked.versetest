@@ -1,0 +1,11 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3510):
+    test_class := class:
+        Overload<public>():void = {}
+        Overload<public>(a:int):void = {}
+
+    foo():tuple()->void=
+        A : []test_class = array{}
+        if (Element := A[0]):
+            Element.Overload  # We want this to raise a semantic analysis error so that end-users can know it needs to be invoked.

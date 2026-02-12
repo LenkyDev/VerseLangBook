@@ -1,0 +1,8 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# These previously worked.
+assert_semantic_error(3502){F():F={}}
+assert_semantic_error(3560, 3549, 3512, 3509, 3598){F():F<1={}}
+
+# This asserted due to an AST node with a null result type after producing an error.
+assert_semantic_error(3560, 3549, 3502, 3598){F():1<F={}}

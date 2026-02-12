@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+super_class := class:
+    var Result:int=0
+    Method()<suspends>:int=
+        set Result = 1
+
+sub_class := class(super_class):
+    Method<override>()<suspends>:int=
+        (super:)Method()
+        set Result += 2
+
+assert:
+    SubClassInstance := sub_class{}
+    spawn{SubClassInstance.Method()}
+    SubClassInstance.Result = 3

@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+parametric_super_class(t:type) := class<abstract>:
+    Field:t
+    Method():t
+
+concrete_sub_class := class(parametric_super_class([int]int)):
+    Field<override>:[int]int=map{1=>2}
+    Method<override>():[int]int=Field
+
+assert{concrete_sub_class{}.Field=map{1=>2}}
+assert{concrete_sub_class{}.Method()=map{1=>2}}
+
+concrete_super_class := class<abstract>:
+    Field:comparable
+    Method():comparable
+
+parametric_sub_class(t:subtype(comparable)) := class(concrete_super_class):
+    Field<override>:t
+    Method<override>():t=Field
+
+assert{parametric_sub_class([int]int){Field:=map{3=>4}}.Field=map{3=>4}}
+assert{parametric_sub_class([int]int){Field:=map{5=>6}}.Method()=map{5=>6}}

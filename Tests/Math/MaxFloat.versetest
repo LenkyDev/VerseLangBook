@@ -1,0 +1,37 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Negative
+assert { Max(-2.0, -1.0) = -1.0 }
+assert { Max(-1.0, -2.0) = -1.0 }
+assert { Max(-1.0, -1.0) = -1.0 }
+
+# Negative/positive mix
+assert { Max(-1.0, 1.0) = 1.0 }
+assert { Max(1.0, -1.0) = 1.0 }
+
+# Positive
+assert { Max(1.0, 2.0) = 2.0 }
+assert { Max(2.0, 1.0) = 2.0 }
+assert { Max(2.0, 2.0) = 2.0 }
+
+# Zero
+assert { Max(-1.0, 0.0) = 0.0 }
+assert { Max(0.0, -1.0) = 0.0 }
+assert { Max(1.0, 0.0)  = 1.0 }
+assert { Max(0.0, 1.0)  = 1.0 }
+assert { Max(0.0, 0.0)  = 0.0 }
+
+# NaN
+assert { Max(NaN, 1.0) = NaN }
+assert { Max(1.0, NaN) = NaN }
+assert { Max(NaN, NaN) = NaN }
+
+# Negative Infinity
+assert { Max(-Inf, 1.0) = 1.0 }
+assert { Max(1.0, -Inf) = 1.0 }
+assert { Max(-Inf, -Inf) = -Inf }
+
+# Infinity
+assert { Max(Inf, 1.0) = Inf }
+assert { Max(1.0, Inf) = Inf }
+assert { Max(Inf, Inf) = Inf }

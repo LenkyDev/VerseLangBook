@@ -1,0 +1,25 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+<#> Hits ensure in VVMAssembler:
+    === Handled ensure: ===
+    Ensure condition failed: ExistingPackage  [File:.\../Restricted/NotForLicensees/Plugins/VerseVM/Source/VerseVMCodeGen/Private/VVMAssembler.cpp] [Line: 103]
+    Stack:
+    [Callstack] 0x00007ff70aea3e7a VerseTestScriptCmdVM.exe!UE::Core::Private::Function::TFunctionRefCaller<`lambda at Runtime\CoreUObject\Public\VerseVM/VVMContext.h:632:36',void ()>::Call() [D:\P4\FNMain\Engine\Source\Runtime\Core\Public\Templates\Function.h:405]
+    [Callstack] 0x00007ff70ac8cf15 VerseTestScriptCmdVM.exe!Verse::FContextImpl::EnterConservativeStack() [D:\P4\FNMain\Engine\Source\Runtime\CoreUObject\Private\VerseVM\VVMContextImpl.cpp:41]
+    [Callstack] 0x00007ff70ae8cc27 VerseTestScriptCmdVM.exe!FVerseVmAssembler::TranslateExpressions() [D:\P4\FNMain\Engine\Restricted\NotForLicensees\Plugins\VerseVM\Source\VerseVMCodeGen\Private\VVMAssembler.cpp:45]
+bp_vm_only
+{
+assert_link_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0):
+      snippet:
+        abc<public> := class { A:int := 1; B:int := 2; C:int := 3 }
+        F():abc = abc{ A := 10; B := 20, C := 30 } 
+}
+verse_vm_only
+{
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0):
+      snippet:
+        abc<public> := class { A:int := 1; B:int := 2; C:int := 3 }
+        F():abc = abc{ A := 10; B := 20; C := 30 } 
+}

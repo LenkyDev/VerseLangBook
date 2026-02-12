@@ -1,0 +1,61 @@
+# Assert that ints are comparable for equality and order.
+assert_valid { f(a:int, b:int)<transacts><decides>:int = { return(a <  b) } }
+assert_valid { f(a:int, b:int)<transacts><decides>:int = { return(a <= b) } }
+assert_valid { f(a:int, b:int)<transacts><decides>:int = { return(a >  b) } }
+assert_valid { f(a:int, b:int)<transacts><decides>:int = { return(a >= b) } }
+assert_valid { f(a:int, b:int)<transacts><decides>:int = { return(a = b) } }
+assert_valid { f(a:int, b:int)<transacts><decides>:int = { return(a <> b) } }
+
+# Assert that reals are comparable for equality and order.
+assert_valid { f(a:float, b:float)<transacts><decides>:float = { return(a <  b) } }
+assert_valid { f(a:float, b:float)<transacts><decides>:float = { return(a <= b) } }
+assert_valid { f(a:float, b:float)<transacts><decides>:float = { return(a >  b) } }
+assert_valid { f(a:float, b:float)<transacts><decides>:float = { return(a >= b) } }
+assert_valid { f(a:float, b:float)<transacts><decides>:float = { return(a = b) } }
+assert_valid { f(a:float, b:float)<transacts><decides>:float = { return(a <> b) } }
+
+# Assert that bools are comparable for equality.
+assert_valid { f(a:logic, b:logic):logic = { return(logic{a = b}) } }
+assert_valid { f(a:logic, b:logic):logic = { return(logic{a <> b}) } }
+
+# Test that int and float are appropriately comparable.
+assert_semantic_error(3509){ f(a:int, b:float)<transacts><decides>: int = { return(a <  b) } }
+assert_semantic_error(3509){ f(a:int, b:float)<transacts><decides>: int = { return(a <= b) } }
+assert_semantic_error(3509){ f(a:int, b:float)<transacts><decides>: int = { return(a >  b) } }
+assert_semantic_error(3509){ f(a:int, b:float)<transacts><decides>: int = { return(a >= b) } }
+assert_valid { f(a:int, b:float)<transacts><decides>: int = { return(a = b) } }
+assert_valid { f(a:int, b:float)<transacts><decides>: int = { return(a <> b) } }
+
+# Test that int and logic are appropriately comparable.
+assert_semantic_error(3509){ f(a:int, b:logic)<transacts><decides>: int = { return(a <  b) } }
+assert_semantic_error(3509){ f(a:int, b:logic)<transacts><decides>: int = { return(a <= b) } }
+assert_semantic_error(3509){ f(a:int, b:logic)<transacts><decides>: int = { return(a >  b) } }
+assert_semantic_error(3509){ f(a:int, b:logic)<transacts><decides>: int = { return(a >= b) } }
+assert_valid { f(a:int, b:logic)<transacts><decides>: int = { return(a = b) } }
+assert_valid { f(a:int, b:logic)<transacts><decides>: int = { return(a <> b) } }
+
+# Test that int and a class instance appropriately comparable.
+assert_semantic_error(3509){C := class {}; f(a:int, b:C)<transacts><decides>: int = { return(a <  b) } }
+assert_semantic_error(3509){C := class {}; f(a:int, b:C)<transacts><decides>: int = { return(a <= b) } }
+assert_semantic_error(3509){C := class {}; f(a:int, b:C)<transacts><decides>: int = { return(a >  b) } }
+assert_semantic_error(3509){C := class {}; f(a:int, b:C)<transacts><decides>: int = { return(a >= b) } }
+assert_semantic_error(3509){C := class {}; f(a:int, b:C)<transacts><decides>: int = { return(a = b) } }
+assert_semantic_error(3509){C := class {}; f(a:int, b:C)<transacts><decides>: int = { return(a <> b) } }
+
+# Test that float and logic are appropriately comparable.
+assert_semantic_error(3509){ f(a:float, b:logic)<transacts><decides>: float = { return(a <  b) } }
+assert_semantic_error(3509){ f(a:float, b:logic)<transacts><decides>: float = { return(a <= b) } }
+assert_semantic_error(3509){ f(a:float, b:logic)<transacts><decides>: float = { return(a >  b) } }
+assert_semantic_error(3509){ f(a:float, b:logic)<transacts><decides>: float = { return(a >= b) } }
+assert_valid { f(a:float, b:logic)<transacts><decides>: float = { return(a = b) } }
+assert_valid { f(a:float, b:logic)<transacts><decides>: float = { return(a <> b) } }
+
+# Test that member variables and local variables are comparable.
+assert_valid:
+    C := class:
+        r1:float
+        f(r2:float):logic=
+            if(r1 < r2 or r1 < 100.0):
+                return(true)
+            else:
+                return(false)

@@ -1,0 +1,11 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert:
+    # This shouldn't hang.
+    Types := for (I:=1..4) { event(int) }
+    TestUtils.AreClassesEqual[Types[0], event(int)]
+    TestUtils.AreClassesEqual[Types[0], Types[1]]
+    TestUtils.AreClassesEqual[Types[0], Types[2]]
+    TestUtils.AreClassesEqual[Types[0], Types[3]]

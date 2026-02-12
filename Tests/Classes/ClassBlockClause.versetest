@@ -1,0 +1,132 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Basic tests that block is allowed in class/function bodies, and not elsewhere.
+assert_valid {F():void=block{}}
+
+assert_valid {c:=class{block{}}}
+assert_valid {c:=class{x:int; block{}}}
+assert_valid {c:=class{x:int; block{}; y:int; block{}}}
+assert_valid {c:=class{block{block{}}}}
+
+assert_semantic_error(3610){t:=interface{block{}}}
+assert_semantic_error(3610){m:=module{block{}}}
+assert_semantic_error(3546){e:=enum{block{}}}
+assert_semantic_error(3610){s:=struct{block{}}}
+
+
+assert_syntax_error(3100){"c:=class\{x:int block\{\}\}"}
+assert_syntax_error(3100){"c:=class:\n    x:int block\{\}"}
+
+# Test of heap effects in the block clause.
+c0 := class{block{CoroUtils.LogEvent("b")}}
+assert:
+    CoroUtils.LogEvent("a")
+    c0{}
+    CoroUtils.LogEvent("c")
+    CoroUtils.GetEventLogString() = "abc"
+    CoroUtils.Reset()
+
+# Test that the block clause can access instance variables in self.
+c1:=class{var M0:int=0; block{set M0+=1}}
+assert{C:=c1{M0:=10}; C.M0=11}
+
+# Test that block clauses are executed in the order they occur in the class body.
+c2:=class:
+    var M0:int=0
+    block{set M0 = 1}
+    var M1:int=0
+    block{set M1 = M0+1}
+assert{C:=c2{}; C.M0=1}
+assert{C:=c2{}; C.M1=2}
+
+# Test that failure is not allowed in a class block clause.
+assert_semantic_error(3512){ c:=class{block{false?}} }
+
+# Test that async function calls are not allowed in a class block clause.
+assert_semantic_error(3512):
+    F()<suspends>:void={}
+    c:=class{block{F()}}
+
+# Test that the block clauses of superclasses are executed before subclasses.
+c3 := class:
+    block:
+        CoroUtils.LogEvent("b")
+c4 := class(c3):
+    block:
+        CoroUtils.LogEvent("c")
+
+# VerseVM runs fields and blocks in class body order, subclass before superclass.
+assert:
+    CoroUtils.LogEvent("a")
+    c4{}
+    bp_vm_only. CoroUtils.GetEventLogString() = "abc"
+    verse_vm_only. CoroUtils.GetEventLogString() = "acb"
+    CoroUtils.Reset()
+
+# Test calling functions from a block clause.
+F0()<transacts>:void=
+    CoroUtils.LogEvent("b")
+c5:=class:
+    block{F0()}
+    
+assert:
+    CoroUtils.LogEvent("a")
+    c5{}
+    CoroUtils.GetEventLogString() = "ab"
+    CoroUtils.Reset()
+
+c6:=class:
+    F1()<transacts>:void=
+        CoroUtils.LogEvent("b")
+    block{F1()}
+
+assert:
+    CoroUtils.LogEvent("a")
+    c6{}
+    CoroUtils.GetEventLogString() = "ab"
+    CoroUtils.Reset()
+
+# Test that `Self` works in a block clause.
+# var V4:?c7=false
+c7:=class<unique>:
+    var V4:?c7 = false
+    block:
+        set V4=option{Self}
+
+assert{C:=c7{}; C.V4?=C}
+
+# Test that a class containing an member with a default initializer that is an
+# instance of a class with a 'block' clause executes the inner class default
+# instance 'block' clause when the outer class is instantiated if the instantiation
+# archetype does not override the inner class default value.
+c8 := class{block{CoroUtils.LogEvent("_")}}
+c9 := class:
+    C:c8=c8{}
+
+assert:
+    CoroUtils.LogEvent("a")
+    c8{}
+    CoroUtils.LogEvent("b")
+    c9{}
+    CoroUtils.LogEvent("c")
+    c9{}
+    CoroUtils.LogEvent("d")
+    c9{C:=c8{}}
+    CoroUtils.GetEventLogString() = "a_b_c_d_"
+
+# Test that 'defer' clauses in class 'block' clauses are executed when each class
+# 'block' clause exits.
+c11 := class:
+    block:
+        CoroUtils.LogEvent("a")
+        defer{CoroUtils.LogEvent("c")}
+        CoroUtils.LogEvent("b")
+    block:
+        CoroUtils.LogEvent("d")
+        defer{CoroUtils.LogEvent("f")}
+        CoroUtils.LogEvent("e")
+assert:
+    c11{}
+    CoroUtils.GetEventLogString() = "abcdef"

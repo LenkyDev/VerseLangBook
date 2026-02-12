@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{ /Verse.org/Tests/VerseTestScriptCmd }
+
+int_ref := class:
+    var Contents:int = 0
+
+F(Xs:[]int, Y:int_ref)<suspends>:void =
+    for (X:Xs). set Y.Contents += X
+
+assert:
+    X := int_ref{}
+    spawn. F((1, 2, 3), X)
+    X.Contents = 6

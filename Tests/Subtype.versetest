@@ -1,0 +1,251 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+C0 := class {}
+C1 := class(C0) {}
+
+C2 := class:
+    var m0:subtype(C0)
+    var m1:subtype(C2)
+    f0():void={set m0 = C0}
+    f1():void={set m0 = C1}
+    f2():void={set m1 = C2}
+    f3(classArg:subtype(C0)):void={set m0 = classArg}
+    f4(classArg:subtype(C1)):void={set m0 = classArg}
+
+CC0 := class<castable> {}
+CC1 := class(CC0) {}
+
+CC2 := class<castable>:
+    var m0:castable_subtype(CC0)
+    var m1:castable_subtype(CC2)
+    f0():void={set m0 = CC0}
+    f1():void={set m0 = CC1}
+    f2():void={set m1 = CC2}
+    f3(classArg:castable_subtype(CC0)):void={set m0 = classArg}
+    f4(classArg:castable_subtype(CC1)):void={set m0 = classArg}
+
+T0 := interface { ft0():void }
+T1 := interface(T0) { ft1():void }
+
+CT0 := class(T0):
+    var mt0:subtype(T0)
+    
+    ft0<override>():void={set mt0 = CT0}
+
+CT1 := class(T1):
+    var mt0:subtype(T0)
+    var mt1:subtype(T1)
+    
+    ft0<override>():void={set mt0 = CT0}
+    
+    ft1<override>():void={set mt0 = CT1}
+    ft2():void={set mt1 = CT1}
+    ft3(classArg:subtype(T0)):void={set mt0 = classArg}
+    ft4(classArg:subtype(T1)):void={set mt0 = classArg}
+
+TT0 := interface<castable> { ft0():void }
+TT1 := interface(TT0) { ft1():void }
+
+
+CTT0 := class(TT0):
+    var mt0:castable_subtype(TT0)
+    ft0<override>():void={set mt0 = CTT0}
+
+CTT1 := class<castable>(TT1):
+    var mt0:subtype(TT0)
+    var mt1:subtype(TT1)
+    
+    ft0<override>():void={set mt0 = CTT0}
+    
+    ft1<override>():void={set mt0 = CTT1}
+    ft2():void={set mt1 = CTT1}
+    ft3(classArg:castable_subtype(TT0)):void={set mt0 = classArg}
+    ft4(classArg:castable_subtype(TT1)):void={set mt0 = classArg}
+
+# We can't yet compare the subtype values, so just test that we can compile and run the code without errors.
+assert{c2:=C2{m0:=C1,m1:=C2};            true? <#c2.m0 = C1 and c2.m1 = C2#>}
+assert{c2:=C2{m0:=C1,m1:=C2}; c2.f0()  ; true? <#c2.m0 = C0 and c2.m1 = C2#>}
+assert{c2:=C2{m0:=C1,m1:=C2}; c2.f1()  ; true? <#c2.m0 = C1 and c2.m1 = C2#>}
+assert{c2:=C2{m0:=C1,m1:=C2}; c2.f2()  ; true? <#c2.m0 = C1 and c2.m1 = C2#>}
+assert{c2:=C2{m0:=C1,m1:=C2}; c2.f3(C1); true? <#c2.m0 = C1 and c2.m1 = C2#>}
+assert{c2:=C2{m0:=C1,m1:=C2}; c2.f3(C0); true? <#c2.m0 = C0 and c2.m1 = C2#>}
+assert{c2:=C2{m0:=C1,m1:=C2}; c2.f4(C1); true? <#c2.m0 = C1 and c2.m1 = C2#>}
+# castable_subtype
+assert{cc2:=CC2{m0:=CC1,m1:=CC2};            true? <#cc2.m0 = CC1 and cc2.m1 = CC2#>}
+assert{cc2:=CC2{m0:=CC1,m1:=CC2}; cc2.f0()  ; true? <#cc2.m0 = CC0 and cc2.m1 = CC2#>}
+assert{cc2:=CC2{m0:=CC1,m1:=CC2}; cc2.f1()  ; true? <#cc2.m0 = CC1 and cc2.m1 = CC2#>}
+assert{cc2:=CC2{m0:=CC1,m1:=CC2}; cc2.f2()  ; true? <#cc2.m0 = CC1 and cc2.m1 = CC2#>}
+assert{cc2:=CC2{m0:=CC1,m1:=CC2}; cc2.f3(CC1); true? <#cc2.m0 = CC1 and cc2.m1 = CC2#>}
+assert{cc2:=CC2{m0:=CC1,m1:=CC2}; cc2.f3(CC0); true? <#cc2.m0 = CC0 and cc2.m1 = CC2#>}
+assert{cc2:=CC2{m0:=CC1,m1:=CC2}; cc2.f4(CC1); true? <#cc2.m0 = CC1 and cc2.m1 = CC2#>}
+
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1};               true? <#ct1.mt0 = CT0 and ct1.m1 = CT1#>}
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1}; ct1.ft0()   ; true? <#ct1.mt0 = CT0 and ct1.m1 = CT1#>}
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1}; ct1.ft1()   ; true? <#ct1.mt0 = CT1 and ct1.m1 = CT1#>}
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1}; ct1.ft2()   ; true? <#ct1.mt0 = CT0 and ct1.m1 = CT1#>}
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1}; ct1.ft3(CT1); true? <#ct1.mt0 = CT1 and ct1.m1 = CT1#>}
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1}; ct1.ft3(CT0); true? <#ct1.mt0 = CT0 and ct1.m1 = CT1#>}
+assert{ct1:=CT1{mt0:=CT0,mt1:=CT1}; ct1.ft4(CT1); true? <#ct1.mt0 = CT1 and ct1.m1 = CT1#>}
+# castable_subtype
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1};               true? <#ctt1.mt0 = CTT0 and ctt1.m1 = CTT1#>}
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1}; ctt1.ft0()   ; true? <#ctt1.mt0 = CTT0 and ctt1.m1 = CTT1#>}
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1}; ctt1.ft1()   ; true? <#ctt1.mt0 = CTT1 and ctt1.m1 = CTT1#>}
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1}; ctt1.ft2()   ; true? <#ctt1.mt0 = CTT0 and ctt1.m1 = CTT1#>}
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1}; ctt1.ft3(CTT1); true? <#ctt1.mt0 = CTT1 and ctt1.m1 = CTT1#>}
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1}; ctt1.ft3(CTT0); true? <#ctt1.mt0 = CTT0 and ctt1.m1 = CTT1#>}
+assert{ctt1:=CTT1{mt0:=CTT0,mt1:=CTT1}; ctt1.ft4(CTT1); true? <#ctt1.mt0 = CTT1 and ctt1.m1 = CTT1#>}
+
+# Test that subtype(T) <: type
+assert_valid{C := class { f(c:subtype(C)):type = { return(c) }}}
+assert_valid{C := class { f(c:castable_subtype(C)):type = { return(c) }}}
+
+assert_valid{T := interface {}; f(x:subtype(T)):type = { x } }
+assert_valid{T := interface {}; f(x:castable_subtype(T)):type = { x } }
+
+# Test that subtype requires exactly one argument.
+assert_semantic_error(3547){ C:=class {m0:subtype()} }
+assert_semantic_error(3547){ C:=class {m0:subtype(C,C)} }
+assert_semantic_error(3547){ C:=class {m0:castable_subtype()} }
+assert_semantic_error(3547){ C:=class {m0:castable_subtype(C,C)} }
+
+# Test that subtype requires an argument that is a type.
+assert_semantic_error(3547){ C:=class {m0:subtype(0)} }
+assert_valid { C:=class {m0:subtype(true)} }
+assert_valid { E := enum {}; C:=class {m0:subtype(E)} }
+assert_valid { C:=class {m0:subtype(int)} }
+assert_valid { C:=class {m0:subtype(logic)} }
+assert_valid { C:=class {m0:subtype(float)} }
+assert_valid { C:=class {m0:subtype([]C)} }
+assert_valid { C:=class {m0:subtype(?C)} }
+assert_valid { C:=class {m0:subtype(type{f():void})} }
+
+# Test that castable_subtype requires an argument that is an interface or class type.
+assert_semantic_error(3547) { C:=class {m0:castable_subtype(0)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype(true)} }
+assert_semantic_error(3509) { E := enum {}; C:=class {m0:castable_subtype(E)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype(int)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype(logic)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype(float)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype([]C)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype(?C)} }
+assert_semantic_error(3509) { C:=class {m0:castable_subtype(type{f():void})} }
+assert_semantic_error(3509, 3509) { C:=class {}; A:=castable_subtype(castable_subtype(castable_subtype(C))) }
+assert_semantic_error(3509) { C:=class {}; A:=castable_subtype(castable_subtype(C)) }
+assert_semantic_error(3509) { C:=class {}; A:=castable_subtype(subtype(C)) }
+assert_semantic_error(3509) { A:=castable_subtype(type) }
+assert_semantic_error(3509) { C:=class {}; B:type = C; A:=castable_subtype(B) }
+
+# Test that subtype requires an argument that isn't a subclass of attribute.
+assert_semantic_error(3502){ C:=class(attribute) {m0:subtype(C)} }
+assert_valid { C:=class {m0:subtype(int)} }
+assert_valid { C:=class {m0:subtype(float)} }
+assert_valid { C:=class {m0:subtype(logic)} }
+
+# Test that castable_subtype requires an argument that isn't a subclass of attribute.
+assert_semantic_error(3502){ C:=class(attribute) {m0:castable_subtype(C)} }
+
+# Test that subtype(T) <: subtype(U) iff T <: U
+assert_valid:
+    super_class := class{}
+    sub_class := class(super_class) {}
+    F():void=
+        L0:subtype(sub_class)=sub_class
+        L1:subtype(super_class)=L0
+
+assert_valid:
+    super_class := class<castable>{}
+    sub_class := class(super_class) {}
+    F():void=
+        L0:castable_subtype(sub_class)=sub_class
+        L1:castable_subtype(super_class)=L0
+
+assert_semantic_error(3509):
+    super_class := class<castable>{}
+    sub_class := class(super_class) {}
+    F():void=
+        L0:subtype(super_class)=super_class
+        L1:subtype(sub_class)=L0
+
+assert_semantic_error(3509):
+    super_class := class<castable>{}
+    sub_class := class(super_class) {}
+    F():void=
+        L0:castable_subtype(super_class)=super_class
+        L1:castable_subtype(sub_class)=L0
+
+assert_valid:
+    super_interface := interface{}
+    sub_interface := interface(super_interface) {}
+    super_class := class(super_interface) {}
+    sub_class := class(sub_interface) {}
+    F():void=
+        L0:subtype(sub_interface)=sub_class
+        L1:subtype(super_interface)=L0
+
+assert_valid:
+    super_interface := interface<castable>{}
+    sub_interface := interface(super_interface) {}
+    super_class := class(super_interface) {}
+    sub_class := class(sub_interface) {}
+    F():void=
+        L0:castable_subtype(sub_interface)=sub_class
+        L1:castable_subtype(super_interface)=L0
+
+assert_semantic_error(3509):
+    super_interface := interface{}
+    sub_interface := interface(super_interface) {}
+    super_class := class(super_interface) {}
+    sub_class := class(sub_interface) {}
+    F():void=
+        L0:subtype(super_interface)=super_class
+        L1:subtype(sub_interface)=L0
+
+assert_semantic_error(3509):
+    super_interface := interface<castable>{}
+    sub_interface := interface(super_interface) {}
+    super_class := class(super_interface) {}
+    sub_class := class(sub_interface) {}
+    F():void=
+        L0:castable_subtype(super_interface)=super_class
+        L1:castable_subtype(sub_interface)=L0
+
+assert_semantic_error(3509){ C:=class {var m0:subtype(C); f0()             :void      ={set m0=subtype(C)    }}}
+assert_semantic_error(3509){ C:=class {                   f0(a0:subtype(C)):void      ={f0(subtype(C))    }}}
+assert_semantic_error(3510){ C:=class {                   f0()             :subtype(C)={return subtype(C)}}}
+
+assert_semantic_error(3509){ C:=class {var m0:castable_subtype(C); f0()                      :void               ={set m0=castable_subtype(C)    }}}
+assert_semantic_error(3509){ C:=class {                            f0(a0:castable_subtype(C)):void               ={f0(castable_subtype(C))    }}}
+assert_semantic_error(3510){ C:=class {                            f0()                      :castable_subtype(C)={return castable_subtype(C)}}}
+
+assert_semantic_error(3509){ T:=interface{};C := class{var m0:subtype(T); f0()             :void      ={set m0=subtype(T)    }}}
+assert_semantic_error(3509){ T:=interface{};                              f0(a0:subtype(T)):void      ={f0(subtype(T))    }}
+assert_semantic_error(3510){ T:=interface{};                              f0()             :subtype(T)={return subtype(T)}}
+
+assert_semantic_error(3509){ T:=interface{};C := class{var m0:castable_subtype(T); f0()                      :void               ={set m0=castable_subtype(T)    }}}
+assert_semantic_error(3509){ T:=interface{};                                       f0(a0:castable_subtype(T)):void               ={f0(castable_subtype(T))    }}
+assert_semantic_error(3510){ T:=interface{};                                       f0()                      :castable_subtype(T)={return castable_subtype(T)}}
+
+# Test that you can't use subtype as the name of a new definition.
+assert_semantic_error(3514){subtype := class {}}
+assert_semantic_error(3514){D := class {subtype():void={}}}
+assert_semantic_error(3514){D := class {subtype(d:D):void={}}}
+assert_semantic_error(3514){D := class {f(subtype:int):void={}}}
+assert_semantic_error(3514){D := class {f(i:int):void={subtype:int=0}}}
+assert_semantic_error(3514){D := class {subtype:int}}
+
+# Test that you can't use castable_subtype as the name of a new definition.
+assert_semantic_error(3514){castable_subtype := class {}}
+assert_semantic_error(3514){D := class {castable_subtype():void={}}}
+assert_semantic_error(3514){D := class {castable_subtype(d:D):void={}}}
+assert_semantic_error(3514){D := class {f(castable_subtype:int):void={}}}
+assert_semantic_error(3514){D := class {f(i:int):void={castable_subtype:int=0}}}
+assert_semantic_error(3514){D := class {castable_subtype:int}}
+
+# Ensure this generates code
+IntParam(X:subtype(int)):void = {}
+
+CallIntParam():void = IntParam(int)
+
+IntReturn():subtype(int) = int
+
+CallIntReturn():void = IntReturn()

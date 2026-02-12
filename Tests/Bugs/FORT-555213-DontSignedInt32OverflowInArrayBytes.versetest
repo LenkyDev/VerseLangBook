@@ -1,0 +1,18 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# This takes a really long time, but it works in the new VM. Just disabling it for now
+# to make testing run more quickly. We also may want to reevaluate if this test is worth
+# it given how long it takes.
+
+Foo(Depth:int):[]int=
+    if(Depth = 0):
+        array{1,1}
+    else:
+        BigArray := Foo(Depth-1)
+        BigArray + BigArray
+
+assert_success_or_runtime_error:
+    Array := Foo(28)
+    Array.Length = 536870912

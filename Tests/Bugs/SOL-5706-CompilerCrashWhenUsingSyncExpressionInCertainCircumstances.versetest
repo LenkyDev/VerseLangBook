@@ -1,0 +1,7 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Implemented in SemanticAnalyzer, but not in backend.
+# Added error in SemanticAnalyzer to prevent crash in backend.
+assert_semantic_error(3552){F()<suspends>:[]int =sync(X:=1..2){G()}; G()<suspends>:float=1.0}
+assert_semantic_error(3552){F()<suspends>:int   =rush(X:=1..2){G()}; G()<suspends>:float=1.0}
+assert_semantic_error(3552){F()<suspends>:int   =race(X:=1..2){G()}; G()<suspends>:float=1.0}

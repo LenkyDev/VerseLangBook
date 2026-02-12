@@ -1,0 +1,9 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Failed in debug
+
+TestCrash():void=
+    Err("This is a crash test")
+
+assert_runtime_error:
+    TestCrash()

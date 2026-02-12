@@ -1,0 +1,27 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+c := class:
+    X:int = 0
+
+d := class:
+    var A:[]c = array{}
+    var B:[int]c = map{}
+    var C:?c = false
+
+    F()<suspends>:void=
+        set A = block:
+            X:=array{c{X:=1}}
+            X
+        set B = block:
+            X:=map{1=>c{X:=2}}
+            X
+        set C = block:
+            X:=option{c{X:=3}}
+            X
+
+assert:
+    D := d{}
+    spawn{D.F()}
+    D.A[0].X=1
+    D.B[1].X=2
+    D.C?.X=3

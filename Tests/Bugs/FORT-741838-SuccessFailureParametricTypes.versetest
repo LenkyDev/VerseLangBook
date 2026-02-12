@@ -1,0 +1,88 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+#-----------------------------
+AnotherFunc(t:type):tuple(type, logic)= (t, TestDangerousTypePassing.IsAMostDangerousNull(t))
+
+Thing1(t:type) := class:
+    # NotOkay calls AnotherFunc by passing the type-t that's defined by the
+    # parametric arg to the containing class. In reality, this turns into a
+    # nullptr because we don't actually allow people to inspect types as types.
+    CallDangerIndirectly(tt:type):logic= AnotherFunc(tt)(1)
+    CallDangerDirectly():logic= TestDangerousTypePassing.IsAMostDangerousNull(t)
+
+verse_vm_todo
+{
+assert:
+    T:= Thing1(int){}
+    T.CallDangerIndirectly(type(int)) = true
+    T.CallDangerDirectly() = true
+}
+
+
+Thing2(t:type) := class:
+    T1:Thing1(t) := Thing1(t){}
+
+    Indirectly():logic= T1.CallDangerIndirectly(t)
+    Directly():logic= T1.CallDangerDirectly()
+
+verse_vm_todo
+{
+assert:
+    T2:= Thing2(int){}
+    T2.Indirectly() = true
+    T2.Directly() = true
+}
+    
+#-----------------------------
+# The user-provided code that started this whole adventure
+result_interface(successType: type, failureType: type) := interface:
+    SuccessFunc()<transacts><decides>: successType
+    FailureFunc()<transacts><decides>: failureType
+
+
+ResultModule := module:
+    result_impl(successType: type, failureType: type) := class(result_interface(successType, failureType)):
+        ResultSuccess: ?successType = false
+        ResultFailure: ?failureType = false
+        
+        SuccessFunc<override>()<transacts><decides>: successType = { ResultSuccess? }
+        FailureFunc<override>()<transacts><decides>: failureType = { ResultFailure? }
+
+    BuildSuccess<public>(SuccessValue: successType, failureType: type where successType: type): result_interface(successType, failureType)=
+        result_impl(successType, failureType):
+            ResultSuccess := option { SuccessValue }
+
+    BuildFailure<public>(FailureValue: failureType, successType: type where failureType: type): result_interface(successType, failureType)=
+        result_impl(successType, failureType):
+            ResultFailure := option { FailureValue }
+
+result_builder(successType: type, failureType: type) := class:
+    #ClassFoo:type = failureType
+    GetSuccessFuncInterface(SuccessArg: successType): result_interface(successType, failureType)=
+        ResultModule.BuildSuccess(SuccessArg, failureType) # <--- this line
+
+    GetFailureFuncInterface(FailureArg: failureType): result_interface(successType, failureType)=
+        ResultModule.BuildFailure(FailureArg, successType) # <--- this line
+
+get_result_builder(successType: type, failureType: type): result_builder(successType, failureType) = result_builder(successType, failureType) {}
+
+assert:
+    Foo := get_result_builder(int, float)
+
+    BarInt := Foo.GetSuccessFuncInterface(42);
+    BazFloat := Foo.GetFailureFuncInterface(666.666);
+
+    BarInt.SuccessFunc[] = 42
+    not BarInt.FailureFunc[]
+    not BazFloat.SuccessFunc[]
+    BazFloat.FailureFunc[] = 666.666
+    
+assert:
+    Foo := get_result_builder(string, logic)
+
+    SuccessString := Foo.GetSuccessFuncInterface("StringValue!");
+    SuccessString.SuccessFunc[] = "StringValue!"
+    not SuccessString.FailureFunc[]

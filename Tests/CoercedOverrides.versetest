@@ -1,0 +1,114 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+assert_semantic_error(3609, 3523, 3591, 3591, 3532):
+    class1 := class<abstract>:
+        Method1(:int):int
+
+    class2 := class<abstract>(class1):
+        Method1(:string):string
+
+    class3 := class(class2):
+        Method1<override>(X:t where t:type):t = X
+
+assert_semantic_error(3532, 3591, 3532):
+    class1 := class<abstract>:
+        Method1():int
+    
+    class2 := class(class1):
+        Method1()<suspends>:int = 1
+
+class1 := class<abstract>:
+    Property1:[]int
+    Method1(:int):int
+    Method2():int
+    Method3()<decides>:int
+    Method4()<suspends>:int
+
+class2 := class(class1):
+    Property1<override>:tuple(int, int)
+    Method1<override>(X:t where t:type):t = X
+    Method2<override>():int = Property1(0) + Property1(1)
+    Method3<override>():int = 4
+    Method4<override>():int =
+        CoroUtils.LogEvent("a")
+        5
+
+assert:
+    X:class1 = class2{Property1:=(1, 2)}
+    X.Method1(1) = 1
+    X.Method2() = 3
+    X.Method3[] = 4
+    spawn{X.Method4()}
+    CoroUtils.Tick(1)
+    CoroUtils.GetEventLogString() = "a,"
+    CoroUtils.Reset()
+    Y:class2 = class2{Property1:=(3, 4)}
+    Y.Method1(2) = 2
+    Y.Method1(true) = true
+    Y.Method2() = 7
+    Y.Method3() = 4
+    Y.Method4() = 5
+    CoroUtils.GetEventLogString() = "a"
+
+interface1 := interface:
+    Method1(:int):int
+    Method2():int
+    Method3()<decides>:int
+    Method4()<suspends>:int
+
+class3 := class(interface1):
+    Property1:tuple(int, int)
+    Method1<override>(X:t where t:type):t = X
+    Method2<override>():int = Property1(0) + Property1(1)
+    Method3<override>():int = 4
+    Method4<override>():int =
+        CoroUtils.LogEvent("a")
+        5
+
+assert:
+    X:interface1 = class3{Property1:=(1, 2)}
+    X.Method1(1) = 1
+    X.Method2() = 3
+    X.Method3[] = 4
+    spawn{X.Method4()}
+    CoroUtils.Tick(1)
+    CoroUtils.GetEventLogString() = "a,"
+    CoroUtils.Reset()
+    Y:class2 = class2{Property1:=(3, 4)}
+    Y.Method1(2) = 2
+    Y.Method2() = 7
+    Y.Method3() = 4
+    Y.Method4() = 5
+    CoroUtils.GetEventLogString() = "a"
+
+class4 := class:
+    Method(X:int, Y:int)<decides>:int = X + Y
+
+class5 := class(class4):
+    Method<override>(X:[]int)<decides>:int = X[0]
+
+class6 := class(class5):
+    Method<override>(X:any):int = 42
+
+assert:
+    X := class4{}
+    X.Method[1, 2] = 3
+
+assert:
+    X := class5{}
+    X.Method[array{1, 2, 3}] = 1
+
+assert:
+    X := class6{}
+    X.Method(true) = 42
+
+assert:
+    X:class5 := class6{}
+    X.Method[array{1, 2, 3}] = 42
+
+assert:
+    X:class4 := class6{}
+    X.Method[1, 2] = 42
+

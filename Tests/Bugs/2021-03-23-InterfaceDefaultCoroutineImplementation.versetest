@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+InterfaceA := interface:
+    setCoroResult((local:)result:int):void
+    interfaceCoroV(x:int)<suspends>:void # Implementation was here, but is moved to class.
+
+
+ClassE := class<abstract>(InterfaceA):
+    var coroResult:int = 0
+    setCoroResult<override>((local:)result:int):void = { set coroResult = (local:)result }
+
+ClassF := class(ClassE):
+    interfaceCoroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); setCoroResult(2000+x) } # Implementation moved here
+
+assert:
+    f := ClassF{}
+    t := InterfaceA[f]
+    spawn { t.interfaceCoroV(50) }
+    f.coroResult = 2050

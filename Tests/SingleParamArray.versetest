@@ -1,0 +1,102 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{ /Verse.org/Tests/VerseTestScriptCmd }
+
+F0(X:[]int)<transacts><decides>:int = X[0]
+
+assert:
+    X := (1, 2)
+    F0[X] = 1
+
+assert:
+    F0[3, 4] = 3
+
+F1(X:[][]int)<transacts><decides>:int = X[0][1]
+
+assert:
+    X := ((1, 2), (3, 4))
+    F1[X] = 2
+
+F2(X:tuple([]int, int))<transacts><decides>:int = X(0)[1]
+
+assert:
+    X := ((1, 2), 3)
+    F2[X] = 2
+
+F3(X:?[]int)<transacts><decides>:int = X?[1]
+
+assert:
+    X := option{(1, 2)}
+    F3[X] = 2
+
+assert:
+    X:tuple(int, int) = (1, 2)
+    Y:[]int = X
+    Y[1] = 2
+
+# Array to tuple conversion is disallowed
+assert_semantic_error(3509):
+    F4(X:int, Y:int):int = X
+    Z:[]int = array{1, 2}
+    G():int = F4(Z)
+
+assert_semantic_error(3509):
+    X:[]int = array{1, 2}
+    Y:tuple(int, int) = X
+
+# Tuple to array conversion is disallowed - array element type is not a
+# supertype of all tuple element types
+assert_semantic_error(3509):
+    F5(X:[]int)<transacts><decides>:int = X[0]
+    Y:tuple(int, float) = (1, 2.0)
+    G()<transacts><decides>:int = F5[Y]
+
+F6(X:[]any):int = X.Length
+
+assert:
+    X:tuple(int, float) = (1, 2.0)
+    F6(X) = 2
+
+# Tuple to array conversion is disallowed - array element type is not a
+# supertype of all tuple element types
+assert_semantic_error(3509):
+    F7(X:[]int)<transacts><decides>:int = X[0]
+    Y:tuple(float, float) = (1.0, 2.0)
+    G()<transacts><decides>:int = F7[Y]
+
+interface1 := interface:
+
+class1 := class(interface1):
+
+class2 := class(interface1):
+
+F8(X:[]interface1):int = X.Length
+
+assert:
+    X:class1 = class1{}
+    Y:class2 = class2{}
+    F8(X, Y) = 2
+
+bp_vm_only{
+assert_ir_error(3502):
+    F9(:[]int):void={}
+    F10(:tuple(int, int)):void={}
+    G(P:logic):void =
+        F:type{_(:tuple(int, int)):void} = if (P?) { F9 } else { F10 }
+        F(1, 2)
+}
+verse_vm_only {
+F9(:[]int):void={}
+F10(:tuple(int, int)):void={}
+G(P:logic):void =
+    F:type{_(:tuple(int, int)):void} = if (P?) { F9 } else { F10 }
+    F(1, 2)
+assert:
+    G(true)
+    G(false)
+}
+
+StringIdentity(String:string):string = String
+
+assert:
+    StringIdentity("abc") = "abc"

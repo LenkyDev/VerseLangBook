@@ -1,0 +1,159 @@
+﻿{
+	"localizations": [
+		{
+			"path": "/Verse.org/VerseTests/form2a/TheMsg",
+			"default": "The Message",
+			"where": "Localization.versetest(23,5, 23,48)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/form2b/TheMsg",
+			"default": "The Message",
+			"where": "Localization.versetest(30,5, 30,55)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/form2c/TheMsg",
+			"default": "The {0u004d}essage \\r\n\t\"'#<>&~",
+			"where": "Localization.versetest(37,5, 37,79)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsg4",
+			"default": "The Message",
+			"where": "Localization.versetest(49,1, 49,58)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsg6",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(59,1, 59,68)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsg6b",
+			"default": "The Message to {Name} \\\r\n\t\"'#<>&~",
+			"where": "Localization.versetest(63,1, 63,99)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsg6c",
+			"default": "The {0u004d}essage to {Name}",
+			"where": "Localization.versetest(67,1, 67,78)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsgWithArgs1",
+			"default": "Hey {Name}, your number is {Number}",
+			"where": "Localization.versetest(72,1, 72,102)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsgWithArgs2",
+			"default": "Hey {Number} {Name}, your number is {Number} and your name is {Name}",
+			"where": "Localization.versetest(77,1, 77,135)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsgWithArgs3",
+			"default": "I like your name, {Name}",
+			"where": "Localization.versetest(82,1, 82,91)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsgWithArgs4",
+			"default": "Thanks for playing!",
+			"where": "Localization.versetest(87,1, 87,86)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheSingleIntMsg",
+			"default": "The Message to {Number}",
+			"where": "Localization.versetest(92,1, 92,77)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheSingleIntMsg2",
+			"default": "{Number}",
+			"where": "Localization.versetest(97,1, 97,63)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheSingleStringMsg",
+			"default": "{Name}",
+			"where": "Localization.versetest(101,1, 101,64)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/InterpolantWithWhitespace1",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(146,1, 146,88)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/InterpolantWithWhitespace2",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(147,1, 147,88)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/InterpolantWithComment1",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(148,1, 148,97)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/InterpolantWithComment2",
+			"default": "The Message to I",
+			"where": "Localization.versetest(149,1, 149,97)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/InterpolantWithComment3",
+			"default": "The Message to I",
+			"where": "Localization.versetest(150,1, 150,97)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/StringWithComment1",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(151,1, 151,90)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/TheMsg7",
+			"default": "The Message to {Name} is {Abc}",
+			"where": "Localization.versetest(164,1, 164,77)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/super_class/MyMessage",
+			"default": "A",
+			"where": "Localization.versetest(169,5, 169,39)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/sub_class/MyMessage",
+			"default": "B",
+			"where": "Localization.versetest(171,5, 171,61)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/common_code/Goal",
+			"default": "No Goal",
+			"where": "Localization.versetest(177,5, 177,53)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/case_a/Task",
+			"default": "Collect A",
+			"where": "Localization.versetest(180,5, 180,54)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/case_a/Goal",
+			"default": "A",
+			"where": "Localization.versetest(181,5, 181,46)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/case_b/Task",
+			"default": "Collect B",
+			"where": "Localization.versetest(184,5, 184,54)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/NamedParam",
+			"default": "{A}!",
+			"where": "Localization.versetest(187,1, 187,47)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/NamedParams",
+			"default": "{A} {B}",
+			"where": "Localization.versetest(192,1, 192,59)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/NamedParamsWithDefaults",
+			"default": "{A} {B}",
+			"where": "Localization.versetest(196,1, 196,79)"
+		},
+		{
+			"path": "/Verse.org/VerseTests/UsingTuple",
+			"default": "{A} {B} {C}",
+			"where": "Localization.versetest(203,1, 203,69)"
+		}
+	]
+}

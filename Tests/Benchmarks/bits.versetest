@@ -1,0 +1,476 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# This is trivial implementation of a bit fiddling library for fixnums.
+# Todo:
+# Implement: Int8, Int16, Int32, Int128, Word128
+# Implement: Conversion ops and narrowing
+
+using { /Verse.org }
+
+
+############################# Utils #############################################
+Impossible(Msg:string)<transacts>:false =
+    return Err("[Panic]: " + Msg )
+
+######################## bit fiddler helpers ###################################
+_LSB(X:int)<computes><decides>:int =
+    Mod[X,2]
+
+_MSB(B:int,Width:int)<transacts><decides>:int =
+    _ShiftR[B, Width - 1]
+
+_ShiftR(X:int, Count:int)<transacts><decides>:int =
+    Floor[X * Pow(0.5,Count * 1.0)]
+
+_ShiftL(X:int, Count:int)<transacts><decides>:int =
+    Int[X * Pow(2.0,Count * 1.0)]
+
+_XOr(_X:int, _Y:int, Width:int)<transacts><decides>:int =
+    var X:int = _X
+    var Y:int = _Y
+    var CurrentBitValue:int = 1
+    var Result:int = 0
+    for (I := 0..Width - 1):
+        XBit := _LSB[X]
+        YBit := _LSB[Y]
+        if (XBit <> YBit) then set Result += CurrentBitValue
+
+        set CurrentBitValue *= 2
+        set Y = Int[Y * 0.5] or Err("XOr") # morally a _ShiftR[Y,1]
+        set X = Int[X * 0.5] or Err("XOr") # need or Err(...) for set
+    return Result
+
+_Or(X:int, Y:int, Width:int)<decides><transacts>:int =
+    Die := "_Or failed with X: {X}, Y: {Y}, Width: {Width}"
+    var Result:int = 0
+    var I:int = 0
+    var BitPos:int = 1
+    loop:
+        if (I > Width - 1):
+            break
+        # The meat
+        Temp_X:rational := X / BitPos or Err(Die)
+        Temp_Y:rational := Y / BitPos or Err(Die)
+        Temp_XX:int  := Mod[Floor(Temp_X), 2] or Err(Die)
+        Temp_YY:int  := Mod[Floor(Temp_Y), 2] or Err(Die)
+        BOrVal     := Max(Temp_XX,Temp_YY)
+
+        # iterate
+        set Result += BOrVal * BitPos
+        set BitPos *= 2
+        set I += 1
+    return Result
+
+# Unfortunately this implementation will overflows on Pow because verse int's
+# are signed 64-bit, so 63 bit in actuality. This will be changed in the new VM
+# where int will implement bignums
+
+# The intuition here is that if we know the width of X, then ~X is simply the
+# max value in the address space - X - 1. For example, if we had a 4-bit address
+# space then the max value is 0xF (15). Then ~7 = 1111 - 0111 = 1000 = 8
+# so in this example its simply 2**4 - 1 - 7 = 8
+_Not(X:int, Width:int)<decides><transacts>:int =
+    FinalObj:int := Int[Pow(2.0,Width * 1.0)] or Err("_Not: Pow Overflowed")
+    return FinalObj - X - 1
+
+# This will also overflow
+# BitNot64(X:int):int = _Not(X,64)
+
+_And(X:int, Y:int, Width:int)<decides><transacts>:int =
+    # the DeMorgan's implementation
+    _Not[_Or[_Not[X,Width], _Not[Y,Width], Width], Width]
+
+<#> _Bit(N,Width) is the number where only the Nth bit (0-based) is set to 1 and all else
+    for example _Bit[7,8] is 0b10000000 = 128, _Bit[0,2] = 0b01
+    is zero'd out for the entire Width.
+_Bit(N:int, Width:int)<decides><transacts>:int =
+    if (N >= 0 and N <= Width - 1): # N is 0-based, Width is 1-based
+        return _ShiftL[1,N]
+    else:
+        Err("_Bit: Attempt to flip bit {N} which is greater than width: {Width - 1}")
+
+<#> Take the complement of the Nth bit
+_BitComplement(X:int, I:int, Width:int)<decides><transacts>:int =
+    _XOr[X, _Bit[I,Width],Width]
+
+<#> Complement all bits in X, bounded by Width
+_Complement(X:int, Width:int)<decides><transacts>:int =
+    Supremum := _Not[0,Width]
+    _XOr[X, Supremum, Width]
+
+<#> Clear the Ith Bit
+_Clear(X:int, I:int, Width:int)<decides><transacts>:int =
+    _And[X, _Complement[_Bit[I,Width], Width], Width]
+
+<#> True if the Ith bit in X is set, false otherwise
+_Test(X:int, I:int, Width:int)<transacts>:logic =
+    logic{0 <> _And[X, _Bit[I,Width], Width]}
+
+<#> Set the Ith bit in X bounded by width
+_Set(X:int, I:int, Width:int)<decides><transacts>:int =
+    _Or[X,_Bit[I,Width],Width]
+
+_RotateR(X:int, N:int, Width:int)<decides>:int=
+    _ShiftR[X,N] + _ShiftL[X,Width - N]
+
+_RotateL(X:int, N:int, Width:int)<decides>:int=
+    _ShiftL[X,N] + (_ShiftR[X,Width - N] or 0)
+
+_ToBitString(_X:int, Width:int)<decides><transacts>:string =
+    var Bit:int = _Bit[Width - 1,Width] # _Bit is 0-based
+    var X:int = _X
+    var Result:string = ""
+    loop:
+        if (X >= Bit):
+            set X -= Bit
+            set Result += "1"
+        else:
+            set Result += "0"
+        if (Bit = 1):
+            break
+        set Bit = Int[Bit * 0.5] or Impossible("_ToBitString")
+
+    return "0b" + Result
+
+_ToHexString(_X:int, Width:int)<decides><transacts>:string=
+    Die := "ToHexString died with: X: {_X}, Width: {Width}"
+    var Result:string = ""
+    var X:int = _X
+    var Bit:int = _Bit[Width - 1, Width] # _Bit is 0-based
+
+    # We use this counter and a number to count 4 bits at a time. Once we've
+    # seen 4 bits we check the value ThisChunk to dispatch the right hex code to
+    # Result, then reset and repeat.
+    var Count:int = 3
+    var ThisChunk:int = 0
+
+    loop:
+        if (X >= Bit):          # then this bit was set
+            set X -= Bit
+            set ThisChunk += _Bit[Count,4] or Impossible("_Bit in _ToHexString")
+
+        if (Count = 0):
+            set Result +=
+                case (ThisChunk):
+                    10 => "A"
+                    11 => "B"
+                    12 => "C"
+                    13 => "D"
+                    14 => "E"
+                    15 => "F"
+                    _  => ToString(ThisChunk)
+            set Count = 3
+            set ThisChunk = 0
+        else:
+            set Count -= 1
+
+        if (Bit = 1):
+            break
+        set Bit = Int[Bit * 0.5] or Impossible("_ToHexString")
+
+    return "0x" + Result
+
+_FromHexString(X:string,Width:int)<decides><transacts>:int=
+    Die := "FromHexString failed with X: {X}"
+    var Result:int = 0
+    L := X.Length - 1
+    for (I -> E : X):
+        set Result = _ShiftL[Result, 4] or Err(Die)
+        case (E): # ugly but simple
+             '0' => {} # do nothing, handled by ShiftL
+             '1' => set Result += 1
+             '2' => set Result += 2
+             '3' => set Result += 3
+             '4' => set Result += 4
+             '5' => set Result += 5
+             '6' => set Result += 6
+             '7' => set Result += 7
+             '8' => set Result += 8
+             '9' => set Result += 9
+             'A' => set Result += 0xA
+             'B' => set Result += 0xB
+             'C' => set Result += 0xC
+             'D' => set Result += 0xD
+             'E' => set Result += 0xE
+             'F' => set Result += 0xF
+
+    return Result
+
+_FromBitString(X:string,Width:int)<decides><transacts>:int=
+    Die := "FromBitString failed with X: {X}"
+    var Result:int = 0
+    L := X.Length - 1
+    for (I -> E : X):
+        set Result = _ShiftL[Result, 1] or Err(Die)
+        case (E):
+             '1' => set Result += 1
+             '0' => {}
+    return Result
+
+############################ Types  ############################################
+Bits(ty:type) := interface:
+    BitwiseAnd(R:ty)<decides><transacts>:ty
+    BitwiseOr(R:ty)<decides><transacts>:ty
+    BitwiseXOr(R:ty)<decides><transacts>:ty
+    BitwiseNot()<decides><transacts>:ty
+    ToBitString()<decides><transacts>:string
+    ToHexString()<decides><transacts>:string
+    MSB()<transacts><decides>:int
+    Bit(I:int)<decides>:ty
+    Complement()<decides>:ty
+    BitComplement(I:int)<decides>:ty
+    TestBit(I:int):logic
+    SetBit(I:int)<decides>:ty
+    ClearBit(I:int)<decides>:ty
+    BitwiseShiftL(N:int)<decides>:ty
+    BitwiseShiftR(N:int)<decides>:ty
+    BitwiseRotateR(N:int)<decides>:ty
+    BitwiseRotateL(N:int)<decides>:ty
+    PopCnt()<decides><transacts>:int
+
+Word8 := class(Bits(Word8)):
+    B:int
+    Width:int = 8 # unecessary but convienient
+    BitwiseAnd<override>(R:Word8)<decides><transacts>:Word8 =
+        MkWord8[_And[Self.B,R.B,Self.Width]]
+    BitwiseOr<override>(R:Word8)<decides><transacts>:Word8 =
+        MkWord8[_Or[Self.B,R.B,Self.Width]]
+    BitwiseXOr<override>(R:Word8)<decides><transacts>:Word8 =
+        MkWord8[_XOr[Self.B,R.B,Self.Width]]
+    BitwiseNot<override>()<decides><transacts>:Word8 =
+        MkWord8[_Not[Self.B, Self.Width]]
+    ToBitString<override>()<decides><transacts>:string =
+        _ToBitString[Self.B, Self.Width]
+    ToHexString<override>()<decides><transacts>:string =
+        _ToHexString[Self.B, 2]
+    MSB<override>()<transacts><decides>:int=
+        _MSB[Self.B, Self.Width]
+    Bit<override>(I:int)<decides><transacts>:Word8=
+        MkWord8[_Bit[I,Self.Width]]
+    Complement<override>()<decides><transacts>:Word8=
+        MkWord8[_Complement[Self.B,Self.Width]]
+    BitComplement<override>(I:int)<decides>:Word8=
+        MkWord8[_BitComplement[Self.B, I,Self.Width]]
+    TestBit<override>(I:int):logic=
+        _Test(Self.B,I,Self.Width)
+    SetBit<override>(I:int)<decides>:Word8=
+        MkWord8[_Set[Self.B,I,Self.Width]]
+    ClearBit<override>(I:int)<decides>:Word8=
+        MkWord8[_Clear[Self.B,I,Self.Width]]
+    PopCnt<override>()<decides><transacts>:int=
+        Die := "PopCnt Word8: Died with {Self.B}"
+        M2 := 0x55
+        M4 := 0x33
+        M8 := 0x0F
+        var R:int = Self.B
+        set R = R - _And[_ShiftR[R,1],M2,Self.Width] or Err(Die)
+        set R = _And[R,M4,Self.Width] + _And[_ShiftR[R,2],M4,Self.Width] or Err(Die)
+        set R = _And[R + _ShiftR[R,4],M8,Self.Width] or Err(Die)
+        return R
+    BitwiseShiftR<override>(N:int)<decides>:Word8=
+        (N >= 0) and MkWord8[_ShiftR[Self.B, N]]
+    BitwiseShiftL<override>(N:int)<decides>:Word8=
+        (N >= 0) and MkWord8[_ShiftL[Self.B, N]]
+    BitwiseRotateR<override>(N:int)<decides>:Word8=
+        # for rotate we must mask off the higher bits instead of failing
+        (N >= 0) and MkWord8[_And[_RotateR[Self.B,N,Self.Width],0xFF,Self.Width]]
+    BitwiseRotateL<override>(N:int)<decides>:Word8=
+        (N >= 0) and MkWord8[_And[_RotateL[Self.B,N,Self.Width],0xFF,Self.Width]]
+
+
+# WART: '<', '>', '<=', and '=>' are special, i.e., they are built-in in a way
+# such that user code cannot overload them as we've done here with '+', '-' and
+# friends. Even though all the definition would have to do is unbox, compare,
+# and rebox.
+# See SOL-2161 for more history on why this is not yet supported
+# this fails: operator'>='(L:Word8,R:Word8)<decides>:Word8 := MkWord16[L.B >= R.B]
+# same for: operator'+='(L:Word8,R:Word8)<decides>:Word8 := MkWord16[L.B + R.B]
+operator'+'(L:Word8,R:Word8)<decides>:Word8 := MkWord8[L.B + R.B]
+operator'-'(L:Word8,R:Word8)<decides>:Word8 := MkWord8[L.B - R.B]
+operator'*'(L:Word8,R:Word8)<decides>:Word8 := MkWord8[L.B * R.B]
+operator'/'(L:Word8,R:Word8)<decides>:Word8 := MkWord8[Int[(L.B * 1.0) / (R.B * 1.0)]]
+ToString(W:Word8):string = ToString(W.B)
+MkWord8<constructor>(I:int)<decides><transacts>:=Word8:
+    let:
+        MaxU8:int = Int[Pow(2.0, 8.0)] - 1 or Impossible("MkWord8")
+    B := 0 <= I and I <= MaxU8
+MkWord8<constructor>(S:string)<decides><transacts>:=Word8:
+    let:
+        Payload :=
+            if (S.Slice[0,2] = "0x"):
+                   _FromHexString[S.Slice[2],8]
+            else if (S.Slice[0,2] = "0b"):
+                   _FromBitString[S.Slice[2],8]
+            else:
+                   Err("MkWord8: attempt to from malformed string: {S}")
+    B := MkWord8[Payload].B
+
+Word16 := class(Bits(Word16)):
+    B:int
+    Width:int = 16
+    BitwiseAnd<override>(R:Word16)<decides><transacts>:Word16 =
+        MkWord16[_And[Self.B,R.B,Self.Width]]
+    BitwiseOr<override>(R:Word16)<decides><transacts>:Word16 =
+        MkWord16[_Or[Self.B,R.B,Self.Width]]
+    BitwiseXOr<override>(R:Word16)<decides><transacts>:Word16 =
+        MkWord16[_XOr[Self.B,R.B,Self.Width]]
+    BitwiseNot<override>()<decides><transacts>:Word16 =
+        MkWord16[_Not[Self.B, Self.Width]]
+    ToBitString<override>()<decides><transacts>:string =
+        _ToBitString[Self.B, Self.Width]
+    ToHexString<override>()<decides><transacts>:string =
+        _ToHexString[Self.B, 4]
+    MSB<override>()<transacts><decides>:int=
+        _MSB[Self.B, Self.Width]
+    Bit<override>(I:int)<decides><transacts>:Word16 =
+       MkWord16[_Bit[I, Self.Width]]
+    Complement<override>()<decides><transacts>:Word16=
+        MkWord16[_Complement[Self.B,Self.Width]]
+    BitComplement<override>(I:int)<decides>:Word16=
+        MkWord16[_XOr[Self.B, _Bit[I,Self.Width],Self.Width]]
+    TestBit<override>(I:int):logic=
+        _Test(Self.B,I,Self.Width)
+    SetBit<override>(I:int)<decides>:Word16=
+        MkWord16[_Set[Self.B,I,Self.Width]]
+    ClearBit<override>(I:int)<decides>:Word16=
+        MkWord16[_Clear[Self.B,I,Self.Width]]
+    PopCnt<override>()<decides><transacts>:int=
+        Die := "PopCnt Word16: Died with {Self.B}"
+        M2 := 0x5555
+        M4 := 0x3333
+        M8 := 0x0F0F
+        var R:int = Self.B
+        set R = R - _And[_ShiftR[R,1],M2,Self.Width] or Err(Die)
+        set R = _And[R,M4,Self.Width] + _And[_ShiftR[R,2],M4,Self.Width] or Err(Die)
+        set R = _And[R + _ShiftR[R,4],M8,Self.Width] or Err(Die)
+        set R += _ShiftR[R,8]
+        return _And[R,0x001F,Self.Width] # mask out the lower 5
+    BitwiseShiftR<override>(N:int)<decides>:Word16=
+        (N >= 0) and MkWord16[_ShiftR[Self.B, N]]
+    BitwiseShiftL<override>(N:int)<decides>:Word16=
+        (N >= 0) and MkWord16[_ShiftL[Self.B, N]]
+    BitwiseRotateR<override>(N:int)<decides>:Word16=
+        (N >= 0) and MkWord16[_And[_RotateR[Self.B,N,Self.Width],0xFFFF,Self.Width]]
+    BitwiseRotateL<override>(N:int)<decides>:Word16=
+        (N >= 0) and MkWord16[_And[_RotateL[Self.B,N,Self.Width],0xFFFF,Self.Width]]
+
+operator'+'(L:Word16,R:Word16)<decides>:Word16 := MkWord16[L.B + R.B]
+operator'-'(L:Word16,R:Word16)<decides>:Word16 := MkWord16[L.B - R.B]
+operator'*'(L:Word16,R:Word16)<decides>:Word16 := MkWord16[L.B * R.B]
+operator'/'(L:Word16,R:Word16)<decides>:Word16 := MkWord16[Int[(L.B * 1.0) / (R.B * 1.0)]]
+ToString(W:Word16):string = ToString(W.B)
+MkWord16<constructor>(I:int)<decides><transacts>:=Word16:
+    let:
+        MaxU16:int = Int[Pow(2.0, 16.0)] - 1 or Impossible("MkWord16")
+    B := 0 <= I and I <= MaxU16
+
+MkWord16<constructor>(S:string)<decides><transacts>:=Word16:
+    let:
+        Payload :=
+            if (S.Slice[0,2] = "0x"):
+                   _FromHexString[S.Slice[2],16]
+            else if (S.Slice[0,2] = "0b"):
+                   _FromBitString[S.Slice[2],16]
+            else:
+                   Err("MkWord16: attempt to from malformed string: {S}")
+    B := MkWord16[Payload].B
+
+Word32 := class(Bits(Word32)):
+    B:int
+    Width:int = 32
+    BitwiseAnd<override>(R:Word32)<decides><transacts>:Word32 =
+        MkWord32[_And[Self.B,R.B,Self.Width]]
+    BitwiseOr<override>(R:Word32)<decides><transacts>:Word32 =
+        MkWord32[_Or[Self.B,R.B,Self.Width]]
+    BitwiseXOr<override>(R:Word32)<decides><transacts>:Word32 =
+        MkWord32[_XOr[Self.B,R.B,Self.Width]]
+    BitwiseNot<override>()<decides><transacts>:Word32 =
+        MkWord32[_Not[Self.B, Self.Width]]
+    ToBitString<override>()<decides><transacts>:string =
+        _ToBitString[Self.B, Self.Width]
+    ToHexString<override>()<decides><transacts>:string =
+        _ToHexString[Self.B, 8]
+    MSB<override>()<transacts><decides>:int=
+        _MSB[Self.B, Self.Width]
+    Bit<override>(I:int)<decides><transacts>:Word32 =
+        MkWord32[_Bit[I, Self.Width]]
+    Complement<override>()<decides><transacts>:Word32=
+        MkWord32[_Complement[Self.B,Self.Width]]
+    BitComplement<override>(I:int)<decides>:Word32=
+        MkWord32[_XOr[Self.B, _Bit[I,Self.Width],Self.Width]]
+    TestBit<override>(I:int):logic=
+        _Test(Self.B,I,Self.Width)
+    SetBit<override>(I:int)<decides>:Word32=
+        MkWord32[_Set[Self.B,I,Self.Width]]
+    ClearBit<override>(I:int)<decides>:Word32=
+        MkWord32[_Clear[Self.B,I,Self.Width]]
+    PopCnt<override>()<decides><transacts>:int=
+        Die := "PopCnt Word32: Died with {Self.B}"
+        M2 := 0x55555555
+        M4 := 0x33333333
+        M8 := 0x0F0F0F0F
+        var R:int = Self.B
+        set R = R - _And[_ShiftR[R,1],M2,Self.Width] or Err(Die)
+        set R = _And[R,M4,Self.Width] + _And[_ShiftR[R,2],M4,Self.Width] or Err(Die)
+        set R = _And[R + _ShiftR[R,4],M8,Self.Width] or Err(Die)
+        set R += _ShiftR[R,8]
+        set R += _ShiftR[R,16]
+        return _And[R,0x0000003F,Self.Width] # mask out the lower 6 bits
+    BitwiseShiftR<override>(N:int)<decides>:Word32=
+        (N >= 0) and MkWord32[_ShiftR[Self.B, N]]
+    BitwiseShiftL<override>(N:int)<decides>:Word32=
+        (N >= 0) and MkWord32[_ShiftL[Self.B, N]]
+    BitwiseRotateR<override>(N:int)<decides>:Word32=
+        (N >= 0) and MkWord32[_And[_RotateR[Self.B,N,Self.Width],0xFFFFFFFF,Self.Width]]
+    BitwiseRotateL<override>(N:int)<decides>:Word32=
+        (N >= 0) and MkWord32[_And[_RotateL[Self.B,N,Self.Width],0xFFFFFFFF,Self.Width]]
+
+operator'+'(L:Word32,R:Word32)<decides>:Word32 := MkWord32[L.B + R.B]
+operator'-'(L:Word32,R:Word32)<decides>:Word32 := MkWord32[L.B - R.B]
+operator'*'(L:Word32,R:Word32)<decides>:Word32 := MkWord32[L.B * R.B]
+operator'/'(L:Word32,R:Word32)<decides>:Word32 := MkWord32[Int[(L.B * 1.0) / (R.B * 1.0)]]
+ToString(W:Word32):string = ToString(W.B)
+MkWord32<constructor>(I:int)<decides><transacts>:=Word32:
+    let:
+        MaxU32:int = Int[Pow(2.0, 32.0)] - 1 or Impossible("MkWord32")
+    B := 0 <= I and I <= MaxU32
+
+MkWord32<constructor>(S:string)<decides><transacts>:=Word32:
+    let:
+        Payload :=
+            if (S.Slice[0,2] = "0x"):
+                   _FromHexString[S.Slice[2],32]
+            else if (S.Slice[0,2] = "0b"):
+                   _FromBitString[S.Slice[2],32]
+            else:
+                   Err("MkWord32: attempt to from malformed string: {S}")
+    B := MkWord32[Payload].B
+
+############################ Kickoff ###########################################
+RunBits()<decides><transacts>:void=
+    W8s:[]Word8 =
+        for (I := 0..0xFF):
+             MkWord8[I]
+
+    W16s:[]Word16 =
+        for (I := 0..0x4FF): # we don't explore the whole space for time, this
+                             # finishes in roughly 5 seconds
+             MkWord16[I]
+
+    W32s:[]Word32 =
+        for (I := 0..0x4FF): # we further reduce the space for versetest compared
+             MkWord32[I]     # to the Benchmark version
+
+    for (W8 : W8s):
+        W8.PopCnt[]
+
+    for (W16 : W16s):
+        W16.PopCnt[]
+
+    for (W32 : W32s):
+        W32.PopCnt[]
+
+assert:
+    N := 1
+    for (I := 1..N):
+        RunBits[] or Err("Bits failed")

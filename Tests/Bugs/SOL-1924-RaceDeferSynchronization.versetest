@@ -1,0 +1,278 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Concurrency }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { CoroUtils }
+
+TestCancelSyncInRace()<suspends>:void=
+    race:
+        block:
+            LogEvent("a")
+            WaitTicks(1)
+            LogEvent("d")
+        block:
+            sync:
+                block:
+                    LogEvent("b")
+                    WaitTicks(2)
+                    LogEvent("X")
+                block:
+                    LogEvent("c")
+                    WaitTicks(3)
+                    LogEvent("Y")
+            LogEvent("Z")
+    WaitTicks(3)
+    LogEvent("e")
+
+assert:
+    spawn{TestCancelSyncInRace()}
+    Tick(5)
+    verse_vm_only{ GetEventLogString() = "abc,d,,,e," }
+    bp_vm_only{ GetEventLogString() = "abc,d,X,YZ,e," }
+
+
+TestCancelDeferSyncInRace()<suspends>:void =
+    defer:
+        LogEvent("h")
+    LogEvent("a")
+    race:
+        block:
+            LogEvent("b")
+            WaitTicks(1)
+            LogEvent("e")
+        block:
+            defer:
+                LogEvent("f")
+            sync:
+                block:
+                    LogEvent("c")
+                    WaitTicks(2)
+                    LogEvent("X")
+                block:
+                    LogEvent("d")
+                    WaitTicks(3)
+                    LogEvent("Y")
+            LogEvent("Z")
+    WaitTicks(3)
+    LogEvent("g")
+
+assert:
+    spawn{TestCancelDeferSyncInRace()}
+    Tick(5)
+    verse_vm_only{ GetEventLogString() = "abcd,ef,,,gh," }
+    bp_vm_only{ GetEventLogString() = "abcd,e,X,YZf,gh," }
+
+
+TestCancelRaceInRaceInRace()<suspends>:void=
+    race:
+        block:
+            LogEvent("a")
+            WaitTicks(1)
+            LogEvent("e")
+        block:
+            race:
+                block:
+                    LogEvent("b")
+                    WaitTicks(2)
+                    LogEvent("V")
+                block:
+                    race:
+                        block:
+                            LogEvent("c")
+                            WaitTicks(3)
+                            LogEvent("X")
+                        block:
+                            LogEvent("d")
+                            WaitTicks(4)
+                            LogEvent("Z")
+                    LogEvent("Y")
+            LogEvent("W")
+    WaitTicks(4)
+    LogEvent("f")
+
+assert:
+    spawn{TestCancelRaceInRaceInRace()}
+    Tick(6)
+    verse_vm_only{ GetEventLogString() = "abcd,e,,,,f," }
+    bp_vm_only{ GetEventLogString() = "abcd,e,VW,XY,,f," }
+
+
+TestCancelRushInRace()<suspends>:void=
+    race:
+        block:
+            LogEvent("a")
+            WaitTicks(1)
+            LogEvent("d")
+        block:
+            rush:
+                block:
+                    LogEvent("b")
+                    WaitTicks(2)
+                    LogEvent("X")
+                block:
+                    LogEvent("c")
+                    WaitTicks(3)
+                    LogEvent("Z")
+            LogEvent("Y")
+    WaitTicks(3)
+    LogEvent("e")
+
+assert:
+    spawn{TestCancelRushInRace()}
+    Tick(5)
+    verse_vm_only{ GetEventLogString() = "abc,d,,,e," }
+    bp_vm_only{ GetEventLogString() = "abc,d,XY,Z,e," }
+
+
+TestCancelRushInRushInRace()<suspends>:void=
+    race:
+        block:
+            LogEvent("a")
+            WaitTicks(1)
+            LogEvent("e")
+        block:
+            rush:
+                block:
+                    LogEvent("b")
+                    WaitTicks(2)
+                    LogEvent("V")
+                block:
+                    rush:
+                        block:
+                            LogEvent("c")
+                            WaitTicks(3)
+                            LogEvent("X")
+                        block:
+                            LogEvent("d")
+                            WaitTicks(4)
+                            LogEvent("Z")
+                    LogEvent("Y")
+            LogEvent("W")
+    WaitTicks(4)
+    LogEvent("f")
+
+assert:
+    spawn{TestCancelRushInRushInRace()}
+    Tick(6)
+    verse_vm_only{ GetEventLogString() = "abcd,e,,,,f," }
+    bp_vm_only{ GetEventLogString() = "abcd,e,VW,XY,Z,f," }
+
+
+TestCancelRushWaitInRush()<suspends>:void=
+    race:
+        block:
+            LogEvent("a")
+            WaitTicks(2)
+            LogEvent("f")
+        block:
+            rush:
+                block:
+                    LogEvent("b")
+                    WaitTicks(1)
+                    LogEvent("d")
+                block:
+                    LogEvent("c")
+                    WaitTicks(3)
+                    LogEvent("X")
+            LogEvent("e")
+            WaitTicks(3)
+            LogEvent("Y")
+    WaitTicks(4)
+    LogEvent("g")
+
+assert:
+    spawn{TestCancelRushWaitInRush()}
+    Tick(7)
+    verse_vm_only{ GetEventLogString() = "abc,de,f,,,,g," }
+    bp_vm_only{ GetEventLogString() = "abc,de,f,X,,,g," }
+
+
+TestCancelRushRushInRace()<suspends>:void=
+    race:
+        block:
+            LogEvent("a")
+            WaitTicks(2)
+            LogEvent("h")
+        block:
+            rush:
+                block:
+                    LogEvent("b")
+                    WaitTicks(1)
+                    LogEvent("d")
+                block:
+                    LogEvent("c")
+                    WaitTicks(5)
+                    LogEvent("Z")
+            LogEvent("e")
+            rush:
+                block:
+                    LogEvent("f")
+                    WaitTicks(2)
+                    LogEvent("W")
+                block:
+                    LogEvent("g")
+                    WaitTicks(3)
+                    LogEvent("Y")
+            LogEvent("X")
+    WaitTicks(4)
+    LogEvent("i")
+
+assert:
+    spawn{TestCancelRushRushInRace()}
+    Tick(7)
+    verse_vm_only{ GetEventLogString() = "abc,defg,h,,,,i," }
+    bp_vm_only{ GetEventLogString() = "abc,defg,h,WX,Y,Z,i," }
+
+
+TestCompleteRushInRace()<suspends>:void=
+    race:
+        block:
+            rush:
+                block:
+                    LogEvent("a")
+                    WaitTicks(1)
+                    LogEvent("d")
+                block:
+                    LogEvent("b")
+                    WaitTicks(2)
+                    LogEvent("f")
+            LogEvent("e")
+            WaitTicks(2)
+            LogEvent("g")
+        block:
+            LogEvent("c")
+            WaitTicks(4)
+            LogEvent("X")
+    WaitTicks(2)
+    LogEvent("h")
+
+assert:
+    spawn{TestCompleteRushInRace()}
+    Tick(6)
+    GetEventLogString() = "abc,de,f,g,,h,"
+
+
+TestCompleteRushInSync()<suspends>:void=
+    sync:
+        block:
+            LogEvent("a")
+            WaitTicks(1)
+            LogEvent("d")
+        block:
+            rush:
+                block:
+                    LogEvent("b")
+                    WaitTicks(2)
+                    LogEvent("e")
+                block:
+                    LogEvent("c")
+                    WaitTicks(3)
+                    LogEvent("g")
+            LogEvent("f")
+            WaitTicks(2)
+    LogEvent("h")
+
+assert:
+    spawn{TestCompleteRushInSync()}
+    Tick(5)
+    GetEventLogString() = "abc,d,ef,g,h,"

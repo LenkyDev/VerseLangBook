@@ -1,0 +1,209 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Validate that the break macro must be used without any macro clauses.
+assert_valid               { f():void={ loop {break            } } }
+assert_semantic_error(3508){ f():void={ loop {break 1   ; break} } }
+assert_semantic_error(3508){ f():void={ loop {break(1)  ; break} } }
+assert_semantic_error(3508){ f():void={ loop {break(1){}; break} } }
+
+# Test that break yields a value of the bottom type, i.e. it doesn't yield a value.
+# Since the bottom type is a subtype of all other types, it can be used in any type context.
+assert:
+    var X:int = 0
+    loop:
+        set X = if(true?) {1} else {break}
+        break
+    X = 1
+
+############################################
+# Allow loop with at least one async expression
+assert_valid:
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+    
+    _waitNext()<suspends>:void={}
+    
+    _doStuffFloat()<suspends> : float = { return (42.0) }
+
+    
+    _coroFlow()<suspends>:void=
+        loop:
+            _waitNext()
+            print("Loop middle")
+            _doStuffFloat()
+
+        loop:
+            sync:
+                _doStuffFloat()
+                block:
+                    print("Second timeline in loop")
+                    _waitNext()
+        return  # so it doesn't auto return result of last expression
+
+
+############################################
+# Combined async and early exit
+assert_valid:
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+    
+    _waitNext()<suspends>:void={}
+    
+    _doStuffFloat()<suspends> : float = { return (42.0) }
+
+    
+    _coroFlow()<suspends>:void=
+        loop:
+            print("loop begin")
+            _waitNext()
+            if (isEarlyExit[]):
+                _waitNext()
+                print("loop break")
+                break
+            _doStuffFloat()
+            print("loop end")
+
+
+############################################
+# Allow loop with only immediate expressions and no async expressions
+assert_valid:
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    
+    _coroFlow()<suspends>:void=
+        loop:
+            print("loop begin")
+            if (isEarlyExit[]):  # failure context test version
+                print("loop break")
+                break
+            print("loop end")
+
+
+############################################
+# Allow loop with only immediate expressions
+assert_valid:
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    
+    _coroFlow()<suspends> : void = {}
+    methodFlow() : void =
+        loop:
+            print("loop begin")
+            if (isEarlyExit[]):
+                print("loop break")
+                break
+            print("loop end")
+
+
+############################################
+# Allow loop with return
+assert_valid:
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    methodFlow() : void =
+        loop:
+            print("loop begin")
+            if (isEarlyExit[]):
+                print("loop break")
+                return
+            print("loop end")
+
+
+
+############################################
+# Ensure loop is not empty
+assert_semantic_error(3579):
+    methodFlow():void=
+        # Empty loop
+        loop {}
+
+
+############################################
+# Ensure no break used outside of flow control
+assert_semantic_error(3581):
+    methodFlow():void=
+        # No enclosing flow control
+        break
+
+
+############################################
+# Ensure break enclosed in loop (which is the only currently supported flow control block)
+assert_semantic_error(3581):
+    
+    _waitNext()<suspends>:void={}
+
+    
+    _coroFlow()<suspends>:void=
+        sync:
+            _waitNext()
+            block:
+                _waitNext()
+                # Would early exit sync but not yet supported
+                break
+
+
+############################################
+# Ensure loop has matching break and don't confuse with non-matching nested break
+assert_semantic_error(3579):
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    methodFlow():void=
+        loop:
+            print("outer loop")
+            loop:
+                print("inner loop")
+                if (isEarlyExit[]):
+                    print("inner loop break")
+                    break
+
+
+############################################
+# Ensure break in code block only and not in otherwise odd location
+# Note: Currently does not require specific test since break is immediate and had no
+# result and only code block allows such expressions.
+assert_semantic_error(3658, 3513):
+    methodFlow():void=
+        loop:
+            # break not in code block
+            if (@ignore_unreachable break):
+                42
+
+
+############################################
+# See Reachability.versetest for tests for unreachable code following break
+############################################            
+
+############################################
+# Runtime test of immediate loop-break with two levels of nesting
+assert:
+    var idx:int = 0
+
+    loop:
+        var inner_idx:int = 0
+        set idx += 10
+
+        loop:
+            set inner_idx += 1
+            if (inner_idx = 5):
+                break # inner
+
+        if (idx = 100):
+            break # outer
+
+    idx = 100
+
+
+############################################
+# Roundtrip tests
+############################################            
+
+assert_roundtrip{
+methodFlow():void = 
+    loop:
+        if (isEarlyExit[]):
+            break
+}

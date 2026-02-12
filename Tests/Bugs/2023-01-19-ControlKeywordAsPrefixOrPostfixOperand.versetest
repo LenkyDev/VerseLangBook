@@ -1,0 +1,7 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3518      ){F():void= (return)?}
+assert_semantic_error(2000      ){F():void=?(return) }
+
+assert_semantic_error(3516, 2000){F():void= (return)^}
+assert_semantic_error(3552      ){F():void=^(return) }

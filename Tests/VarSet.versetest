@@ -1,0 +1,227 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    Main()<decides>:void =
+        var X:int = 0
+        set X = 1
+        X <> 0
+        X = 1
+
+assert:
+    var X:int = 0
+    set X = 1
+    X <> 0
+    X = 1
+
+assert:
+    var X:int = 0
+    set X += 1
+    X <> 0
+    X = 1
+    set X *= 2
+    X <> 1
+    X = 2
+    set X -= 1
+    X <> 2
+    X = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 1
+    set X = block:
+        set Y = X
+        2
+    X = 2
+    Y = 0
+
+assert:
+    var X:float = 4.0
+    set X /= 2.0
+    X <> 4.0
+    X = 2.0
+
+assert:
+    var X:int = 0
+    set X = 1
+    X <> 0
+    X = 1
+
+assert_valid:
+    class1 := class:
+        var Property:int
+    Main()<decides>:void =
+        X := class1{Property := 0}
+        set X.Property = 1
+        X.Property <> 0
+        X.Property = 1
+
+class1 := class<unique>:
+    var Property:int
+
+assert:
+    X := class1{Property := 0}
+    set X.Property = 1
+    X.Property <> 0
+    X.Property = 1
+
+assert:
+    X := class1{Property := 0}
+    X = X
+    Y := class1{Property := 0}
+    X <> Y
+
+assert:
+    var X:class1 = class1{Property := 0}
+    set X.Property = 1
+    X.Property = 1
+
+assert:
+    var X:class1 = class1{Property := 0}
+    set X.Property = 1
+    X.Property <> 0
+    X.Property = 1
+
+class2 := class:
+    var Property:int
+
+assert:
+    var X:class2 = class2{Property := 0}
+    set X.Property = 1
+    X.Property <> 0
+    X.Property = 1
+
+assert:
+    (var X:int = 0) = 0
+
+assert_semantic_error(3509):
+    Main()<decides>:void =
+        set (var X:int = 0) = 1
+        X <> 0
+        X = 1
+
+class3 := class:
+    var Property:int
+    Method(Arg:int):int =
+        set (class3:)Property = Arg
+
+assert:
+    X:class3 = class3{Property := 0}
+    X.Method(1)
+    X.Property <> 0
+    X.Property = 1
+
+# Test digest generation works correctly.
+assert:
+    X:test_var = test_var{Property := 0}
+    X.Property = 0
+    set X.Property = 1
+    X.Property <> 0
+    X.Property = 1
+
+F1():int = 1
+
+F2():int = 2
+
+assert:
+    var X:type{_():int} = F1
+    X() = 1
+    set X = F2
+    X() = 2
+
+assert_semantic_error(3509):
+    Main()<decides>:void =
+        var X:tuple(int, int) = (1, 2)
+        set X(0) = 3
+
+assert:
+    var X:tuple(int, int) = (1, 2)
+    X(0) = 1
+    X(1) = 2
+
+assert:
+    var X:[]int = (1, 2, 3)
+    set X[0] = 4
+    X[0] = 4
+    X[1] = 2
+    X[2] = 3
+    set X[1] = 5
+    X[0] = 4
+    X[1] = 5
+    X[2] = 3
+    set X[2] = 6
+    X[0] = 4
+    X[1] = 5
+    X[2] = 6
+
+# Unsupported
+# assert:
+#     var X:[]int = (1, 2, 3)
+#     for (Y:X):
+#         set Y = Y + 1
+#     X = (2, 3, 4)
+
+assert:
+    var X:int = 0
+    var Y:int = X
+    set X = 1
+    X = 1
+    Y = 0
+    set Y = 2
+    X = 1
+    Y = 2
+
+Identity(X:t where t:type):t = X
+
+assert:
+    var X:int = 0
+    var Y:int = Identity(X)
+    set X = 1
+    X = 1
+    Y = 0
+    set Y = 2
+    X = 1
+    Y = 2
+
+assert_semantic_error(3509):   
+    Main()<decides>:void =
+        X:int = 0
+        set X = 1
+        X = 1
+
+assert_semantic_error(3509):
+    Main()<decides>:void =
+        X := 0
+        set X = 1
+        X = 1
+
+assert_semantic_error(3653):
+    Main()<decides>:void =
+        var X:int = 0
+        if (true?):
+            X := 1
+        X <> 0
+        X = 1
+
+assert_semantic_error(3653):
+    Main()<decides>:void =
+        var A:int = 1
+        var B:int = 2
+        A := B
+        
+assert_semantic_error(3549):
+    Main():void =
+        var (var X):int = 0
+
+assert_semantic_error(3515):
+    Main():void =
+        var X := 0
+
+assert_semantic_error(3502):
+    Main():void =
+        var X
+
+assert_semantic_error(3601):
+    Main():void =
+        var X:int

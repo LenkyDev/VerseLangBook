@@ -1,0 +1,95 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# `break` is not allowed in an `if` condition.
+assert_semantic_error(3658, 2000):
+    Main():void =
+        var X:int = 0
+        loop:
+            if:
+                true? # Force the condition to be fallible.
+                set X = 1
+                break
+            break
+
+# `break` is not allowed in a `for` domain.
+assert_semantic_error(3658, 2000):
+    int_ref := class:
+        var Contents:int = 0
+
+    F(X:int_ref)<transacts><decides>:void =
+        set X.Contents = 1
+
+    Main():void =
+        X := int_ref{}
+        loop:
+            for:
+                I := 1..2
+                F[X]
+                (break; true?)
+            do:
+            break
+
+int_ref := class:
+    var Contents:int = 0
+
+F(X:int_ref)<transacts><decides>:void =
+    set X.Contents = 1
+
+# `break` in a `for` body is allowed and breaks the surrounding `loop`.
+assert:
+    X := int_ref{}
+    loop:
+        for:
+            I := 1..2
+            F[X]
+        do:
+            break
+        break
+    X.Contents = 1
+
+# `break` is not allowed in `option`.
+assert_semantic_error(3658, 2000):
+    Main():void =
+        loop:
+            option:
+                true?
+                break
+                
+
+# `break` is not allowed in `logic`.
+assert_semantic_error(3658, 2000):
+    Main():void =
+        loop:
+            logic:
+                true?
+                break
+
+# `break` is not allowed in `not`.
+assert_semantic_error(3512, 3658, 2000):
+    Main():void =
+        loop:
+            not (true?; break)
+
+# `break` is not allowed in left-hand side of `or`.
+assert_semantic_error(3658, 3512, 2000):
+    Main():void =
+        loop:
+            (true?; break) or true?
+
+# `decides` is not allowed in `loop`.
+assert_semantic_error(3512):
+    Main()<decides>:void =
+        loop:
+            true?
+            break
+
+# `return` in an `if` condition is disallowed.
+assert_semantic_error(3535, 2000):
+    int_ref := class:
+        var Contents:int = 0
+
+    F(X:int_ref):void =
+        if:
+            true? # Force the condition to be fallible.
+            set X.Contents = 1
+            return

@@ -1,0 +1,66 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Ensure catch of subclassing from final class
+assert_semantic_error(3569):
+    
+    class_a := class<final> {}
+
+    class_b := class(class_a) {}
+
+# Disallow final attribute on module methods
+assert_semantic_error(3674):
+    class_x := module:
+        
+        MethodX<final>():void= {}
+
+# Ensure catch of overriding instance method from final instance method
+assert_semantic_error(3568):
+    class_x := class:
+        
+        MethodX<final>():void= {}
+        
+    class_y := class(class_x):
+        
+        MethodX<override>():void= {}
+
+# Ensure final is valid for data-members
+assert_valid:
+    class_x := class:
+
+        DataMemberX<final>: int = 0;
+
+# Disallow final attribute on locals.
+assert_semantic_error(3674):
+    F():void=        
+        X<final>:int=0
+
+# Ensure catch of overriding instance method from final instance data-member
+assert_semantic_error(3568):
+    class_x := class:
+
+        DataMemberX<final>:int = 0;
+
+    class_y := class(class_x):
+
+        DataMemberX<override>:int = 1;
+
+# Ensure final propagates to indirect subclasses
+assert_semantic_error(3568):
+    class_x := class:
+
+        DataMemberX<final>:int = 0;
+
+    class_y := class(class_x) {}
+
+    class_z := class(class_y):
+
+        DataMemberX<override>:int = 1;
+
+# Final field definitions must provide a value.
+assert_semantic_error(3673){c := class<abstract>{X<final>:void}}
+assert_semantic_error(3673){c := class<abstract>{F<final>():void}}
+
+# Don't allow overriding final data members in an archetype.
+assert_semantic_error(3568):
+    c := class{X<final>:int=0}
+    F():void=c{X:=1}

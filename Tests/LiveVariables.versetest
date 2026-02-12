@@ -1,0 +1,376 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_only {
+assert_semantic_error(3512):
+    Main():void =
+        var X:int = 0
+        set live X = block:
+            set X = 1
+
+assert_semantic_error(3512):
+    Main():void =
+        var X:int = 0
+        var live Y:int = block:
+            set X = 1
+
+assert_semantic_error(3509):
+    Main():void =
+        Identity(Arg:t where t:type):t = Arg
+        var X:type{_(:int):int} = Identity
+        var Y:type{_(:int):int} = Identity
+        set live X = Y
+
+assert_semantic_error(3509):
+    Main():void =
+        Identity(Arg:t where t:type):t = Arg
+        var X:type{_(:int):int} = Identity
+        var live Y:type{_(:int):int} = X
+
+assert_semantic_error(3552):
+    Main():void =
+        var X:int = 0
+        set live X += 1
+
+assert_semantic_error(3552):
+    Main():void =
+        var X:int = 0
+        loop:
+            var Y:int = 0
+            set live X = Y
+            break
+
+assert_semantic_error(3552):
+    Main():void =
+        loop:
+            var Y:int = 0
+            var live X:int = Y
+            break
+
+assert_semantic_error(3685):
+    Main():void =
+        var X:int = 0
+        var Y:int = 0
+        set live X = if (Y = 0) then { return } else 1
+
+assert_semantic_error(3686):
+    Main():void =
+        var Y:int = 0
+        var live X:int = if (Y = 0) then { return } else 1
+
+assert_semantic_error(3552):
+    class1 := class:
+        var live X:int
+
+assert:
+    var X:int = 0
+    var Y:int = 1
+    set live X = Y
+    X = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    set live X = Y
+    set Y = 1
+    X = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    Z := set live X = Y
+    set Y = 1
+    X = 1
+    Z = 0
+    set Y = 2
+    X = 2
+    Z = 0
+
+# No `VarSet` if the value is unchanged
+assert:
+    var X:int = 0
+    var Y:int = 1
+    var Z:int = 2
+    set live X = Y
+    X = 1
+    upon (X):
+        set Z = 3
+    set Y = 1
+    X = 1
+    Z = 2
+
+# excepting the initial evaluation of `set live`
+assert:
+    var X:int = 0
+    upon (X):
+        set X = 1
+    set live X = 0
+    X = 1
+
+# Cancellation
+assert:
+    var X:int = 0
+    var Y:int = 1
+    set live X = Y
+    X = 1
+    set X = 2
+    set Y = 3
+    X = 2
+
+# Self-cancellation
+assert:
+    var X:int = 0
+    var Y:int = 1
+    var Z:int = 0
+    set live X = Y
+    upon (X):
+        set Z = X
+        set X = 2
+    set Y = 3
+    Z = 3
+    X = 2
+    set Y = 4
+    Z = 3
+    X = 2
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    set live X = if (Y > 0) then Y else 0
+    set Y = -1
+    X = 0
+    set Y = 1
+    X = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    var A:int = 0
+    var B:int = 0
+    set live X = if (Y > 0) then A else B
+    set B = 1
+    X = 1
+    set A = 2
+    X = 1
+    set Y = 1
+    X = 2
+    set A = 3
+    X = 3
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    set live X = Y
+    set live Y = X
+    set X = 1
+    Y = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    var A:int = 0
+    set live X = Y + A
+    set live Y = X - A
+    set A = 1
+    X = 0
+    Y = -1
+    set A = 2
+    X = 0
+    Y = -2
+
+assert:
+    var X:int = 0
+    var live Y:int = X
+    set X = 1
+    Y = 1
+    set X = 2
+    Y = 2
+
+# Transactional `live`
+assert:
+    var X:int = 0
+    var Y:int = 0
+    if:
+        set live X = Y # Add live task
+        false?
+    set Y = 1
+    X = 0
+
+Transactional := module:
+    F<public>(X:int_ref, Y:int_ref, Z:int_ref)<suspends>:void =
+        await{X.Contents}
+        set live Z.Contents = Y.Contents
+
+int_ref := class:
+    var Contents:int = 0
+
+assert:
+    X := int_ref:
+        Contents := 0
+    Y := int_ref:
+        Contents := 1
+    Z := int_ref:
+        Contents := 2
+    spawn:
+        Transactional.F(X, Y, Z)
+    if:
+        set X.Contents = 3
+        Y.Contents = 1 or Err()
+        Z.Contents = 1 or Err()
+        false?
+    Y.Contents = 1
+    Z.Contents = 2
+    set Y.Contents = 4
+    Z.Contents = 2
+    set X.Contents = 5
+    Z.Contents = 4
+
+assert:
+    X := int_ref:
+        Contents := 0
+    Y := int_ref:
+        Contents := 1
+    Z := int_ref:
+        Contents := 2
+    spawn:
+        Transactional.F(X, Y, Z)
+    set X.Contents = 3
+    Y.Contents = 1
+    Z.Contents = 1
+    if:
+        set Z.Contents = 4
+        false?
+    Y.Contents = 1
+    Z.Contents = 1
+    set Y.Contents = 5
+    Z.Contents = 5
+
+# Set live task before running awaiters
+assert:
+    var X:int = 0
+    var Y:int = 1
+    upon (X):
+        set X = 2 # cancel `set live X = Y`
+    set live X = Y
+    X = 2
+    set Y = 3
+    X = 2
+
+# Arrays
+assert:
+    var X:[]int = array{1, 2}
+    var Y:int = 3
+    set live X[0] = Y
+    X[0] = 3
+    set Y = 4
+    X[0] = 4
+
+# Maps
+assert:
+    var X:[int]int = map{0 => 1, 1 => 2}
+    var Y:int = 3
+    set live X[0] = Y
+    X[0] = 3
+    set Y = 4
+    X[0] = 4
+
+# Structs
+struct1 := struct<computes>:
+    Data1:int = 0
+    Data2:int = 0
+
+assert:
+    var X:struct1 = struct1{}
+    var Y:int = 3
+    set live X.Data1 = Y
+    X.Data1 = 3
+    set Y = 4
+    X.Data1 = 4
+
+# Looping
+assert:
+    var X:int = 2
+    var Y:int = 2
+    set live X = if (Y < 0) then 0 else Y - 1
+    set live Y = if (X < 0) then 0 else X - 1
+    X = -1
+    Y = 0
+
+assert:
+    var X:[]int = array{2}
+    var Y:[]int = array{2}
+    set live X[0] = if (Z := Y[0]; Z < 0) then 0 else (Y[0] or Err("impossibe")) - 1
+    set live Y[0] = if (Z := X[0]; Z < 0) then 0 else (X[0] or Err("impossibe")) - 1
+    X[0] = -1
+    Y[0] = 0
+
+assert:
+    var X:[int]int = map{0 => 2}
+    var Y:[int]int = map{0 => 2}
+    set live X[0] = if (Y[0] < 0) then 0 else (Y[0] or Err("impossibe")) - 1
+    set live Y[0] = if (X[0] < 0) then 0 else (X[0] or Err("impossibe")) - 1
+    X[0] = -1
+    Y[0] = 0
+
+assert:
+    var X:struct1 = struct1{Data1 := 2}
+    var Y:struct1 = struct1{Data1 := 2}
+    set live X.Data1 = if (Y.Data1 < 0) then 0 else Y.Data1 - 1
+    set live Y.Data1 = if (X.Data1 < 0) then 0 else X.Data1 - 1
+    X.Data1 = -1
+    Y.Data1 = 0
+
+# No `var`
+assert:
+    var X:int = 0
+    live Y:int = X
+    set X = 1
+    Y = 1
+
+assert_semantic_error(3509):
+    Main():void =
+        live X:int = 0
+        set X = 1
+
+assert_semantic_error(3515):
+    Main():void =
+        live X := 0
+
+assert_semantic_error(3512):
+    Main()<allocates>:int =
+        live X:int = 0
+        X
+
+assert_semantic_error(3512):
+    Main()<reads>:int =
+        live X:int = 0
+
+assert:
+    var X:int = 2
+    live Y:int = if (X < 0) then 0 else X - 1
+    set live X = if (Y < 0) then 0 else Y - 1
+    X = 0
+    Y = -1
+
+assert:
+    var X:[]int = array{2}
+    live Y:[]int = array{if (Z := X[0]; Z < 0) then 0 else (X[0] or Err("impossibe")) - 1}
+    set live X[0] = if (Z := Y[0]; Z < 0) then 0 else (Y[0] or Err("impossibe")) - 1
+    X[0] = 0
+    Y[0] = -1
+
+assert:
+    var X:[int]int = map{0 => 2}
+    live Y:[int]int = map{0 => if (X[0] < 0) then 0 else (X[0] or Err("impossibe")) - 1}
+    set live X[0] = if (Y[0] < 0) then 0 else (Y[0] or Err("impossibe")) - 1
+    X[0] = 0
+    Y[0] = -1
+
+assert:
+    var X:struct1 = struct1{Data1 := 2}
+    live Y:struct1 = struct1{Data1 := if (X.Data1 < 0) then 0 else X.Data1 - 1}
+    set live X.Data1 = if (Y.Data1 < 0) then 0 else Y.Data1 - 1
+    X.Data1 = 0
+    Y.Data1 = -1
+}

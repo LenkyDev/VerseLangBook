@@ -1,0 +1,39 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+some_interface:=interface:
+    SomeFunction():string
+parametric_class(t:type):=class(some_interface):
+    SomeFunction<override>():string=
+        "a"
+child_class:=class(parametric_class(int)):
+    SomeFunction<override>():string=
+        "{(super:)SomeFunction()};b"
+
+assert{child_class{}.SomeFunction()="a;b"}
+
+assert_semantic_error(3510):
+    base_class := class:
+        Method():any=0
+    
+    sub_class := class(base_class):
+        Method<override>():int=(super:)Method()
+
+# On `28.10` onwards and any future versions, this should error.
+assert_semantic_error(3510):
+    vpackage(P,/A,?UploadedAtFNVersion:=2810):
+        snippet:
+            base_class := class:
+                Method():any=0
+            
+            sub_class := class(base_class):
+                Method<override>():int=(super:)Method()
+
+assert_valid:
+    # Basically any project _before_ `28.10`
+    vpackage(P,/A,?UploadedAtFNVersion:=2809):
+        snippet:
+            base_class := class:
+                Method():any=0
+            
+            sub_class := class(base_class):
+                Method<override>():int=(super:)Method()

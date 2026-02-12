@@ -1,0 +1,427 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_semantic_error(3502):
+    foo()<transacts><decides>:void =
+        case
+
+assert_semantic_error(3605):
+    foo()<transacts><decides>:void =
+        case:
+
+assert_semantic_error(3502):
+    foo()<transacts><decides>:void =
+        case ()
+
+assert_semantic_error(3615):
+    foo()<transacts><decides>:void =
+        case ():
+
+assert_semantic_error(3615):
+    foo()<transacts><decides>:void =
+        x:int = 42
+        case (x):
+
+assert_semantic_error(3619):
+    foo():void =
+        case ():
+            _ => 100
+
+assert_semantic_error(3506):
+    foo():void =
+        case (x):
+            _ => 100
+
+assert_semantic_error(3506, 3620, 3506, 3617, 3512):
+    foo():void =
+        case (x):
+            A._ => 100
+
+assert_semantic_error(3616):
+    foo():void =
+        x:int = 42
+        case (x):
+            _ => 100
+            42 => 101
+
+assert_semantic_error(3512):
+    foo():void =
+        x:int = 42
+        case (x):
+            42 => 101
+
+assert_valid:
+    foo()<transacts><decides>:void =
+        x:int = 42
+        case (x):
+            42 => 101
+
+assert_semantic_error(3620, 3506, 3617):
+    foo()<transacts><decides>:void =
+        x:int = 42
+        case (x):
+            42 => 101
+            thing._ => 25
+
+assert_semantic_error(3611, 3506, 3617):
+    foo()<transacts><decides>:void =
+        x:int = 42
+        case (x):
+            42 => 101
+            (thing:)_ => 25
+
+assert:
+    x:int = 42
+    100 = case (x):
+        _ => 100
+
+assert:
+    x:int = 42
+    100 = case (x):
+        100 => 0
+        42 => 100
+        _ => 200
+
+thingy(x:int)<transacts><decides>:int =
+    case (x):
+        1 => 42
+        2 => 100
+        3 => 5
+        4 => 77
+
+assert { not thingy[0] }
+assert { thingy[1] = 42 }
+assert { thingy[2] = 100 }
+assert { thingy[3] = 5 }
+assert { thingy[4] = 77 }
+assert { not thingy[5] }
+
+stuff(x:int):int =
+    case (x):
+        1 => 42
+        2 => 100
+        3 => 5
+        4 => 77
+        _ => 24
+
+assert { stuff(0) = 24 }
+assert { stuff(1) = 42 }
+assert { stuff(2) = 100 }
+assert { stuff(3) = 5 }
+assert { stuff(4) = 77 }
+assert { stuff(5) = 24 }
+
+caseLogic(x:logic)<transacts><decides>:int =
+    case (x):
+        false => 42
+        true => 100
+
+assert { caseLogic[false] = 42 }
+assert { caseLogic[true] = 100 }
+
+caseChar(x:char):int =
+    case (x):
+        'h' => 55
+        'e' => 66
+        _ => 77
+
+assert { caseChar('h') = 55 }
+assert { caseChar('e') = 66 }
+assert { caseChar('l') = 77 }
+assert { caseChar('o') = 77 }
+
+caseString(x:string)<transacts><decides>:int =
+    case (x):
+        "hello" => 5
+        "world" => 10
+
+assert { caseString["hello"] = 5 }
+assert { caseString["world"] = 10 }
+assert { not caseString["thing"] }
+
+Foo := enum{just, testing, casestatements}
+caseEnum(x:Foo):int =
+    case (x):
+         Foo.just => 3
+         Foo.testing => 6
+         Foo.casestatements => 9
+
+assert { caseEnum(Foo.just) = 3 }
+assert { caseEnum(Foo.testing) = 6 }
+assert { caseEnum(Foo.casestatements) = 9 }
+
+assert_semantic_error(2302):
+    Bar := enum{just, testing, casestatements}
+    borked(x:Bar):int =
+        case (x):
+             Bar.just => 3
+             Bar.testing => 6
+             Bar.casestatements => 9
+             _ => 12
+
+assert_semantic_error(3616):
+    Bar := enum{just, testing, casestatements}
+    borked(x:Bar):int =
+        case (x):
+             Bar.just => 3
+             Bar.testing => 6
+             Bar.casestatements => 9
+             Bar.just => 10
+
+assert_semantic_error(3616):
+    Bar := enum{just, testing, casestatements}
+    borked(x:Bar):int =
+        case (x):
+             Bar.just => 3
+             Bar.just => 10
+             _ => 7
+
+assert_semantic_error(3617, 3617):
+    foo(x:float):string =
+        case (x):
+            1.2 => "hello"
+            2.5 => "world"
+            _ => "stuff"
+
+# type{2} is not a subtype of type{1} remove F when we make this a warning.
+assert_semantic_error(3618, 3512):
+    F():void =
+        "hello" = case (1):
+            1 => "hello"
+            2 => "world"
+            _ => "stuff"
+
+uchar := type{_X:int where 0 <= _X, _X < 256 }
+F(X:uchar):string =
+    case (X):
+        1 => "hello"
+        2 => "world"
+        _ => "stuff"
+
+assert:
+    "hello" = F(1)
+    "world" = F(2)
+    X:uchar = 100
+    "stuff" = F(X)
+
+assert_semantic_error(3618):
+    foo(x:int):string =
+        case (x):
+            "hello" => "world"
+            _ => "stuff"
+
+assert_semantic_error(3617, 3618, 3618):
+    MyClass := class{}
+    foo(x:MyClass):string =
+        case (x):
+            MyClass{} => "world"
+            _ => "stuff"
+
+assert_semantic_error(3617):
+    foo(x:tuple(int, int), y:int):string =
+        case (x):
+            (1, 2) => "world"
+            _ => "stuff"
+
+assert_valid:
+    foo(x:string)<decides>:comparable =
+        y := case (x){ "hello" => 42; "world" => "things"; _ => false }
+        y = y
+
+assert_valid:
+    C := class{}
+    D := class(C){}
+    E := class(D){}
+    foo(x:int):C =
+        case (x):
+            1 => C{}
+            2 => D{}
+            _ => E{}
+
+assert_semantic_error(3510):
+    C := class{}
+    D := class(C){}
+    E := class(D){}
+    foo(x:int):D =
+        case (x):
+            1 => C{}
+            2 => D{}
+            _ => E{}
+
+assert:
+    x:int = 42
+    loop:
+        case (x):
+            42 => break
+            _ => {}
+
+Hello42(x:int):string =
+    loop:
+        case (x):
+            42 => return "hello"
+            _ => break
+    "world"
+
+assert:
+    "hello" = Hello42(42)
+
+assert:
+    "world" = Hello42(43)
+
+assert_semantic_error(2000):
+    foo(x:int):string =
+        case (x):
+            1 => return "foo"
+            2 => return "bar"
+            _ => return "baz"
+        return "hello"
+
+assert_semantic_error(2000):
+    foo(x:int):void =
+        loop {
+            case (x):
+                1 => break
+                2 => break
+                _ => break
+            if (x = 42):
+                break
+        }
+
+assert_semantic_error(3512, 2000):
+    foo(x:int)<transacts><decides>:void =
+        loop {
+            case (x):
+                1 => break
+                2 => break
+            if (x = 42):
+                break
+        }
+
+assert_semantic_error(3512):
+    foo(x:int):void =
+        case (x):
+            1 => 2
+            3 => false?
+            _ => 4
+            
+FailMaybe(x:int)<transacts><decides>:void =
+    case (x):
+        1 => 2
+        3 => false?
+        _ => 4
+
+assert:
+    FailMaybe[1]
+
+assert:
+    FailMaybe[2]
+
+assert:
+    not FailMaybe[3]
+
+assert:
+    FailMaybe[4]
+
+assert:
+    FailMaybe[5]
+
+AsyncFoo()<suspends><transacts>:int =
+    42
+
+AsyncBar(x:int)<transacts><suspends>:int =
+    case (x):
+        1 => 2
+        3 => AsyncFoo()
+        _ => 4
+
+logic_result := class:
+    var AllGood:logic = false
+AsyncTask(R:logic_result)<suspends>:void =
+    Result := AsyncBar(3)
+    set R.AllGood = logic{Result = 42}
+
+assert:
+    R:logic_result = logic_result{}
+    spawn { AsyncTask(R) }
+    CoroUtils.Tick(5)
+    R.AllGood?
+
+assert_semantic_error(3620, 3620):
+    Foo()<transacts><decides>:void =
+        case(10):
+            10 => 1
+                  true?
+            _ =>  2
+                  false?
+
+assert:
+    case(10):
+        10 =>
+            1
+            true?
+        _ =>
+            2
+            false?
+
+FlowType := module:
+    Identity(X:t where t:type):t = X
+    F<public>():int =
+        X := Identity(0)
+        Y := case (X):
+            0 => 1
+            _ => 2
+        Y
+
+assert:
+    FlowType.F() = 1
+
+# Check that multiple expressions in case domains trigger the right errors for now until they are supported.
+assert_semantic_error(3618):
+    TestEnum:=enum:
+        A,
+        B
+    
+    TestClass := class:
+        Foo():int=
+            Bar:=TestEnum.A
+            Baz:=false
+            
+            case(Bar, Boo:=Baz):
+                TestEnum.A => 100
+                TestEnum.B => 100
+                _ => 5000
+
+TestEnum:=enum:
+    A,
+    B
+
+TestModule<public> := module:
+    FooTest<public>():int=
+        Bar:=TestEnum.A
+        Baz:=100
+        
+        case(Bar; Baz):
+            100 => 100
+            _ => 200
+
+assert:
+    TestModule.FooTest() = 100
+
+
+# From SOL-5699
+assert_semantic_error(3618):
+    direction_enum:=enum:
+        up,down,left,right
+
+    DirectionUp:direction_enum =direction_enum.up
+    LogicThatIsFalse:logic=false
+    
+    Print(str:string):int= 42
+
+    OnBegin()<suspends>:void=
+        case(DirectionUp, MathLogic:=LogicThatIsFalse):
+            direction_enum.up => Print(""),
+            direction_enum.down => Print(""),
+            direction_enum.left => Print(""),
+            direction_enum.right => Print("")

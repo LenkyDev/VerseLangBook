@@ -1,0 +1,599 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_only {
+assert_valid:
+    Main()<suspends>:void =
+        await{1}
+
+assert_semantic_error(3512):
+    Main():void =
+        await{1}
+
+assert_semantic_error(3512):
+    F()<computes><reads><suspends>:void = {}
+    Main()<suspends>:void =
+        await{F()}
+
+assert_semantic_error(3512):
+    F()<computes><writes>:void = {}
+    Main()<suspends>:void =
+        await{F()}
+
+assert_semantic_error(3512):
+    F()<computes><allocates>:void = {}
+    Main()<suspends>:void =
+        await{F()}
+
+assert_semantic_error(3512):
+    F()<computes><reads>:void = {}
+    Main()<computes><suspends>:void =
+        await{F()}
+
+int_ref := class:
+    var Contents:int = 0
+
+void_ref := class:
+    var Contents:void = false
+
+Stuck := module:
+    F<public>(Out:int_ref)<suspends>:void =
+        var X:int = 0
+        branch:
+            await{X}
+            set Out.Contents = 1
+
+assert:
+    X := int_ref{}
+    spawn:
+        Stuck.F(X)
+    X.Contents = 0
+
+HelloWorld := module:
+    F<public>(Out:int_ref)<suspends>:void =
+        var X:int = 0
+        branch:
+            await{X}
+            set Out.Contents = 1
+        set X = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        HelloWorld.F(X)
+    X.Contents = 1
+
+Result := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:int = 0
+        branch:
+            set Y.Contents = await{X}
+        set X = 1
+
+assert:
+    X := int_ref{}
+    spawn:
+        Result.F(X)
+    X.Contents = 1
+
+SatisfiedTest := module:
+    F<public>(Out:int_ref)<suspends>:void =
+        var X:int = 0
+        branch:
+            await{X = 0}
+            set Out.Contents = 1
+        set X = 0
+
+assert:
+    X := int_ref{}
+    spawn:
+        SatisfiedTest.F(X)
+    X.Contents = 1
+
+UnsatisfiedTest := module:
+    F<public>(Out:int_ref)<suspends>:void =
+        var X:int = 0
+        branch:
+            await{X = 0}
+            set Out.Contents = 1
+        set X = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        UnsatisfiedTest.F(X)
+    X.Contents = 0
+
+Cancel := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        await{X.Contents}
+        set Y.Contents = 2
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    Task := spawn:
+        Cancel.F(X, Y)
+    spawn:
+        Task.Cancel()
+    set X.Contents = 1
+    Y.Contents = 0
+
+Transaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        await{X.Contents}
+        set Y.Contents = 1
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        Transaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        true?
+    Y.Contents = 1
+
+assert:
+    X := int_ref{}
+    Y := int_ref{}
+    spawn:
+        Transaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        false?
+    Y.Contents = 0
+
+SuspendInsideTransaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        await{X.Contents}
+        CoroUtils.WaitTicks(1)
+        set Y.Contents = 1
+
+assert:
+    X := int_ref{}
+    Y := int_ref{}
+    spawn:
+        SuspendInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        false?
+    Y.Contents = 0
+    CoroUtils.Tick(1)
+    Y.Contents = 0
+    set X.Contents = 2
+    Y.Contents = 0
+    CoroUtils.Tick(1)
+    Y.Contents = 1
+
+IteratedSuspendInsideTransaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        for (I := 1..5):
+            if (I = 1):
+                await{X.Contents}
+            else if (I = 2):
+                CoroUtils.WaitTicks(1)
+            set Y.Contents += I
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        IteratedSuspendInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        false?
+    Y.Contents = 0
+    CoroUtils.Tick(1)
+    Y.Contents = 0
+    set X.Contents = 2
+    Y.Contents = 1
+    CoroUtils.Tick(1)
+    Y.Contents = 1 + 2 + 3 + 4 + 5
+
+# Ensure merging of registers (K and J here) uses the real live range of the
+# merged-to register.  Otherwise, K uses ResetNonTrailed, while J uses Reset,
+# erroneously logging the updated value of K (rather than the original value of
+# K) with no logging of the update of K.
+LoopingSuspendInsideTransaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        var I:int = 1
+        loop:
+            if (I > 5):
+                break
+            K := I # Register with narrow live range merged with J
+            set Y.Contents += K
+            J := I
+            if (J = 1):
+                await{X.Contents}
+            else if (J = 2):
+                CoroUtils.WaitTicks(1)
+            set Y.Contents += J
+            set I += 1
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        LoopingSuspendInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        false?
+    Y.Contents = 1
+    CoroUtils.Tick(1)
+    Y.Contents = 1
+    set X.Contents = 2
+    Y.Contents = 1 + 1 + 2
+    CoroUtils.Tick(1)
+    Y.Contents = 1 + 1 + 2 + 2 + 3 + 3 + 4 + 4 + 5 + 5
+
+LoopingSuspendWithDeferInsideTransaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        var I:int = 1
+        loop:
+            if (I > 5):
+                break
+            J := I
+            defer:
+                set Y.Contents += J
+            if (J = 1):
+                await{X.Contents}
+            set I += 1
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    Task := spawn:
+        LoopingSuspendWithDeferInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        false?
+    Y.Contents = 0
+    spawn:
+        Task.Cancel()
+    Y.Contents = 1
+
+DeferInsideTransaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        await{X.Contents}
+        defer:
+            set Y.Contents += 1
+        CoroUtils.WaitTicks(1)
+        set Y.Contents += 1
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        DeferInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 2
+        false?
+    Y.Contents = 0
+    CoroUtils.Tick(1)
+    Y.Contents = 0
+    set X.Contents = 2
+    Y.Contents = 0
+    CoroUtils.Tick(1)
+    Y.Contents = 2
+
+PhaseChangeInsideTransaction := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        race:
+            block:
+                await{X.Contents = 1}
+                set Y.Contents = 2
+            block:
+                await{X.Contents = 3}
+                set Y.Contents = 4
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        PhaseChangeInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 1
+        false?
+    Y.Contents = 0
+    set X.Contents = 3
+    Y.Contents = 4
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        PhaseChangeInsideTransaction.F(X, Y)
+    if:
+        set X.Contents = 3
+        false?
+    Y.Contents = 0
+    set X.Contents = 1
+    Y.Contents = 2
+
+InterleavedNative := module:
+    F(X:int_ref)<computes><reads>:void =
+        X.Contents
+    G<public>(Y:int_ref)<suspends>:void =
+        X := int_ref{}
+        branch:
+            await{FunctionUtils.InvokeComputesReads(F, X)}
+            set Y.Contents = X.Contents
+        set X.Contents = 1
+
+assert:
+    X := int_ref{}
+    spawn:
+        InterleavedNative.G(X)
+    X.Contents = 1
+
+SetAfterAwait := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        await{X.Contents}
+        set X.Contents += 1
+        set Y.Contents = X.Contents
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    spawn:
+        SetAfterAwait.F(X, Y)
+    set X.Contents = 1
+    Y.Contents = 2
+
+AddFirstAwaitInTransaction := module:
+    F<public>(X:int_ref, Y:int_ref, Z:int_ref)<suspends>:void =
+        await{X.Contents}
+        set Z.Contents = 1
+        await{Y.Contents}
+        set Z.Contents = 2
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    Z:int_ref = int_ref{}
+    spawn:
+        AddFirstAwaitInTransaction.F(X, Y, Z)
+    if:
+        set X.Contents = 3
+        false?
+    set Y.Contents = 4
+    Z.Contents = 0
+
+AddSecondAwaitInTransaction := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        await{Y.Contents}
+    G<public>(X:int_ref, Y:int_ref, Z:int_ref)<suspends>:void =
+        await{X.Contents}
+        set Z.Contents = 1
+        await{Y.Contents}
+        set Z.Contents = 2
+
+assert:
+    X := int_ref{}
+    Y:int_ref = int_ref{}
+    Z:int_ref = int_ref{}
+    spawn:
+        AddSecondAwaitInTransaction.F(Y)
+    spawn:
+        AddSecondAwaitInTransaction.G(X, Y, Z)
+    if:
+        set X.Contents = 3
+        false?
+    set Y.Contents = 4
+    Z.Contents = 0
+
+NestedFailureContext := module:
+    F<public>(Z:int_ref)<suspends>:void =
+        var X:int = 0
+        var Y:int = 0
+        branch:
+            await:
+                if (X <> 0):
+                    Y = 3
+            set Z.Contents = 1
+        set X = 2
+        set Y = 3
+
+assert:
+    X := int_ref{}
+    spawn:
+        NestedFailureContext.F(X)
+    X.Contents = 1
+
+Array := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:[]int = array{1}
+        branch:
+            await:
+                X
+            set Y.Contents = 1
+        if:
+            set X[0] = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        Array.F(X)
+    X.Contents = 1
+
+ArrayElement := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:[]int = array{1}
+        branch:
+            await:
+                X[0]
+            set Y.Contents = 1
+        if:
+            set X[0] = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        ArrayElement.F(X)
+    X.Contents = 1
+
+OtherArrayElement := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:[]int = array{1, 2}
+        branch:
+            await:
+                X[0]
+            set Y.Contents = 1
+        if:
+            set X[1] = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        OtherArrayElement.F(X)
+    X.Contents = 0
+
+ArrayFreezeElement := module:
+    F<public>(X:int_ref)<suspends>:void =
+        var Y:[]int = array{1, 2}
+        branch:
+            await:
+                Y[0]
+        Z := Y
+        if:
+            Contents := Z[0]
+            set X.Contents = Contents
+
+assert:
+    X := int_ref{}
+    spawn:
+        ArrayFreezeElement.F(X)
+    X.Contents = 1
+
+Map := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:[int]int = map{0 => 1}
+        branch:
+            await:
+                X
+            set Y.Contents = 1
+        if:
+            set X[0] = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        Map.F(X)
+    X.Contents = 1 
+
+MapValue := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:[int]int = map{0 => 1}
+        branch:
+            await:
+                X[0]
+            set Y.Contents = 1
+        if:
+            set X[0] = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        MapValue.F(X)
+    X.Contents = 1
+
+OtherMapValue := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:[int]int = map{0 => 1, 1 => 2}
+        branch:
+            await:
+                X[0]
+            set Y.Contents = 1
+        if:
+            set X[1] = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        OtherMapValue.F(X)
+    X.Contents = 0
+
+MapFreezeValue := module:
+    F<public>(X:int_ref)<suspends>:void =
+        var Y:[int]int = map{0 => 1, 1 => 2}
+        branch:
+            await:
+                Y[0]
+        Z := Y
+        if:
+            Contents := Z[0]
+            set X.Contents = Contents
+
+assert:
+    X := int_ref{}
+    spawn:
+        MapFreezeValue.F(X)
+    X.Contents = 1
+
+struct1 := struct<computes>:
+    Data1:int = 0
+    Data2:int = 0
+
+Struct := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:struct1 = struct1{}
+        branch:
+            await:
+                X
+            set Y.Contents = 1
+        set X.Data1 = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        StructField.F(X)
+    X.Contents = 1
+
+StructField := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:struct1 = struct1{}
+        branch:
+            await:
+                X.Data1
+            set Y.Contents = 1
+        set X.Data1 = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        StructField.F(X)
+    X.Contents = 1
+
+OtherStructField := module:
+    F<public>(Y:int_ref)<suspends>:void =
+        var X:struct1 = struct1{}
+        branch:
+            await:
+                X.Data1
+            set Y.Contents = 1
+        set X.Data2 = 2
+
+assert:
+    X := int_ref{}
+    spawn:
+        OtherStructField.F(X)
+    X.Contents = 0
+
+StructFreezeField := module:
+    F<public>(X:int_ref)<suspends>:void =
+        var Y:struct1 = struct1:
+            Data1 := 1
+        branch:
+            await:
+                Y.Data1
+        Z := Y
+        set X.Contents = Z.Data1
+
+assert:
+    X := int_ref{}
+    spawn:
+        StructFreezeField.F(X)
+    X.Contents = 1
+}

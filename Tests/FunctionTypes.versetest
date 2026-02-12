@@ -1,0 +1,263 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Function parameter
+assert_valid_syntax{"map(f(x:int):int,xs:[]int):[]int := for(x:xs) \{ f(x) \}"}
+# Lambda function argument
+assert_valid_syntax{"map((x:int)=>x*x,xs)"}
+# Lambda function local
+assert_valid_syntax{"f := ((x:int)=>x*x)"}
+assert_valid_syntax{"f := ((x:int)=>return(x*x))"}
+
+# Overriding a member function from the class's constructor
+assert_valid_syntax{"C\{ f:=((s:string, f:float)=>s.Num()), i:=4 \}"}
+
+# Mutable/optional function declarations
+assert_valid_syntax{"f(s:string, f:float):int"}
+assert_valid_syntax{"f(s:string, f:float):int=42"}
+assert_valid_syntax{"f?(s:string, f:float):int"}
+assert_valid_syntax{"f?(s:string, f:float):int = optional\{(s:string, f:float)=>s.Num()\}"}
+assert_valid_syntax{"f?(s:string, f:float):int"}
+# Calling mutable/optional functions
+assert_valid_syntax{"f(42, 13.37)"}
+assert_valid_syntax{"f?(1337, 4.2)"}
+assert_valid_syntax{"f?(8675, 3.09)"}
+
+# Function type declaration using `->` 
+# NOTE: `tuple()` is a type former, without it `(int, float)` is a tuple value (and the `->` operator expects types for its args)
+assert_valid_syntax{"f:tuple(int,float)-\>string := function(i:int, f:float)\{\"Moo\"\}"}
+# Function type array declaration (requires `->`)
+assert_valid_syntax{"arr:[]tuple(int,float)-\>string"}
+# Function as a return type
+assert_valid_syntax{"f(x:int):int-\>int := ((x:int)=\>x*x)"}
+
+# Function parameter
+assert_valid:
+    f( g(i:int,f:float):string ):string=return( g(42, 13.37) )
+
+<# @TODO: Semantic analysis
+# Function locals
+assert_valid:
+    f():void=
+        mod_v0(l:int, r:int):int=return( l-(l/r*r) )
+        mod_v0(42,11)
+
+        # Various forms of lambda syntax
+        mod_v1(l:int, r:int):int = ((l:int, r:int)=>l-(l/r*r))
+        mod_v1(42,11)
+        mod_v2 := ((l:int, r:int)=>l-(l/r*r))
+        mod_v2(42,11)
+        mod_v3 := ((l:int, r:int)=>
+            localL := l
+            localR := r    
+            return(localL-(l/localR*r))
+        mod_v3(42,11)
+        mod_v4 := ((l:int, r:int)=>
+        {
+            localL := l
+            localR := r 
+            if (localL > localR)   
+                return(localL-(l/localR*r)
+            return(l-(localL/r*localR)
+        })
+        mod_v4(42,11)
+
+# Lambda function argument
+assert_valid:
+    f( g(a:[]string, i:int):int ):int=return( g(array{"Moo"}, 4) )
+    h():void={ f( (a:[]string,i:int)=>a.Num()+i ) }
+
+# Constructed override
+assert_valid:
+    C0 := class:
+        f(i:int, f:float):string="Moo"
+    C1 := class:
+        g():string=return(C0{ f(i:int, f:float):string={"Lar"} }.f())
+
+# Mutable member function
+assert_valid:
+    C0 := class:
+        f0(i:int, f:float):string
+    C1 := class:
+        f1():string=
+            c0 := C0{f0:=g1}
+            c0.f0 := g1
+            return(c0.f0())
+        g1(i:int, f:float):string="Moo"
+
+# optional member function
+assert_valid:
+    C0 := class:
+        maybeF?(i:int, f:float):string = "Moo"
+        g0():void=if(f := maybeF?) then f(42, 13.37)
+    C1 := class:
+        f1[]:string =
+            c0 := C0{maybeF := ((i:int, f:float)=>"Lar")}
+            return( c0.maybeF?(1337, 4.2) )
+
+# Mutable optional member function
+assert_valid:
+    C0 := class:
+        maybeF?(i:int, f:float):string = 
+        {
+            if (i > 0) then return("Moo")
+            return("Lar")
+        }
+        g0():void=if(f := maybeF?) then f(42, 13.37)
+    C1 := class:
+        f1[]:string =
+            c0 := C0{maybeF := g}
+            return( c0.maybeF?(1337, 4.2) )
+        g(i:int, f:float):string="Moo"
+
+# Cannot override `final` functions
+assert_semantic_error(...):
+    C0 := class:
+         f():void={}
+    C1<final> := class:
+        g():string=return(C0{ f:=h }) # Error, `f` is not overridable
+        h():void={}
+
+# Because `:=` is higher precedence than `=>` we cannot define named values using the `=>` operator
+assert_semantic_error(...):
+    f():void={ g := i:int=>i*i ; g(3) }
+assert_semantic_error(...):
+    C0 := class:
+        f(i:int, f:float):string
+    C1 := class:
+        g():string=return(C0{ f := (i:int,f:float)=>"Lar" }.f())
+
+# Lambdas don't have a form where you can explicitly specify the return type
+assert_semantic_error(...):
+    f():void=
+        mod := ( (l:int, r:int):int=>l-(l/r*r) )
+
+# Lambda return type mismatch 
+assert_semantic_error(...):
+    f():void=
+        g(x:int):int = ((x:int)=>x*x) # This is returning a lambda (not implementing the function), `g`s return type should be `int->int` to match
+
+# If the base function's domain isn't fully defined (missing the return type), then you cannot override it
+assert_semantic_error(...):
+    C0 := class:
+        f(i:int, f:float):void="Moo"
+    C1 := class:
+        g():string=return(C0{ f(i:int, f:float):string={"Lar"} }.f()) # Error: since `f`'s domain is not wholly defined, we can't know if this new function overlaps the original
+#>
+
+# Test function subtyping
+C2 := class { GetClassName():string=return "C2" }
+C3 := class(C2)     { GetClassName<override>():string=return "C3" }
+f11(x:C2):string=return x.GetClassName()
+f12(x:C3):string=return x.GetClassName()
+f13():C2=return C2{}
+f14():C3=return C3{}
+
+f15(g(:C2):string):string=return g(C2{})
+f16(g(:C3):string):string=return g(C3{})
+assert{f15(f11)="C2"}           # tuple(C2)->string <:  tuple(C2)->string
+assert{f16(f11)="C3"}           # tuple(C2)->string <:  tuple(C3)->string
+assert{f16(f12)="C3"}           # tuple(C3)->string <:  tuple(C3)->string
+assert_semantic_error(3509): # tuple(C2)->string </: tuple(C3)->string
+    C2 := class { GetClassName():string=return "C2" }
+    C3 := class(C2)     { GetClassName<override>():string=return "C3" }
+    f12(x:C3):string=return x.GetClassName()
+    f15(g(:C2):string):string=return g(C2{})
+    f():string=return f15(f12)
+
+f17(g():C2):string=return g().GetClassName()
+f18(g():C3):string=return g().GetClassName()
+assert{f17(f13) = "C2"}        # tuple()->C2 <:  tuple()->C2
+assert{f17(f14) = "C3"}        # tuple()->C3 <:  tuple()->C2
+assert{f18(f14) = "C3"}        # tuple()->C3 <:  tuple()->C3
+assert_semantic_error(3509):# tuple()->C2 </: tuple()->C3
+    C2 := class { GetClassName():string=return "C2" }
+    C3 := class(C2)     { GetClassName<override>():string=return "C3" }
+    f13():C2=return C2{}
+    f18(g():C3):string=return g().GetClassName()
+    f():string=return f18(f13)
+
+f19():int=return 1
+f20()<transacts><decides>:int=return 2
+C4 := module:
+    f21<public>()<suspends>:void={}
+f25(g()<suspends>:void):void=spawn{g()}
+f23(g():int):int=return g()
+f24(g()<transacts><decides>:int):int=return g[] or 3
+
+# Test that there's no subtyping relationship between functions with different async/failing effects.
+assert{f23(f19) = 1}
+assert{f24(f20) = 2}
+assert{f25(C4.f21); true?}
+assert_semantic_error(3509):
+    f19():int=return 1
+    f24(g()<transacts><decides>:int):int=return g[] or 3
+    test():void=f24(f19)
+
+# Test joining function types.
+f27(b:logic):string=
+    g:=if(b?) {f13} else {f14}
+    return g().GetClassName()
+assert{f27(false) = "C3"}
+assert{f27(true)  = "C2"}
+bp_vm_only
+{
+assert_ir_error(3502,3502):
+    f28():int=return 1
+    f29():float=return 1.0
+    f30(b:logic):void=
+        g:=if(b?) {f28} else {f29}
+        g()
+
+assert_ir_error(3502,3502):
+    f31(X:int):int=X+1
+    f32(X:float):float=X+1.0
+    f33(b:logic):void=
+        g:=if(b?) {f31} else {f32}
+        g(@ignore_unreachable return)
+}
+verse_vm_only
+{
+assert_valid:
+    f28():int=return 1
+    f29():float=return 1.0
+    f30(b:logic):void=
+        g:=if(b?) {f28} else {f29}
+        g()
+
+assert_valid:
+    f31(X:int):int=X+1
+    f32(X:float):float=X+1.0
+    f33(b:logic):void=
+        g:=if(b?) {f31} else {f32}
+        g(@ignore_unreachable return)
+}
+        
+assert_semantic_error(3509,3509):
+    c:=class{}
+    d:=class{}
+    f34(C:c):int=1
+    f35(D:d):float=1.0
+    f36(b:logic):void=
+        g:=if(b?) {f34} else {f35}
+        g(c{})
+        g(d{})
+
+# Test function types defined with '->'.
+
+f37(f:int->int):int=f(1)
+f38(x:int):int=x+1
+f39(x:int):int=x+2
+
+assert{f37(f38)=2}
+assert{f37(f39)=3}
+
+f40(f:tuple(int,int)->int):int=f(1,2)
+f41(x:int, y:int):int=x
+f42(x:int, y:int):int=y
+
+assert{f40(f41)=1}
+assert{f40(f42)=2}
+
+# Test roundtripping the '->' type constructor.
+assert_roundtrip{a->b}
+

@@ -1,0 +1,28 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3620):
+    F(X:int):int=
+        case(X):
+            # malformed case arm
+            0
+            1=>(Data:=1)
+            _=>2
+
+assert_semantic_error(3620):
+    F(X:int):int=
+        case(X):
+            1=>(Data:=1)
+            # malformed case arm
+            0
+            _=>2
+
+# Also test that a similar problem doesn't occur when producing an error for unreachable case arms.
+assert_semantic_error(2302):
+    e := enum{A,B,C}
+    F(E:e):int=
+        case(E):
+            e.A => 0
+            e.B => 1
+            e.C => 2
+            # unreachable case arm
+            _ => 3

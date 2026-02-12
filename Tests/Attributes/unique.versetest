@@ -1,0 +1,158 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+class1 := class<unique>:
+    Property1:int
+
+assert:
+    X := class1{Property1 := 0}
+    X = X
+    Y := class1{Property1 := 0}
+    X <> Y
+    Z:comparable = X
+    X = Z
+    Y <> Z
+
+assert_semantic_error(3596):
+    struct1 := struct<unique>:
+
+assert_semantic_error(3596):
+    class1<unique> := class:
+
+class2 := class(class1):
+    Property2:int
+
+assert:
+    X := class2{Property1 := 1, Property2 := 2}
+    X = X
+    Y := class2{Property1 := 1, Property2 := 2}
+    X <> Y
+    Z:comparable = X
+    X = Z
+    Y <> Z
+
+# unique class inheriting a non-unique type
+class3 := class:
+
+class4 := class<unique>(class3):
+
+assert:
+    X := class4{}
+    X = X
+    Y := class4{}
+    X <> Y
+    Z:comparable = X
+    X = Z
+    Y <> Z
+
+assert_semantic_error(3510):
+    class3 := class{}
+    class4 := class<unique>(class3):
+    F(X:class3):comparable = X
+
+# <unique> is inherited, so make sure burying it in an few layers will behaves as unique
+class5 := class(class2):
+    Property5:int
+
+class6 := class(class5):
+    Property6:int
+
+class7 := class(class6):
+    Property7:int
+
+assert:
+    X := class7{Property1 := 1, Property2 := 2, Property5 := 5, Property6 := 6, Property7 := 7}
+    X = X
+    Y := class7{Property1 := 1, Property2 := 2, Property5 := 5, Property6 := 6, Property7 := 7}
+    X <> Y
+    Z:comparable = X
+    X = Z
+    Y <> Z
+
+assert{O:=unique_class{}; O=O}
+assert{unique_class{}<>unique_class{}}
+
+subclass_of_unique_interface := class(unique_interface){}
+assert{O:=subclass_of_unique_interface{}; O=O}
+assert{O:unique_interface=subclass_of_unique_interface{}; O=O}
+assert{subclass_of_unique_interface{}<>subclass_of_unique_interface{}}
+
+subinterface_of_unique_interface := interface(unique_interface){}
+subclass_of_subinterface_of_unique_interface := class(subinterface_of_unique_interface){}
+assert{O:=subclass_of_subinterface_of_unique_interface{}; O=O}
+assert{O:unique_interface=subclass_of_subinterface_of_unique_interface{}; O=O}
+assert{subclass_of_subinterface_of_unique_interface{}<>subclass_of_subinterface_of_unique_interface{}}
+
+<#> Allocating a <unique> class requires <allocates>. So <unique>
+    classes can be created in <transacts> without further annotation, but
+    <varies> and <computes> require an explicit <allocates>
+assert_valid:
+    uc := class<computes><unique><allocates>:
+assert_valid:
+    uc := class<unique><allocates>:
+assert_valid:
+    uc := class<unique><reads><allocates>:
+assert_semantic_error(3565):
+    uc := class<reads><allocates><unique><allocates>:
+assert_valid:
+    uc := class<transacts><unique>:
+assert_valid:
+    uc := class<unique>:
+
+assert_semantic_error(3512):
+    uc := class<computes><unique>:
+assert_valid:
+    uc := class<reads><allocates><unique>:
+
+# using unique requires that the target be at least <allocates>
+assert_semantic_error(3512):
+    some_class := class<unique><computes>:
+
+# <unique> is heritable, so a class inheriting a unique interface must provide the <allocates> in some form
+assert_semantic_error(3512):
+    unique_interface2 := interface<unique>{}
+    computes_class_ := class<computes>(unique_interface2){}
+
+assert_valid:
+    unique_interface2 := interface<unique>{}
+    computes_class_ := class<computes><allocates>(unique_interface2){}
+
+assert_valid:
+    unique_interface2 := interface<unique>{}
+    base_class2 := class<abstract><computes><allocates>(unique_interface2){}
+    class_type2 := class<unique>(base_class2){}
+
+assert_valid:
+    uc := class<computes><allocates><unique>:
+    c := class { allocate_unique_from_default():uc= { uc{} } }
+
+assert_valid:
+    uc := class<computes><allocates><unique>:
+    c := class { allocate_unique_from_allocates()<allocates>:uc= { uc{} } }
+
+assert_semantic_error(3512):
+    uc := class<computes><allocates><unique>:
+    c := class { allocate_unique_from_computes()<computes>:uc= { uc{} } }
+assert_valid:
+    uc := class<computes><allocates><unique>:
+    c := class { allocate_unique_from_computes()<computes><allocates>:uc= { uc{} } }
+
+# Test comparability from indirect inheritance from a unique interface.
+IndirectUniqueInterfaceTest := module:
+    ui<public> := interface<unique>{}
+    c0<public> := class(ui){}
+    c1<public> := class(c0){}
+    c2<public> := class(c0){}
+assert:
+    X := IndirectUniqueInterfaceTest.c1{}
+    Y := IndirectUniqueInterfaceTest.c1{}
+    X=X
+    Y=Y
+    X<>Y
+# Test joining two types that are comparable due to indirect inheritance from a unique interface.
+assert:
+    Cs := array:
+        IndirectUniqueInterfaceTest.c1{}
+        IndirectUniqueInterfaceTest.c2{}
+    Cs[0] <> Cs[1]

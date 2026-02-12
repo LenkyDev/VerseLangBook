@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+bp_vm_only
+{
+assert_ir_error(3502):
+    a<public>(t:type) := interface:
+        F<public>(G(:t):void)<transacts>:void
+
+    b := class(a(int)):
+        F<override>(G(:int):void)<transacts>:void = {}
+}
+
+verse_vm_only
+{
+    TheG(X:int):void = {}
+    a<public>(t:type) := interface:
+        F<public>(G(:t):void)<transacts>:void
+
+    b := class(a(int)):
+        F<override>(G(:int):void)<transacts>:void = {}
+    assert:
+        B:b = b{}
+        B.F(TheG)
+}

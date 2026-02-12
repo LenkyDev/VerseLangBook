@@ -1,0 +1,44 @@
+C := struct:
+    # a brick of data
+    value1:int = 0
+    value2:float = 1.5
+    value3:char = 'z'
+    value4:int = 42
+    value5:char = 'Q'
+    value6:float = 123.456
+
+ValidateArray(cc:[]C, count:int)<decides>:void = 
+    cc.Length = count
+    for(c : cc):
+        c.value1 = 0
+        c.value2 = 1.5
+        c.value3 = 'z'
+        c.value4 = 42
+        c.value5 = 'Q'
+        c.value6 = 123.456
+
+ConcatSomeArrays()<decides>:void =
+    var cc:[]C = array{}
+    var c1:C = C{}
+    var c2:C = C{}
+
+    ValidateArray[cc, 0]
+    set cc = array{c1, c2}                  # cc length = 2
+    ValidateArray[cc, 2]
+    set cc = array{c1, c1} + array{c2, c2}  # cc length = 4
+    ValidateArray[cc, 4]
+    set cc = cc + cc                        # cc length = 8
+    ValidateArray[cc, 8]
+    set cc += array{c1}                     # cc length = 9
+    ValidateArray[cc, 9]
+    set cc += array{c1, c2, c2, c1}         # cc length = 13
+    ValidateArray[cc, 13]
+    set cc += cc                            # cc length = 26
+    ValidateArray[cc, 26]
+    set cc += cc + cc + cc + cc + cc + cc   # cc length = 182
+    ValidateArray[cc, 182]
+    set cc += cc                            # cc length = 364
+    ValidateArray[cc, 364]
+
+assert:
+    ConcatSomeArrays[]

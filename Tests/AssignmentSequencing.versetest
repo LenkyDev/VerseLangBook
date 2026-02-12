@@ -1,0 +1,49 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+int_ref := class:
+    var Contents:int = 0
+
+EffectfulIdentity(Ref:int_ref, X:t where t:type):t =
+    set Ref.Contents += 1
+    X
+
+assert:
+    var X:[]int = array{1, 2, 3}
+    set X = array{4, 5, X[2] or -1}
+    X = array{4, 5, 3}
+
+assert:
+    X := int_ref{}
+    Y := int_ref{}
+    set EffectfulIdentity(Y, X).Contents = Y.Contents
+    X.Contents = 1
+
+assert:
+    X := int_ref{}
+    Y := int_ref{}
+    Z := set EffectfulIdentity(Y, X).Contents = Y.Contents
+    X.Contents = 1
+    Z = 1
+
+assert:
+    var X:[int]int = map{}
+    set X[0] = if (X[0]) then 1 else 2
+    X[0] = 2
+
+int_map_ref := class:
+    var Contents:[int]int = map{}
+
+assert:
+    X := int_map_ref{}
+    Y := int_ref{Contents := 3}
+    set EffectfulIdentity(Y, X).Contents[0] = if (X.Contents[0]) then 1 else Y.Contents
+    X.Contents[0] = 4
+
+assert:
+    X := int_map_ref{}
+    Y := int_ref{}
+    Z := int_ref{Contents := 3}
+    set EffectfulIdentity(Y, X).Contents[EffectfulIdentity(Z, Y.Contents)] = if (X.Contents[1]) then 1 else Z.Contents
+    X.Contents[1] = 4

@@ -1,0 +1,139 @@
+assert_semantic_error(3514):
+    abstracts:int = 42
+assert_semantic_error(3514):
+    as:int = 42
+assert_semantic_error(3514):
+    assert:int = 42
+assert_semantic_error(3514):
+    backslash:int = 42
+assert_semantic_error(3514):
+    bag:int = 42
+assert_semantic_error(3514):
+    char8:int = 42
+assert_semantic_error(3514):
+    char16:int = 42
+assert_semantic_error(3514):
+    collection:int = 42
+assert_semantic_error(3514):
+    contravariant:int = 42
+assert_semantic_error(3514):
+    covariant:int = 42
+assert_semantic_error(3514):
+    element:int = 42
+assert_semantic_error(3514):
+    embargo:int = 42
+assert_semantic_error(3514):
+    ensure:int = 42
+assert_semantic_error(3514):
+    fails:int = 42
+assert_semantic_error(3514):
+    find:int = 42
+assert_semantic_error(3514):
+    first:int = 42
+assert_semantic_error(3514):
+    float16:int = 42
+assert_semantic_error(3514):
+    float32:int = 42
+assert_semantic_error(3514):
+    float64:int = 42
+assert_semantic_error(3514):
+    float128:int = 42
+assert_semantic_error(3514):
+    fold:int = 42
+assert_semantic_error(3514):
+    function:int = 42
+assert_semantic_error(3514):
+    given:int = 42
+assert_semantic_error(3514):
+    guard:int = 42
+assert_semantic_error(3514):
+    implies:int = 42
+assert_semantic_error(3514):
+    instance:int = 42
+assert_semantic_error(3514):
+    int8:int = 42
+assert_semantic_error(3514):
+    int16:int = 42
+assert_semantic_error(3514):
+    int32:int = 42
+assert_semantic_error(3514):
+    int64:int = 42
+assert_semantic_error(3514):
+    interacts:int = 42
+assert_semantic_error(3514):
+    introspects:int = 42
+assert_semantic_error(3514):
+    invariant:int = 42
+assert_semantic_error(3514):
+    iterates:int = 42
+assert_semantic_error(3514):
+    known:int = 42
+assert_semantic_error(3514):
+    last:int = 42
+assert_semantic_error(3514):
+    let:int = 42
+assert_semantic_error(3514):
+    markup:int = 42
+assert_semantic_error(3514):
+    operator'catch':int = 42
+assert_semantic_error(3514):
+    operator'upon':int = 42
+assert_semantic_error(3514):
+    operator'where':int = 42
+assert_semantic_error(3514):
+    permutation:int = 42
+assert_semantic_error(3514):
+    nat:int = 42
+assert_semantic_error(3514):
+    nat8:int = 42
+assert_semantic_error(3514):
+    nat16:int = 42
+assert_semantic_error(3514):
+    nat32:int = 42
+assert_semantic_error(3514):
+    nat64:int = 42
+assert_semantic_error(3514):
+    over:int = 42
+assert_semantic_error(3514):
+    provided:int = 42
+assert_semantic_error(3514):
+    random:int = 42
+assert_semantic_error(3514):
+    repeat:int = 42
+assert_semantic_error(3514):
+    sequence:int = 42
+assert_semantic_error(3514):
+    string8:int = 42
+assert_semantic_error(3514):
+    string16:int = 42
+assert_semantic_error(3514):
+    string32:int = 42
+assert_semantic_error(3514):
+    subclass:int = 42
+assert_semantic_error(3514):
+    succeeds:int = 42
+assert_semantic_error(3514):
+    syntax:int = 42
+assert_semantic_error(3514):
+    throws:int = 42
+assert_semantic_error(3514):
+    trait:int = 42
+assert_semantic_error(3514):
+    truth:int = 42
+assert_semantic_error(3514):
+    try:int = 42
+assert_semantic_error(3514):
+    union:int = 42
+assert_semantic_error(3514):
+    using:int = 42
+assert_semantic_error(3514):
+    verify:int = 42
+assert_semantic_error(3514):
+    when:int = 42
+assert_semantic_error(3514):
+    while:int = 42
+assert_semantic_error(3514):
+    _:int = 42
+assert_valid:
+    F(X:int):int = 5
+    T : type{ _(:int):int } = F # special case allow _ to be used for function identifiers in a type

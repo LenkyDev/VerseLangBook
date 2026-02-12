@@ -1,0 +1,50 @@
+# The bug was triggerd by importing vector2i and then use it inside another struct.
+# Need change set up to include Math to add this test to make this a regression test for sol-1986. 
+# This file is a reminder. 
+
+# using { /localhost/Math }
+
+# Since Math isn't included, we define vector2i here. This worked also before the bug fix.
+
+vector2i<public> := struct:
+    
+    X<public>:int = 0
+    
+    Y<public>:int = 0
+
+# The original problem struct
+wave_data := struct:
+   StartGridCell:vector2i
+
+assert: # Test with explicit default 
+    wave := wave_data:
+        StartGridCell:=vector2i{}
+    wave.StartGridCell.X = 0
+    wave.StartGridCell.Y = 0
+
+assert: # Test with explicit values
+    wave := wave_data:
+        StartGridCell:=vector2i{X:=5,Y:=7}
+    wave.StartGridCell.X = 5
+    wave.StartGridCell.Y = 7   
+
+# The problem struct` with default initialization
+wave_data2 := struct:
+   StartGridCell:vector2i = vector2i{X:=1, Y:=2}
+
+assert: # Test with default 
+    wave := wave_data2 {}
+    wave.StartGridCell.X = 1
+    wave.StartGridCell.Y = 2
+
+assert: # Test with explicit default 
+    wave := wave_data2:
+        StartGridCell:=vector2i{}
+    wave.StartGridCell.X = 0
+    wave.StartGridCell.Y = 0
+
+assert: # Test with explicit values
+    wave := wave_data2:
+        StartGridCell:=vector2i{X:=5,Y:=7}
+    wave.StartGridCell.X = 5
+    wave.StartGridCell.Y = 7

@@ -1,0 +1,346 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+
+bp_vm_only
+{
+# FAILURE - no arguments and only case-differences
+assert_link_error(9200):
+    cc<public> := class:
+        Function():int = 42
+        FUNCTION():int = 420
+
+# FAILURE - they pile up after the first function
+assert_link_error(9200, 9200):
+    cc<public> := class:
+        Function():int = 42
+        FUNCTION():int = 420
+        fUNCTION():int = 4200
+
+# SUCCESS - different arguments disambiguate the symbols
+assert_link_error():
+    cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION():int = 420
+
+# SUCCESS - what about the same number of arguments but different types?
+assert_link_error():
+    cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION(Value:float):int = 420
+
+# SUCCESS - unrelated class types
+assert_link_error():
+    type1<public> := class {}
+    type2<public> := class {}
+    cc<public> := class:
+        Function<public>(Object:type1):int = 42
+        FUNCTION<public>(Object:type2):int = 420
+
+# SUCCESS - related class types
+assert_link_error():
+    type1<public> := class {}
+    type2<public> := class(type1) {}
+    cc<public> := class:
+        Function<public>(Object:type1):int = 42
+        FUNCTION<public>(Object:type2):int = 420
+
+# SUCCESS - class vs optional-class
+assert_link_error():
+    type1<public> := class {}
+    cc<public> := class:
+        Function<public>(Object:type1):void = {}
+        FUNCTION<public>(OptObject:?type1):void = {}
+
+# SUCCESS - Function differs by both arg type and return type
+assert_link_error():
+    cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION(Value:float):float = 42.0
+        
+# SUCCESS - suspends vs not can disambiguate too
+assert_link_error():
+    cc<public> := class:
+        Function()<suspends>:int = 42
+        FUNCTION():int = 420
+
+# FAILURE - suspends functions can collide on type and on code-gen
+assert_link_error(9002, 9200):
+    cc<public> := class:
+        Function()<suspends>:int = 42
+        FUNCTION()<suspends>:int = 420
+
+# FAILURE - decides does not disambiguate
+assert_link_error(9200):
+    cc<public> := class:
+        Function()<decides>:int = 42
+        FUNCTION():int = 420
+
+# FAILURE - standard effects don't disambiguate
+assert_link_error(9200):
+    cc<public> := class:
+        Function()<transacts>:int = 42
+        FUNCTION()<computes>:int = 420
+
+# FAILURE - neither do access attributes
+assert_link_error(9200):
+    cc<public> := class:
+        Function<public>():int = 42
+        FUNCTION<private>():int = 420
+       
+#################
+# FAILURE - Everything that we just did for class member functions also holds for module functions
+assert_link_error(9200):
+    mm := module:
+        Function():int = 42
+        FUNCTION():int = 420
+
+# FAILURE - they pile up after the first function
+assert_link_error(9200, 9200):
+    mm := module:
+        Function():int = 42
+        FUNCTION():int = 420
+        fUNCTION():int = 4200
+
+# SUCCESS - different arguments disambiguate the symbols
+assert_link_error():    # NO ERROR
+    mm := module:
+        Function(Value:int):int = Value
+        FUNCTION():int = 420
+
+# SUCCESS - what about the same number of arguments but different types?
+assert_link_error():
+    mm := module:
+        Function(Value:int):int = Value
+        FUNCTION(Value:float):int = 420
+
+# SUCCESS - unrelated class types
+assert_link_error():
+    mm := module:
+        type1<public> := class {}
+        type2<public> := class {}
+        Function<public>(Object:type1):int = 42
+        FUNCTION<public>(Object:type2):int = 420
+
+# SUCCESS - related class types
+assert_link_error():
+    mm := module:
+        type1<public> := class {}
+        type2<public> := class(type1) {}
+        Function<public>(Object:type1):int = 42
+        FUNCTION<public>(Object:type2):int = 420
+
+# SUCCESS - class vs optional-class
+assert_link_error():
+    mm := module:
+        type1<public> := class {}
+        Function<public>(Object:type1):void = {}
+        FUNCTION<public>(OptObject:?type1):void = {}
+
+# SUCCESS - Function differs by both arg type and return type
+assert_link_error():
+    mm := module:
+        Function(Value:int):int = Value
+        FUNCTION(Value:float):float = 42.0
+
+# SUCCESS - suspends vs not can disambiguate too
+assert_link_error():
+    mm := module:
+        Function()<suspends>:int = 42
+        FUNCTION():int = 420
+
+# FAILURE - suspends functions can collide on type and on code-gen
+assert_link_error(9002, 9200):
+    mm := module:
+        Function()<suspends>:int = 42
+        FUNCTION()<suspends>:int = 420
+
+# FAILURE - decides does not disambiguate
+assert_link_error(9200):
+    cc<public> := class:
+        Function()<decides>:int = 42
+        FUNCTION():int = 420
+
+# FAILURE - standard effects don't disambiguate
+assert_link_error(9200):
+    mm := module:
+        Function()<transacts>:int = 42
+        FUNCTION()<computes>:int = 420
+
+# FAILURE - neither do access attributes
+assert_link_error(9200):
+    mm := module:
+        Function<public>():int = 42
+        FUNCTION<internal>():int = 420
+
+
+###################
+# These next tests are strange cases. The errors are ultimately because of the same
+# FName aliasing, but they manifest as symbol-not-found errors. This happens because
+# the second function's binding data (ParamProperty) isn't initialized properly in 
+# FindOrGenerateFunctionFromFunction(). This will eventually fail codegen, but it'll
+# also mask the aliasing error above. This will all have to be sorted out if we address
+# the larger issue.
+
+# FAILURE - Function differ in case
+assert_link_error(9000, 9000):
+    cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):int = 420
+
+# FAILURE - Function differs by return type only
+assert_link_error(9000, 9000):
+    cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):float = 42.0
+
+# FAILURE - Function differ in case
+assert_link_error(9000, 9000):
+    mm := module:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):int = 420
+
+# FAILURE - Function differs by return type only
+assert_link_error(9000, 9000):
+    mm := module:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):float = 42.0
+
+
+# Code uploaded before this fix should still work, i.e., no errors but warnings are ok.
+# There are still some errors but they generated errors also before the case insensitive
+# name collisions check was added.
+
+# FAILURE - no arguments and only case-differences
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function():int = 42
+        FUNCTION():int = 420
+
+# FAILURE - they pile up after the first function
+assert_link_error(2306, 2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function():int = 42
+        FUNCTION():int = 420
+        fUNCTION():int = 4200
+
+# FAILURE - suspends functions can collide on type and on code-gen
+assert_link_error(9002, 2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function()<suspends>:int = 42
+        FUNCTION()<suspends>:int = 420
+
+# FAILURE - decides does not disambiguate
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function()<decides>:int = 42
+        FUNCTION():int = 420
+
+# FAILURE - standard effects don't disambiguate
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function()<transacts>:int = 42
+        FUNCTION()<computes>:int = 420
+
+# FAILURE - neither do access attributes
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function<public>():int = 42
+        FUNCTION<private>():int = 420
+       
+#################
+# FAILURE - Everything that we just did for class member functions also holds for module functions
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function():int = 42
+        FUNCTION():int = 420
+
+# FAILURE - they pile up after the first function
+assert_link_error(2306, 2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function():int = 42
+        FUNCTION():int = 420
+        fUNCTION():int = 4200
+
+# FAILURE - suspends functions can collide on type and on code-gen
+assert_link_error(9002, 2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function()<suspends>:int = 42
+        FUNCTION()<suspends>:int = 420
+
+# FAILURE - decides does not disambiguate
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function()<decides>:int = 42
+        FUNCTION():int = 420
+
+# FAILURE - standard effects don't disambiguate
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function()<transacts>:int = 42
+        FUNCTION()<computes>:int = 420
+
+# FAILURE - neither do access attributes
+assert_link_error(2306):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function<public>():int = 42
+        FUNCTION<internal>():int = 420
+
+# FAILURE - Function differ in case
+assert_link_error(9000, 9000):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):int = 420
+
+# FAILURE - Function differs by return type only
+assert_link_error(9000, 9000):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      cc<public> := class:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):float = 42.0
+
+# FAILURE - Function differ in case
+assert_link_error(9000, 9000):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):int = 420
+
+# FAILURE - Function differs by return type only
+assert_link_error(9000, 9000):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet:
+      mm := module:
+        Function(Value:int):int = Value
+        FUNCTION(Value:int):float = 42.0
+
+}
+
+

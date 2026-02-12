@@ -1,0 +1,5 @@
+assert_valid:
+    E := enum {One}
+    C := class:
+        e:E
+        f()<transacts><decides>:void={e = E.One}

@@ -1,0 +1,65 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{array{1}=array{1}}
+assert{array{1,2}=array{1,2}}
+assert{array{true,false}=array{true,false}}
+assert{array{1,2}=array{1,2}=array{1,2}}
+
+assert{array{1}<>array{2}}
+assert{array{true}<>array{false}}
+assert{array{1,2}<>array{1,3}}
+assert{array{1,2}<>array{2,1}}
+assert{array{1}<>array{1,2}}
+assert{array{1,2}<>array{1}}
+
+# Arrays of incomparable types should not be comparable.
+assert_semantic_error(3509){incomparable_class := class{}; F(A:[]incomparable_class, B:[]incomparable_class)<transacts><decides>:incomparable_class=A=B}
+assert_semantic_error(3509){incomparable_class := class{}; F(A:[]incomparable_class, B:[]incomparable_class)<transacts><decides>:incomparable_class=A<>B}
+
+# Arrays of disjoint comparable types are comparable
+assert_valid {F(A:[]int, B:[]float)<transacts><decides>:void=A=B}
+assert_valid {F(A:[]int, B:[]float)<transacts><decides>:void=A<>B}
+
+# Comparing two arrays for equality should fail or return the first array.
+super_class := class<unique>{}
+sub_class := class(super_class){}
+assert:
+    SubClass := sub_class{}
+    SuperArray:[]super_class = array{SubClass}
+    SubArray:[]sub_class = array{SubClass}
+    MeetArray:[]super_class = SuperArray=SubArray
+    MeetArray.Length=1 and MeetArray[0] = SubClass
+
+# Comparing two arrays for inequality should fail or return the first array.
+assert:
+    SubClass1 := sub_class{}
+    SubClass2 := sub_class{}
+    SuperArray:[]super_class = array{SubClass1}
+    SubArray:[]sub_class = array{SubClass2}
+    MeetArray:[]super_class = SuperArray<>SubArray
+    MeetArray=SuperArray
+
+assert_semantic_error(3509):
+    super_class := class<unique>{}
+    sub_class := class(super_class){}
+    F()<transacts><decides>:void=
+        SubClass1 := sub_class{}
+        SubClass2 := sub_class{}
+        SuperArray:[]super_class = array{SubClass1}
+        SubArray:[]sub_class = array{SubClass2}
+        MeetArray:[]sub_class = SuperArray<>SubArray
+
+# Test comparing array{} to other forms of false: false, (), (?t)(false), map{}, "".
+assert{X:[]int=array{}; Y:logic=false   ; X=Y}
+assert{X:[]int=array{}; Y:void={}       ; X=Y}
+assert{X:[]int=array{}; Y:tuple()=()    ; X=Y}
+assert{X:[]int=array{}; Y:?int=false    ; X=Y}
+assert{X:[]int=array{}; Y:[int]int=map{}; X=Y}
+assert{X:[]int=array{}; Y:string=""     ; X=Y}
+
+assert{X:[]int=array{0}; Y:logic=false   ; X<>Y}
+assert{X:[]int=array{0}; Y:void={}       ; X<>Y}
+assert{X:[]int=array{0}; Y:tuple()=()    ; X<>Y}
+assert{X:[]int=array{0}; Y:?int=false    ; X<>Y}
+assert{X:[]int=array{0}; Y:[int]int=map{}; X<>Y}
+assert{X:[]int=array{0}; Y:string=""     ; X<>Y}

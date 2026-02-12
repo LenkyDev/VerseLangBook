@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# These were previously allowed, but generated bad code.
+assert_semantic_error(3512):
+    F1()<suspends>:any = ()
+    F2(:any):void = {}
+    F3():void=spawn{F2(F1())}
+    
+assert_semantic_error(3512):
+    F1()<suspends>:tuple() = ()
+    F2(:any):void = {}
+    F3():void=spawn{F2(F1())}
+    
+assert_semantic_error(3512):
+    F1()<suspends>:[]int = ()
+    F2(:any):void = {}
+    F3():void=spawn{F2(F1())}
+
+F1()<suspends>:any = 0
+F2(:any):void = {}
+F3()<suspends>:void=branch{F2(F1())}
+assert{spawn{F3()}}

@@ -1,0 +1,12 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Trivial use of the version field in a package.
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=0){snippet{}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=1){snippet{}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=2){snippet{}}}
+assert_semantic_error(3013){vpackage(P0, /A, ?VerseVersion:=3){snippet{}}}
+
+assert_semantic_error(3013){vpackage(P0, /A, ?VerseVersion:=-1         ){snippet{}}}
+assert_semantic_error(3013){vpackage(P0, /A, ?VerseVersion:=-4294967296){snippet{}}}
+assert_semantic_error(3013){vpackage(P0, /A, ?VerseVersion:=4294967296 ){snippet{}}}
+assert_semantic_error(3013){vpackage(P0, /A, ?VerseVersion:=4294967295 ){snippet{}}}

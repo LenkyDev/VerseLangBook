@@ -1,0 +1,11 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Glitch broke AST and caused an ensure later in the semantic analyzer.
+
+assert_semantic_error(3502, 3502, 3502, 3509):
+    MyMethod(AInterface: my_interface):my_interface=
+        if(my_interface[AInterface]) {}
+        return AInterface
+
+    my_interface := interface() # note the missing ":"
+        FooInt : int = 1

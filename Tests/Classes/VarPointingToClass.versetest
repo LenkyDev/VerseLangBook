@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+c := class:
+    var SomeField:int = 42
+    F():int = 42
+
+assert:
+    var MyC:c = c{}
+    MyC.SomeField = 42
+    set MyC.SomeField = 666
+    MyC.SomeField = 666
+
+    F := MyC.F
+    F() = 42
+
+    MyC.F() = 42

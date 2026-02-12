@@ -1,0 +1,33 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert{Abs(+0)=0}
+assert{Abs(+1)=1}
+assert{Abs(+2)=2}
+assert{Abs(-1)=1}
+assert{Abs(-2)=2}
+
+assert{Abs(-9223372036854775807)}
+bp_vm_only{
+assert_runtime_error{Abs(-9223372036854775808)}
+}
+verse_vm_only
+{
+assert{Abs(-9223372036854775808) = 9223372036854775807+1}
+}
+
+# Use bitwise comparison to check that float Abs maps negative zero to positive zero.
+assert{TestUtils.BitcastFloatToInt(Abs(+0.0)) = 0}
+assert{TestUtils.BitcastFloatToInt(Abs(-0.0)) = 0}
+
+assert{Abs(+1.0) = 1.0}
+assert{Abs(+2.0) = 2.0}
+assert{Abs(-1.0) = 1.0}
+assert{Abs(-2.0) = 2.0}
+
+assert_semantic_error(3509){f():void=Abs(true)}
+assert_semantic_error(3509){f():void=Abs(option{0})}
+assert_semantic_error(3509){f():void=Abs(array{0})}
+assert_semantic_error(3509){C := class{}; f():void=Abs(C{})}
+
+# Don't allow use of Abs except directly as a callee.
+assert_semantic_error(3502){f():void=Abs}

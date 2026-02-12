@@ -1,0 +1,439 @@
+# --- Public ---
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class(A):
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                a<public>:A
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class(A):
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                a<public>:A
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := enum {a1, a2}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                a<public>:A
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := enum {a1, a2}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+# --- Internal ---
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class(A):
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B := class:
+                a:A
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class(A):
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B := class:
+                a:A
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := enum {a1, a2}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B := class:
+                a:A
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            # default access := internal
+            A := enum {a1, a2}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class(A):
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B := class:
+                a:A
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := class:
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class(A):
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B := class:
+                a:A
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := interface {}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := enum {a1, a2}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B := class:
+                a:A
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<internal> := enum {a1, a2}
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            
+            B<public> := class:
+                myFunction(a:A):int=
+                    5
+}
+
+# --- Protected (not allowed at module level) ---
+assert_semantic_error(3594)
+{
+    vmodule(X):
+        snippet:
+            
+            A<protected> := class:
+}
+
+assert_semantic_error(3594)
+{
+    vmodule(X):
+        snippet:
+            
+            A<protected> := enum {a1, a2}
+}
+
+assert_semantic_error(3594)
+{
+    vmodule(X):
+        snippet:
+            
+            A<protected> := interface {}
+}
+
+# --- Private (not allowed at module level) ---
+assert_semantic_error(3594)
+{
+    vmodule(X):
+        snippet:
+            
+            A<private> := class:
+}
+
+assert_semantic_error(3594)
+{
+    vmodule(X):
+        snippet:
+            
+            A<private> := enum {a1, a2}
+}
+
+assert_semantic_error(3594)
+{
+    vmodule(X):
+        snippet:
+            
+            A<private> := interface {}
+}
+
+# --- epic_internal ---
+assert_semantic_error(3593, 3593, 3593):
+    vpackage(Localhost,/localhost,?Scope:=InternalAPI):
+        snippet:
+            # Error on use of `epic_internal`
+            class1<epic_internal> := class<computes>:
+            # Error on use of `class1`
+            Instance:class1 = class1{}
+
+# --- Ensure single access level ---
+assert_semantic_error(3543, 3594):
+    vmodule(X):
+        snippet:
+            A<public><private> := class:
+
+assert_semantic_error(3543, 3594):
+    vmodule(X):
+        snippet:
+            A<public><private><protected><internal> := enum {a1, a2}
+
+assert_semantic_error(3543):
+    vmodule(X):
+        snippet:
+            A<public><internal> := interface {}

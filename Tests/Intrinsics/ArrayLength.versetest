@@ -1,0 +1,89 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+arrIntCount(inArr:[]int):int=
+{
+    var count:int = 0
+    for (i : inArr):
+        set count += 1
+    return (count)
+}
+
+arrFloatCount(inArr:[]float):int=
+{
+    var count:int = 0
+    for (i : inArr):
+        set count += 1
+    return (count)
+}
+
+arrStringCount(inArr:[]string):int=
+{
+    var count:int = 0
+    for (i : inArr):
+        set count += 1
+    return (count)
+}
+
+arrReturnsLength3() : int =
+    arr:= array{1,2,3}
+    return arr.Length
+
+arrIgnoresLength() : int =
+    arr:= array{1,2,3}
+    arr.Length
+    return 4
+
+
+assert:
+    arr:[]int := array{}
+    arr.Length = 0
+
+assert:
+    arr := array{86,75,309}
+    libCount := arrIntCount(arr)
+    intCount := arr.Length
+    intCount = libCount
+
+assert:
+    arr := array{1.0, 2.0, 2.71828}
+    libCount := arrFloatCount(arr)
+    intCount := arr.Length
+    intCount = libCount
+
+assert:
+    arr := array{"where", "is", "my", "ham sandwich"}
+    libCount := arrStringCount(arr)
+    intCount := arr.Length
+    intCount = libCount
+
+assert:
+    arrReturnsLength3() = 3
+
+assert:
+    arrIgnoresLength() = 4
+
+# Macro name must be an identifier
+assert_semantic_error(3545):
+    foo(): int =
+        arr := array{3,4,5}
+        return arr.Length{}
+
+# Expected a type, got invocation instead
+assert_semantic_error(3547):
+    foo(): int =
+        arr := array{3,4,5}
+        fee : arr.Length = 0
+        return arr.Length
+
+# Incompatible attribute expression result - expected subclass of type `attribute` and got `int`.
+assert_semantic_error(3553):
+    foo(): int =
+        arr := array{3,4,5}
+        @arr.Length fee : int = 0
+        return arr.Length
+
+# .Length shouldn't work on non-array types.
+assert_semantic_error(3506){X:int=0.Length}
+assert_semantic_error(3506){X:int=0.0.Length}
+assert_semantic_error(3506){X:int=false.Length}
+assert_semantic_error(3506){X:int='0'.Length}

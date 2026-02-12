@@ -1,0 +1,7 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+F(X:t where t:subtype(comparable))<computes><decides>:[t]int=
+    false?
+    map{}
+
+assert{not F[0]}

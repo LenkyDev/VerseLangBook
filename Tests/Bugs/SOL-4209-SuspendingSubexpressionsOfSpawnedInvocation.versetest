@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Suspension in the callee subexpression
+assert_semantic_error(3512):
+    F0()<suspends>:void={}
+    F1()<suspends>:type{_()<suspends>:void}=F0
+    F2():void=spawn{F1()()}
+    
+# Suspension in the callee context subexpression
+assert_semantic_error(3512):
+    c := class:
+        F0()<suspends>:void={}
+    F1()<suspends>:c=c{}
+    F2():void=spawn{F1().F0()}
+    
+# Suspension in an argument subexpression
+assert_semantic_error(3512):
+    c := class{}
+    F0(:c)<suspends>:void={}
+    F1()<suspends>:c=c{}
+    F2():void=spawn{F0(F1())}

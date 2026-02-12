@@ -1,0 +1,524 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    A<public> := module:
+        scoped_to_A<public> := scoped{A}
+    B<public> := module:
+        class_in_B<A.scoped_to_A> := class{}
+  
+# We can place scoped definitions anywhere and the order doesn't matter beyond scope access
+assert_valid:
+    X<public> := module:
+        c<scoped_X> := class:
+        scoped_X := scoped{X}
+        d<scoped_X> := class:
+            F<protected>(MyClass:c):void = {}
+
+assert_valid:
+    X<public> := module:
+        c<scoped_X> := class:
+        d<scoped_X> := class:
+            F<protected>(MyClass:c):void = {}
+        scoped_X := scoped{X}
+
+assert_valid:
+    scoped_X := scoped{X}
+    X<public> := module:
+        c<scoped_X> := class:
+        d<scoped_X> := class:
+            F<protected>(MyClass:c):void = {}
+
+assert_valid:
+    X<public> := module:
+        c<scoped_X> := class:
+        d<scoped_X> := class:
+            F<protected>(MyClass:c):void = {}
+    scoped_X := scoped{X}
+
+assert_semantic_error(3506):
+    Y<public> := module:
+        scoped_X := scoped{X}
+    X<public> := module:
+        c<scoped_X> := class:           # 3506 - can't see into Y at all, so scoped_X is undefined
+
+assert_semantic_error(3593):
+    Y<public> := module:
+        scoped_X := scoped{X}
+    X<public> := module:
+        using{Y}
+        c<scoped_X> := class:           # 3593 - can see into Y, but scoped_X isn't accessible
+
+assert_valid:
+    Y<public> := module:
+        scoped_X<public> := scoped{X}
+    X<public> := module:
+        using{Y}
+        c<scoped_X> := class:           # VALID as Y.scoped_X is public
+
+assert_valid:
+    Y<public> := module:
+        scoped_X<scoped{X}> := scoped{X}
+    X<public> := module:
+        c<Y.scoped_X> := class:           # VALID as Y.scoped_X is scoped to X
+            
+assert_semantic_error(3593):
+    X<public> := module:
+        c<scoped{Y}> := class:
+        d<public> := class:
+            F<public>(MyClass:c):void = {}  # 3593 - c is defined internal to X and Y so it's visible, but the path d::F fully public and thus c needs to be at least as visible as they are
+
+    Y<public> := module:
+        d<public> := class:
+            F(MyClass:X.c):void = {} # VALID - c is scoped internal to Y, and unlike above, the function F here is also internal to Y so we're ok
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            scoped_B := scoped{B}
+            i<internal> := interface {}
+            c1<internal> := class {
+                IntData<public> : int = 77
+            }
+    vmodule(B):
+        snippet:
+            using{A}
+            c2<public> := class:
+                data<public>:c2
+
+# check for multiple access level specifiers
+assert_semantic_error(3642):
+    double_public<public><public> := class{};        
+
+assert_semantic_error(3642):
+    scopedVerseVerse := scoped{/Verse.org/Verse}
+    scopedVerse := scoped{/Verse.org}
+    double_scoped<scopedVerseVerse><scopedVerse> := class{};        
+
+assert_semantic_error(3642):
+    scopedVerse := scoped{/Verse.org}
+    double_scoped<scoped{/Verse.org/Verse}><scopedVerse> := class{};        
+    
+# check error detection for modules that don't exist - Module-Ref, Path-Ref, & top-level Path-Ref
+assert_semantic_error(3506, 3587, 3587):
+    missing_scoped_def1 := scoped{B}
+    missing_scoped_def2 := scoped{/Verse.org/Werse}
+    missing_scoped_def3 := scoped{/Nerse.org/Verse}
+
+assert_semantic_error(3506, 3587, 3587):
+    class_with_missing_scope1<scoped{B}> := class {};
+    class_with_missing_scope2<scoped{/Verse.org/Werse}> := class {};
+    class_with_missing_scope3<scoped{/Nerse.org/Verse}> := class {};
+    
+# -----------------
+# module B doesn't exist, so the scoped resolution should fail for all these anonymous definitions
+assert_semantic_error(3506, 3506, 3506, 3506):
+    module_scoped_to_B<scoped{B}> := module:   # 3506 - B is not defined here, so this cannot be resolved to a real module
+        func<public>():void={}
+    public_module<public> := module:
+        cls<scoped{B}> := class {}  # 3506 - B still doesn't exist for this class
+        func<scoped{B}>:void= {}    # 3506 - B still doesn't exist for this function
+        en<scoped{B}> := enum: # 3506 - B still doesn't exist for this function
+            A
+            B
+            C    
+
+# Only one 3506 error here because the failed resolution happens in the scoped definition that isn't anonymous
+assert_semantic_error(3506):
+    scoped_to_B := scoped{B}                # 3506 - B is not defined here, so this cannot be resolved to a real module
+    module_scoped_to_B<scoped_to_B> := module:   
+        func<public>():void={}
+    public_module<public> := module:
+        cls<scoped_to_B> := class {}  
+        func<scoped_to_B>:void= {} 
+        en<scoped_to_B> := enum: 
+            A
+            B
+            C    
+            
+# -----------------
+# module-B cannot see the definition of access_level_B, but it's only used in A, so it's still ok
+assert_valid:
+    vmodule(A):
+        snippet:
+            defined_in_A_scoped_to_B<scoped{B}> := module:
+                func<public>():void={}
+
+    vmodule(B):
+        snippet:
+            using{A}
+            bf():void=
+                abc := defined_in_A_scoped_to_B.func()  # callable because even though the module was declared in A, it was scoped internal to B
+
+
+# Scoping the defined_in_A_scoped_to_B to module-B, but it's also scoped internal to A
+# module-B cannot see the definition of access_level_B, but it's only used in A, so it's still ok
+assert_valid:
+    vmodule(A):
+        snippet:
+            defined_in_A_scoped_to_B<scoped{B}> := module:
+                func<public>():void={}
+            other_module := module:
+                func():void=
+                    defined_in_A_scoped_to_B.func() # VALID defined_in_A_scoped_to_B is automatically internal to A
+    
+    vmodule(B):
+        snippet:
+            bfunc():void=
+                abc := A.defined_in_A_scoped_to_B.func()  # callable because even though the module was declared in A, it was scoped internal to B
+
+# Scoping the defined_in_A_scoped_to_B to module-B, but it's also scoped internal to A
+# module-B cannot see the definition of access_level_B, but it's only used in A, so it's still ok
+assert_valid:
+    vmodule(A):
+        snippet:
+            defined_in_A_scoped_to_B<scoped{B}> := module:
+                func<public>():void={}
+            other_module := module:
+                func():void=
+                    defined_in_A_scoped_to_B.func() # VALID defined_in_A_scoped_to_B is automatically internal to A
+    
+    vmodule(B):
+        snippet:
+            bfunc():void=
+                abc := A.defined_in_A_scoped_to_B.func()  # VALID callable because even though the module was declared in A, it was scoped internal to B
+
+assert_semantic_error(3593,3593):
+    vmodule(A):
+        snippet:
+            defined_in_A_scoped_to_B<scoped{B}> := module:
+                func<public>():void={}
+            other_module := module:
+                func():void=
+                    defined_in_A_scoped_to_B.func() # VALID defined_in_A_scoped_to_B is automatically internal to A
+
+    vmodule(B){}
+
+    vmodule(C):
+        snippet:
+            cfunc():void=
+                abc := A.defined_in_A_scoped_to_B.func()  # 3506 because defined_in_A_scoped_to_B is scoped internal to both A and B, but not here in C
+
+
+# Basic declarations of scoped values
+assert_valid:
+    vmodule(A):
+        snippet:
+            unlabeled_access_level<internal> := scoped{/Verse.org/Verse, B}
+            public_access_level<public> := scoped{/Verse.org/Verse, B}
+            internal_access_level<internal> := scoped{/Verse.org/Verse, /Verse.org/Verse}
+            scoped_access_level<unlabeled_access_level> := scoped{A, /Verse.org/Verse}
+
+    vmodule(B):
+        snippet:
+            func<public>():void={}
+
+# Can a scoped definition scope itself to another module?!
+assert_semantic_error(3506):
+    vmodule(A):
+        snippet:
+            scoped_B<scoped_B> := scoped{B}   # 3506 - we can't use scoped_B directly on itself
+            scoped_B2<scoped{B}> := scoped{B}   # VALID - This works, however
+
+    vmodule(B):
+        snippet:
+            func<scoped_B>():void={}
+
+# We can't make scoped definitions inside classes - modules only right now
+assert_semantic_error(3502, 3502, 3594):
+    vmodule(A):
+        snippet:
+            some_class<private> := class:
+                private_access_level<private> := scoped{A}
+                protected_access_level<protected> := scoped{A}
+                
+
+# using a class that is scoped within the module where it is defined. Access_level_A has the same meaning as internal here.
+assert_valid:
+    vmodule(A):
+        snippet:
+            access_level_A<public> := scoped{A}
+
+            internal_A<internal> := module:
+                func<public>():void={}
+            scoped_A<access_level_A> := module:    # same as internal here
+                func<public>():void={}
+
+            bf():void=
+                abc1 := internal_A.func() 
+                abc2 := scoped_A.func() 
+
+# using a class that is scoped within a different module than where it is defined.
+assert_valid:
+    vmodule(A):
+        snippet:
+            access_level_B<public> := scoped{B}
+            defined_in_A_scoped_to_B<access_level_B> := module:    # same as internal here
+                af<public>():void={}
+
+    vmodule(B):
+        snippet:
+            bf():void=
+                abc := A.defined_in_A_scoped_to_B.af()  # callable because even though the module was declared in A, it was scoped internal to B
+
+
+# module-B cannot see the definition of access_level_B, but it's only used in A, so it's still ok
+assert_valid:
+    vmodule(A):
+        snippet:
+            access_level_B := scoped{B}
+            defined_in_A_scoped_to_B<access_level_B> := module:    # same as internal here
+                func<public>():void={}
+
+    vmodule(B):
+        snippet:
+            using{A}
+            bf():void=
+                abc := defined_in_A_scoped_to_B.func()  # callable because even though the module was declared in A, it was scoped internal to B
+
+
+# you can implement an interface of another module if it's scoped to you
+assert_valid:
+    vmodule(A):
+        snippet:
+             T<scoped{B}> := interface {}
+    vmodule(B):
+        snippet:
+            using{A}
+            C := class(T) {}
+
+assert_semantic_error(3593,3593,3593):
+    vmodule(A):
+        snippet:
+            scoped_B<public> := scoped{B}
+            modAA := module:
+                some_interface<scoped_B> := interface {}
+
+    vmodule(B):
+        snippet:
+            modBB<internal> := module:
+                some_class := class(A.modAA.some_interface) {}   # 3593 - modAA not exposed to B
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            scoped_B := scoped {B}
+            modAA<scoped_B> := module:
+                some_interface<scoped_B> := interface{}        
+    vmodule(B):
+        snippet:
+            using {A}
+            some_class := class<public>(modAA.some_interface):
+
+# if a scoped and public class are equally visible,
+# the scoped one can cause an ambiguity
+assert_semantic_error(3588):
+    vmodule(A):
+        snippet:
+             ABC<scoped{C}> := class { a<scoped{C}>:int }
+    vmodule(B):
+        snippet:
+             ABC<public> := class { b<public>:int }
+    vmodule(C):
+        snippet:
+            using{A}
+            using{B}
+            cf():void={ abc := ABC{ b:=4 } }
+
+# if a scoped and public method are equally visible,
+# the scoped one can cause an ambiguity
+assert_semantic_error(3518):
+    vmodule(A):
+        snippet:
+             af<scoped{C}>():float={ 4.1 }
+    vmodule(B):
+        snippet:
+             af<public>():int={ 4 }
+    vmodule(C):
+        snippet:
+            using{A}
+            using{B}
+            cf():int={af()}
+
+# you can reference internal data of another module
+assert_valid:
+    vmodule(A):
+        snippet:
+             IntData<scoped{B}> : int = 77
+    vmodule(B):
+        snippet:
+            using{A}
+            BIntData : int = IntData
+
+# If you scope some data to another module that happens to alias something else there, it can cause an ambiguity
+assert_semantic_error(3588, 3532):
+    vmodule(A):
+        snippet:
+             IntData<scoped{B}> : int = 77  # causes 3588 with B.IntData
+    vmodule(B):
+        snippet:
+            using{A}
+            IntData : int = 78
+            BIntData : int = IntData   # 3532 - IntData is available from both A and B
+
+# Test no longer works because assert will cause these to be local variables to a hidden class type and cause a 3661 error
+# Using assert_semantic_error instead causes the native scope references to fail to resolve.
+<#
+# Scopes defined over in TestScopedAccessLevel.verse should be visible from here.
+assert:
+    A<scoped{TestScopedAccessLevels}> := 123
+    B<TestScopedAccessLevels.VerseScope> := 456
+#>
+
+#definition site is scoped to the reference site  
+assert_valid:
+    defsite<scoped{refsite}> := module:
+        value:int := 42
+    refsite := module:
+        value:int := defsite.value
+
+assert_valid:
+    defsite<public> := module:
+        value<scoped{refsite}>:int := 42
+    refsite := module:
+        value:int := defsite.value
+
+#reference site is scoped to the definition site
+assert_semantic_error(3593):
+    defsite := module:
+        value:int := 42
+    refsite<scoped{defsite}> := module:
+        value:int := defsite.value
+
+assert_semantic_error(3593):
+    defsite := module:
+        value:int := 42
+    refsite := module:
+        value<scoped{defsite}>:int := defsite.value
+
+# Check to see if scoped access levels attributes propagate through scopes
+assert_valid:
+    A<public> := module:
+        AC<public> := class:
+            ACV<public>:int := 42
+
+    B := module:
+        BC := class:
+            BF():int = { a := A.AC{}; a.ACV}  # VALID - public all the way to ACV
+
+assert_valid:
+    A<public> := module:
+        AC<public> := class:
+            ACV<scoped{B}>:int := 42
+
+    B := module:
+        BC := class:
+            BF():int = { a := A.AC{}; a.ACV}  # VALID - public all the way to ACV which is scoped to here
+
+assert_valid:
+    A<public> := module:
+        AC<scoped{B}> := class:
+            ACV<public>:int := 42
+
+    B := module:
+        BC := class:
+            BF():int = { a := A.AC{}; a.ACV}  # VALID - public all the way to AC which is scoped to here
+            
+assert_valid:
+    A<scoped{B}> := module:
+        AC := class:
+            ACV:int := 42
+
+    B := module:
+        BC := class:
+            BF():int = { a := A.AC{}; a.ACV}  # VALID - A is scoped to here
+
+assert_semantic_error(3593,3593,3593,3593):
+    AA := module:                   # public
+        A := module:                # internal to AA
+            AC<scoped{B}> := class:
+                ACV:int := 42
+
+    B := module:
+        BC := class:
+            BF():int = { a := AA.A.AC{}; a.ACV}  # 3593 - AC is scoped to here, but A is still internal to AA and we can't see through it
+
+
+assert_semantic_error(3593,3593):
+    A := module:
+        AC := class:
+            ACV<scoped{B}>:int := 42
+
+    B := module:
+        BC := class:
+            BF():int = { a := A.AC{}; a.ACV}  # 3593 - ACV is scoped to B, but we can't see through AC to get there
+
+assert_semantic_error(3593):
+    A<scoped{B}> := module:
+        AC := class:
+            ACV:int := 42
+
+    B<scoped{C}> := module:
+        BC := class:
+            BCV:A.AC = A.AC{}
+            BF():A.AC = { BCV }  # VALID - A is scoped to here
+ 
+    C := module:
+        CC := class:
+            CCV:B.BC = B.BC{}
+            CF():int = { CCV.BCV.ACV } # 3593 - B is scoped to here, so BCV is available, but C isn't allowed to look into A.AC to get ACV
+
+assert_semantic_error(3593, 3593, 3593):
+    A<scoped{B}> := module:
+        AC := class:
+            ACV:int := 42
+
+    B<scoped{C}> := module:
+        BC := class:
+            BCV:A.AC = A.AC{}
+            BF():A.AC = { BCV }  # VALID - A is scoped to here
+ 
+    C := module:
+        CC := class:
+            CCV:A.AC = A.AC{}       # 3593, 3593 C cannot see A.AC through B even though it's scoped to B
+            CF():int = { CCV.ACV }  # 3593 again - same reason
+
+assert_semantic_error(3590):
+    some_scope := scoped{/Verse.org/Verse}
+    some_class := class(some_scope) {} # 3590 - some_scope is secretly a class-type under the covers, but we can't allow new types derived from them
+
+assert_semantic_error(3552, 3509):
+    some_scope := scoped{/Verse.org/Verse}
+    mod := module:
+        foo:some_scope := {} # 3552,3509 - some_scope is secretly a class-type under the covers, but we can't allow people to instance them
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        c0<public> := class<reads><allocates>:
+            var<Scoped_M1_M2> Field<public>:int = 42
+
+    M2<public> := module:
+        SetField(X:int):void = {
+            M2C:M1.c0 = M1.c0{}
+            set M2C.Field = X;
+        }
+}
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        c1<public> := class<allocates>:
+            var<Scoped_M1_M2> Field<public>:int = 42
+        SetField(X:int):void = {
+            M1C:c1 = c1{}
+            set M1C.Field = X;
+        }
+
+    M2<public> := module:
+        SetField(X:int):void = {
+            M2C:M1.c1 = M1.c1{}
+            set M2C.Field = X;
+        }
+}

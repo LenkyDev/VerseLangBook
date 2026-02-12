@@ -1,0 +1,70 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Using a named parameter triggered an assert in the IrGenerator.
+F1(Z:int, ?DefaultTuple:tuple(int, int) = (1, 2)):tuple(int, int) = DefaultTuple
+assert:
+    F1(4) = (1,2)
+    F1(4, ?DefaultTuple := (2,1)) = (2, 1)
+
+# Always nice to test that what worked still works
+F2(X:int, ?DefaultY:int = 2):int = X + DefaultY
+assert:
+    F2(10) = 12
+    F2(10, ?DefaultY := 3) = 13
+
+F3(?DefaultY:int = 3):int = DefaultY
+assert:
+    F3() = 3
+    F3(?DefaultY := 4) = 4
+
+ReorderStillWorks(?DefaultX:int = 1, ?DefaultY:int = 2):tuple(int, int) = (DefaultX, DefaultY)
+assert:
+    ReorderStillWorks() = (1,2)
+    ReorderStillWorks(?DefaultX := 10, ?DefaultY := 20) = (10,20)
+    ReorderStillWorks(?DefaultY := 10, ?DefaultX := 20) = (20,10)
+    ReorderStillWorks(?DefaultX := 10) = (10,2)
+    ReorderStillWorks(?DefaultY := 20) = (1,20)
+
+# Compiler crash after detecting the incorrect use of a named parameter before an unnamed one.
+assert_semantic_error(3629):
+    ReorderStillWorks(?DefaultX:int = 1, Y:int):tuple(int, int) = (DefaultX, Y)
+
+# This one  goes throught a slightly different path in the compiler
+M1 := module:
+    F11<public>(?A:int = 2):int = A
+
+assert:
+    FX:type{_():int} = M1.F11
+    FX() = 2
+
+# Check that it works with named tuple parameter
+M2 := module:
+    F21<public>(X:int, ?Y:tuple(int,int) = (1,2)):int = X + Y(0) + Y(1)
+
+assert:
+    FX:type{_(:int):int} = M2.F21
+    FX(10) = 13
+
+# Mixing overload and named parameters
+# It's possible to define a function where the first element is a tuple, and the rest are named,
+# but see next assert for problems when calling it.
+F(X:int):int = X
+F(X:float, ?E:float = 0.1):float = X+E
+F(X:tuple(float, float), ?E:float = 0.1):float = X(0)+X(1)+E
+
+assert:
+    F(1) = 1
+    F(1.0) = 1.1
+    F(1.0, ?E := 10.0) = 11.0
+    F((1.0,2.0), ?E := 10.0) = 13.0
+
+# Doesn't work in ShipVerse, but generate a somewhat ok error message.
+assert_semantic_error(3509):
+    F(X:tuple(float, float), ?E:float = 0.1):float = X(0)+X(1)+E
+    Dummy():float = F(1.0,2.0) 
+
+# The internals of the compiler stumbled on this one.
+FF(?Y:tuple(int,int) = (1,2)):int = Y(0) + Y(1)
+assert:
+    FF() = 3
+    FF(?Y:=(3,4)) = 7

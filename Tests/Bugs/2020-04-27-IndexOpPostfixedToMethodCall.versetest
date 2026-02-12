@@ -1,0 +1,41 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+############################################
+C := module:
+    
+    wrapArray<public>(i:int):[]int:=
+    {
+        return( array{i} )
+    }
+
+    
+    memberNums<public>:[]int=array{42}
+
+
+############################################
+# Already worked with class members
+assert:
+    C.memberNums[0] = 42
+
+
+############################################
+# Already worked with locals
+assert:
+    i := 0xBEEF
+    nums := C.wrapArray(i)
+    nums[0] = i
+
+
+############################################
+# Didn't even pass through semantic analysis before fix due to [] being adjacent to {}
+assert:
+    i := 0xBEEF
+    array{i}[0] = i
+
+
+############################################
+# Didn't even pass through semantic analysis before fix due to [] being adjacent to ()
+assert:
+    i := 0xBEEF
+    C.wrapArray(i)[0] = i
+

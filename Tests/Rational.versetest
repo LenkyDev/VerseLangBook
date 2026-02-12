@@ -1,0 +1,148 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    # Use `rational` as a type
+    f(Left:int, Right:int)<transacts><decides>:rational = Left / Right
+assert:
+    not (1/0)
+assert:
+    0/2 and
+    Floor(0/2) = 0
+assert:
+    0/-2 and
+    Floor(0/-2) = 0
+assert:
+    5/2 and
+    Floor(5/2) = 2
+assert:
+    (-5)/2 and
+    Floor((-5)/2) = -3
+assert:
+    5/-2 and
+    Floor(5/-2) = -3
+assert:
+    5/-2 and
+    Floor(5/-2) = -3
+assert:
+    (-5)/-2 and
+    Floor((-5)/-2) = 2
+assert:
+    2/5 and
+    Floor(2/5) = 0
+assert:
+    (-2)/5 and
+    Floor((-2)/5) = -1
+assert:
+    2/-5 and
+    Floor(2/-5) = -1
+assert:
+    (-2)/-5 and
+    Floor((-2)/-5) = 0
+assert:
+    0/2 and
+    Ceil(0/2) = 0
+assert:
+    0/-2 and
+    Ceil(0/-2) = 0
+assert:
+    5/2 and
+    Ceil(5/2) = 3
+assert:
+    (-5)/2 and
+    Ceil((-5)/2) = -2
+assert:
+    5/-2 and
+    Ceil(5/-2) = -2
+assert:
+    5/-2 and
+    Ceil(5/-2) = -2
+assert:
+    (-5)/-2 and
+    Ceil((-5)/-2) = 3
+assert:
+    2/5 and
+    Ceil(2/5) = 1
+assert:
+    (-2)/5 and
+    Ceil((-2)/5) = 0
+assert:
+    2/-5 and
+    Ceil(2/-5) = 0
+assert:
+    (-2)/-5 and
+    Ceil((-2)/-5) = 1
+
+assert:
+    (5/2) = (15/6)
+
+assert:
+    1/-3 = -1/3
+assert:
+    -1/3 = 1/-3
+assert:
+    -1/-3 = 1/3
+assert:
+    1/3 = -1/-3
+
+assert:
+    2/1 = 2
+assert:
+    2 = 2/1
+assert:
+	4/2 = 2
+assert:
+    2 = 4/2
+
+AsInt(X:rational):int =
+    if (Floor(X) = Ceil(X)):
+        Floor(X)
+    else:
+        -1
+
+assert{AsInt(3/4) = AsInt(4/3)}
+assert{AsInt(9/3) = AsInt(6/2)}
+
+Half(X:int)<transacts><decides>:rational =
+    X/2
+
+assert{Floor(Half[2]) = 1}
+assert{Ceil(Half[3]) = 2}
+
+# int is a subtype of rational.
+F1(X:rational):rational=X
+assert{F1(0)=0}
+assert_semantic_error(3510):
+    F(X:rational):int=X
+assert_semantic_error(3532):
+    F(X:rational):rational=X
+    F(X:int):int=X
+
+# int \/ rational = rational
+F2(X:logic):rational = if(X?) then 0 else (1/2 or Err())
+assert{F2(false)=1/2}
+assert{F2(true)=0}
+
+verse_vm_only:
+    F3(X:int):int=X
+    F4(X:int):rational=X
+    F5(X:logic):type{_(:int):rational} = if(X?) then F3 else F4
+    assert{F5(false)(1) = 1}
+    assert{F5(true)(2) = 2}
+
+# int /\ rational = int
+verse_vm_only:
+    F6(X:int):rational=X
+    F7(X:rational):rational=X
+    F8(X:logic):type{_(:int):rational} = if(X?) then F6 else F7
+    assert{F8(false)(1) = 1}
+    assert{F8(true)(2) = 2}
+
+# int vs rational can't distinguish overloads
+assert_semantic_error(3532):
+    OverloadedFunction(X:int):void={}
+    OverloadedFunction(X:rational):void={}
+
+assert:
+    UseRational(3/5) = 4/5

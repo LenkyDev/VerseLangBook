@@ -1,0 +1,133 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# The minimal test that triggered this bug
+jira3300 := module:   
+    outer_obj<public> := class <unique>:
+        var Value<public>:float = 0.0
+        Inc<public>()<transacts>:void =
+            set Value += 1.0
+        block:
+            Inc()
+
+assert:
+    OuterObj1 := jira3300.outer_obj{}
+    OuterObj1.Value = 1.0
+
+    OuterObj2 := jira3300.outer_obj{}
+    OuterObj2.Value = 1.0
+
+    OuterObj3 := jira3300.outer_obj{}
+    OuterObj3.Value = 1.0
+
+    OuterObj1.Value = 1.0
+    OuterObj2.Value = 1.0
+
+
+# This example is from the jira, whith a few extra asserts
+ktest2 := module:
+    obj<public> := class <unique>:
+        DebugStr<public>:string = ""
+    
+    outer_obj<public> := class <unique>:
+        var O1<public>:?obj := option { obj{ DebugStr := "1" } }
+        var Collection<public>:custom_collection := custom_collection{}
+
+        block:
+            Collection.TryAdd(O1)
+
+    custom_collection<public> := class:
+        var ObjList<public>:[]obj = array{}
+
+        TryAdd<public>(Obj:?obj)<transacts>:void =
+            if { set ObjList += array{Obj?} }
+
+# Worked before
+assert:
+    OuterObj := ktest2.outer_obj{}
+    OuterObj.Collection.ObjList[0].DebugStr = OuterObj.O1?.DebugStr
+    OuterObj.Collection.ObjList[0].DebugStr = "1"
+
+# Failed before, but not after the fix
+assert:
+    OuterObj := ktest2.outer_obj{}
+    OuterObj.Collection.ObjList[0] = OuterObj.O1?
+
+assert: # Some extra verifications
+    OuterObj1 := ktest2.outer_obj{}
+    OuterObj1.Collection.ObjList.Length = 1
+    OuterObj1.Collection.ObjList[0] = OuterObj1.O1? 
+
+    O2:?ktest2.obj := option { ktest2.obj{ DebugStr := "2" } }
+    OuterObj2 := ktest2.outer_obj{O1 := O2}
+    OuterObj2.O1 = O2
+    OuterObj2.Collection.ObjList.Length = 1
+    OuterObj2.Collection.ObjList[0] = O2? 
+
+    O3:?ktest2.obj := option { ktest2.obj{ DebugStr := "3" } }
+    OuterObj3 := ktest2.outer_obj{O1 := O3}
+    OuterObj3.O1 = O3
+    OuterObj3.Collection.ObjList.Length = 1
+    OuterObj3.Collection.ObjList[0] = O3? 
+
+# Test that constructors works
+counter := class:
+    var Value:int=0
+    Add(X:int)<transacts>:void =
+        set Value = Value + X
+
+class1 := class:
+    Value1:counter = counter{}
+    block:
+        Value1.Add(10)
+
+MakeClass1<constructor>() := class1 {}
+
+class2 := class(class1):
+    var Value2:counter = counter{}
+    block:
+        Value1.Add(100)
+        Value2.Add(100)
+
+MakeClass2<constructor>() := class2:
+    MakeClass1<constructor>()
+
+assert:
+    X1 : class2 = class2{}
+    110 = X1.Value1.Value
+    100 = X1.Value2.Value
+
+    X3 : class2 = class2{}
+    110 = X3.Value1.Value
+    100 = X3.Value2.Value
+    
+    X2 : class2 = MakeClass2()
+    110 = X2.Value1.Value
+    100 = X2.Value2.Value
+    
+    X4 : class2 = MakeClass2()
+    110 = X4.Value1.Value
+    100 = X4.Value2.Value
+
+
+# Test constructor that modifies property, with counter to verify SOL-3300 is solved.
+constructor_invocation := module:
+    class3<public> := class:
+        Counter<public>:counter=counter{}
+        Property1<public>:int
+        block:
+            Counter.Add(1)
+
+    MakeClass3<public><constructor>() := class3:
+        Property1 := 1
+
+assert:
+    X := constructor_invocation.MakeClass3()
+    X2 := constructor_invocation.MakeClass3()
+    X.Property1 = 1
+    X.Counter.Value = 1
+    X2.Property1 = 1
+    X2.Counter.Value = 1
+
+

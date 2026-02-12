@@ -1,0 +1,56 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Most macros don't support attributes on their name.
+assert_semantic_error(3604)     { F():void=array      <computes> {0} }
+assert_semantic_error(3604)     { F():void=case       <computes> (0){_=>0} }
+assert_semantic_error(3604)     { F():void=block{defer<computes> {0}; 0} }
+assert_semantic_error(3604)     { F():void=block      <computes> {0} }
+assert_semantic_error(3604,3558){ F():void=external   <computes> {} }
+assert_semantic_error(3604)     { F():void=for        <computes> (X:=0..1){} }
+assert_semantic_error(3604)     { F():void=loop       <computes> {return} }
+assert_semantic_error(3604)     { F():void=map        <computes> {0=>0} }
+assert_semantic_error(3604)     { F():void=option     <computes> {0} }
+
+assert_semantic_error(3604)     { F():void=spawn      <computes> {G()}; G()<suspends>:void={} }
+assert_semantic_error(3604)     { F()<suspends>:void=branch<computes> {F(), F()} }
+assert_semantic_error(3604)     { F()<suspends>:void=sync  <computes> {F(), F()} }
+assert_semantic_error(3604)     { F()<suspends>:void=rush  <computes> {F(), F()} }
+assert_semantic_error(3604)     { F()<suspends>:void=race  <computes> {F(), F()} }
+
+assert_semantic_error(3596)     { e:=enum     <computes> {} }
+assert_semantic_error(3604)     { m:=module   <computes> {} }
+assert_semantic_error(3604)     { t:=type  <computes> {_():void} }
+assert_semantic_error(3604)     { using       <computes> {m}; m:=module{} }
+
+# class/struct are the exception, and allow attributes on their name.
+assert_valid                    { c:=class  <computes>{} } 
+assert_valid                    { s:=struct <computes>{} }
+
+# No macro supports attributes on their clauses.
+
+assert_semantic_error(3604,3604){ F():void=(case(0)<computes> {_=>0 }       ) }
+assert_semantic_error(3604,3604){ F():void=(for     (X:=0..1)<computes>  { }       ) }
+
+assert_semantic_error(3604)     { F():void=(array{0}<computes> ) } 
+assert_semantic_error(3604,3506,3617,3512){ F():void=(case(0) {X=>0}<computes> ) } 
+assert_semantic_error(3604)     { F():void=block{(defer{0}<computes> ); 0} } 
+assert_semantic_error(3604)     { F():void=(block{0}<computes> ) } 
+assert_semantic_error(3604,3558){ F():void=(external{}<computes> ) } 
+assert_semantic_error(3604)     { F():void=(for     (X:=0..1)       {}<computes> ) } 
+assert_semantic_error(3604)     { F():void=(loop    {return}<computes> ) } 
+assert_semantic_error(3604)     { F():void=(map     {0=>0}<computes> ) } 
+assert_semantic_error(3604)     { F():void=(option  {0}<computes> ) } 
+
+assert_semantic_error(3604)     { F():void=(spawn   {G()}<computes> ); G()<suspends>:void={} } 
+assert_semantic_error(3604)     { F()<suspends>:void=(branch{F(), F()}<computes> ) } 
+assert_semantic_error(3604)     { F()<suspends>:void=(sync  {F(), F()}<computes> ) } 
+assert_semantic_error(3604)     { F()<suspends>:void=(rush  {F(), F()}<computes> ) } 
+assert_semantic_error(3604)     { F()<suspends>:void=(race  {F(), F()}<computes> ) } 
+
+assert_semantic_error(3604)     { c:=(class    {}<computes> ) }
+assert_semantic_error(3604)     { e:=(enum     {}<computes> ) }
+assert_semantic_error(3604)     { i:=(interface{}<computes> ) }
+assert_semantic_error(3604)     { m:=(module   {}<computes> ) }
+assert_semantic_error(3604)     { s:=(struct   {}<computes> ) }
+assert_semantic_error(3604)     { t:=(type{_():void}<computes> ) }
+assert_semantic_error(3604)     { (using{m}<computes> ); m:=module{} }

@@ -1,0 +1,475 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+############################################
+# Tuple creating literals / values
+
+# () yields a zero element tuple.
+assert{X:tuple() = ()}
+assert_semantic_error(3536){X:tuple() = ()(0)}
+
+# Single element is just grouping
+assert:
+    (42) = 42
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Tuple values
+
+# All same type
+assert_valid:
+    F() : void =
+        (1, 2, 3)
+
+# Mixed type
+assert_valid:
+    F() : void =
+        (1, 2.0, "three")
+
+# Local variable declaration with inferred tuple type - same element type
+assert_valid:
+    F() : void =
+        MyTuple := (1, 2, 3)
+
+# Local variable declaration with inferred tuple type - mixed element type
+assert_valid:
+    F() : void =
+        MyTuple := (1, 2.0, "three")
+
+# Local variable declaration with inferred tuple type - nested tuple element type
+assert_valid:
+    F() : void =
+        MyTuple := (1, (10, 20.0, "thirty"), "three")
+
+# Test all same type
+assert:
+    MyTuple := (1, 2, 3)
+    MyTuple(0) = 1
+
+# Test mixed type
+assert:
+    MyTuple := (1, 2.0, "three")
+    MyTuple(0) = 1
+
+# Test nested type
+assert:
+    MyTuple := (1, (10, 20.0, "thirty"), "three")
+    MyTuple(0) = 1
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Tuple values created via comma operator - Jira SOL-2047
+# - Not currently ideally parsed for tuples due to low comma operator precedence.
+
+# Parses as code block: {42; 1.0; 123}
+assert_valid_syntax {"42, 1.0, 123"}
+
+# Parses as: {MyTuple := 42; 1.0; 123}
+assert_valid_syntax {"MyTuple := 42, 1.0, 123"}
+
+# Parses as `optional` with 2 expressions: optional{1; 2}
+assert_valid_syntax {"optional\{1,2\}"}
+
+# Parses as `block` with 2 expressions: block{1; 2}
+assert_valid_syntax {"block\{1,2\}"}
+
+# Parses as `for` with 2 expressions: for(Num:Nums){1; 2}
+assert_valid_syntax {"for(Num:Nums)\{1,2\}"}
+
+
+############################################
+# Tuple type specifiers
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Tuple type errors
+
+# An empty tuple is equal to false in MaxVerse, but that's not implemented yet.
+assert_semantic_error(3509):
+    F() : void =
+        MyTuple : tuple() = false
+
+# There's no way to create an instance of a single-element tuple yet.
+assert_semantic_error(3509):
+    F() : void =
+        MyTuple : tuple(int) = (42)
+
+# Tuple type element type mismatch
+assert_semantic_error(3509):
+    F() : void =
+        MyTuple : tuple(int, float, string) = (1, 2, 3)
+
+# Tuple type mismatch with too few elements
+assert_semantic_error(3509):
+    F() : void =
+        MyTuple : tuple(int, float, string) = (1, 2.0)
+
+# Tuple type mismatch with too many elements
+assert_semantic_error(3509):
+    F() : void =
+        MyTuple : tuple(int, float, string) = (1, 2.0, "three", 4)
+
+# Tuple type expects round brackets / parentheses and not square brackets
+assert_semantic_error(3511):
+    F() : void =
+        MyTuple : tuple[int, float, string] = (1, 2.0, "three")
+
+# Tuple type expects round brackets / parentheses and not curley brackets / archetype constructors
+assert_semantic_error(3506):
+    F() : void =
+        MyTuple : tuple{int, float, string} = (1, 2.0, "three")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Valid tuple types
+
+# Local variable declaration with explicit tuple type and matching tuple valule
+assert_valid:
+    F() : void =
+        MyTuple : tuple(int, float, string) = (1, 2.0, "three")
+
+# Local variable declaration with explicit nested tuple type
+assert_valid:
+    F() : void =
+        MyTuple : tuple(int, tuple(int, float, string), string) =
+            (1, (10, 20.0, "thirty"), "three")
+
+# Tuple aliasing
+assert_valid:
+    TupleAlias := tuple(int, float, string)
+
+    F() : void =
+        MyTuple : TupleAlias = (1, 2.0, "three")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Nested tuples in struct types
+tuple_stct := struct:
+    x:int
+    y:string
+    TupleMember:tuple(float, string)
+
+assert:
+    MyStruct := tuple_stct{x:=42, y:="hi", TupleMember:=(123.0, "hey")}
+    MyStruct.x = 42
+
+
+# More nesting! - tuple within struct within tuple within struct - with an alias too
+tss_alias := tuple(string, string)
+
+tuple_struct2 := struct:
+    Foo:int
+    TupleMember2:tuple(tuple_stct, tss_alias)
+    Bar:float
+    
+assert:
+    MyStruct := tuple_struct2:
+        Foo          := 123
+        TupleMember2 := (tuple_stct{x:=42, y:="hi", TupleMember:=(123.0, "hey")}, ("howdy", "aloha"))
+        Bar          := 3.14
+    MyStruct.Foo = 123
+
+# Circular reference check
+# Expected a type, got type alias identifier instead.
+assert_semantic_error(3502):
+    tss_alias1 := tuple(string, tss_alias1)
+
+# Circular reference check
+# Expected a type, got type alias identifier instead.
+assert_semantic_error(3502):
+    tss_alias1 := tuple(string, tss_alias2)
+    tss_alias2 := tuple(tss_alias1, string)
+
+# Circular reference check
+# Structs may not contain themselves - examine member chain `.TupleMember(1)`
+assert_semantic_error(3583):
+    struct_a := struct:
+        x:int
+        y:string
+        TupleMember:tuple(float, struct_a)
+
+# Circular reference check
+# - deeper circular check with good non circular struct members to pass over and out of order
+# Gives glitch for each circular struct:
+# - Structs may not contain themselves - examine member chain `.TupleMember2D(1).Member3C.TupleMember3B(0)`.
+# - Structs may not contain themselves - examine member chain `.TupleMember3B(0).TupleMember2D(1).Member3C`.
+# - Structs may not contain themselves - examine member chain `.Member3C.TupleMember3B(0).TupleMember2D(1)`.
+assert_semantic_error(3583, 3583, 3583):
+    TupleA := tuple(struct_d, int)  # Tuple alias
+
+    struct_d := struct:
+        Member1D:int
+        TupleMember2D:tuple(int, struct_c)
+        Member3D:string
+
+    struct_b := struct:
+        TupleMember1B:tuple(int, string)
+        Member2B:struct_a
+        TupleMember3B:TupleA
+        Member4B:string
+
+    struct_a := struct:
+        x:int
+        y:string
+
+    struct_c := struct:
+        Member1C:int
+        Member2C:string
+        Member3C:struct_b
+    
+
+############################################
+# Tuple element access
+
+# Element access is checked at compile time - essentially same as member access.
+# Looks similar to array index call [] form though cannot fail.
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Tuple element access errors
+
+# Must use round brackets `()` not square brackets `[]`
+assert_semantic_error(3511):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple[0]
+
+# Must use only one argument - given 3
+assert_semantic_error(3509):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple(0, 1, 2)
+
+# Must use only one argument - given none
+assert_semantic_error(3509):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple()
+
+# Ensure index argument is an integer literal - given string
+assert_semantic_error(3509):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple("one")
+
+# Ensure index argument is an integer literal - given float
+assert_semantic_error(3509):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple(1.0)
+
+# Ensure index argument is an integer literal - given non-literal
+assert_semantic_error(3509):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple(1 + 1)
+
+# Ensure index argument is an integer literal within valid range - too small
+assert_semantic_error(3536):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple(-1)
+
+# Ensure index argument is an integer literal within valid range - too large
+assert_semantic_error(3536):
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple(3)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Valid tuple element access
+
+assert:
+    (1, 2.0, "three")(0) = 1
+
+assert:
+    (1, (10, 20.0, "thirty"), "three")(1)(0) = 10
+    
+assert:
+    MyTuple := (1, 2.0, "three")
+    MyTuple(1) = 2.0
+
+assert:
+    MyTuple := (1, (10, 20.0, "thirty"), "three")
+    MyTuple(1)(2) = "thirty"
+
+assert:
+    MyTuple      := (1, (10, 20.0, "thirty"), "three")
+    MyTupleInner := MyTuple(1)
+    MyTupleInner(1) = 20.0
+
+assert_valid:
+    F() : int =
+        MyTuple := (1, 2.0, "three")
+        MyTuple(0)
+
+
+############################################
+# Tuple parameters and results
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Tuple result / multiple results
+MultiResult() : tuple(string, int) =
+    ("hello", 42)
+
+assert:
+    Result := MultiResult()
+    (Result(0) = "hello") and (Result(1) = 42)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Passing tuple arguments to tuple result func
+TupleParamFunc(Param1:tuple(string, int), Param2:tuple(int, tuple(int, float, string), string)) : tuple(string, int) =
+    # Using param as result
+    Param1
+
+assert:
+    MyTuple := TupleParamFunc(MultiResult(), (123, (10, 20.0, "thirty"), "hi"))
+    (MyTuple(0) = "hello") and (MyTuple(1) = 42)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Use tuple result directly without first assigning to temp variable
+# Needs a fix for this to work as does struct. Revisit after SOL-2102
+#assert:
+#    MultiResult()(1) = 42
+
+
+############################################
+# Tuple native parameters and results
+
+# Disallow use of a non-native struct/class in a native tuple member
+assert_semantic_error(3563):
+    nonnative_struct := struct:
+        Elem0:int
+    
+    
+    native_struct<native> := struct:
+        Elem0:tuple(int, nonnative_struct)
+
+# Disallow use of a non-native struct/class in a native tuple when used as a result
+assert_semantic_error(3564):
+    nonnative_struct := struct:
+        Elem0:int
+    
+    
+    MultiResultTupleNestedSNNtruct<native>():tuple(int, nonnative_struct)
+
+# Disallow use of a non-native struct/class in a native tuple when used as a parameter
+assert_semantic_error(3564):
+    nonnative_struct := struct:
+        Elem0:int
+    
+    
+    MultiResultTupleNestedSNNtruct<native>(Param1:tuple(int, nonnative_struct), Param2:int):void
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Using with native structs, tuples and routines in nested module VerseTestScriptCmd.test_vni
+
+# Test multiple result using native struct
+assert:
+    Result := test_vni.MultiResultStruct()
+    (Result.Elem0 = 42) and (Result.Elem1 = 123.0)
+
+# Test using native strict type as parameter and result
+assert:
+    Result := test_vni.StructThrough(tuple_struct{Elem0:=42, Elem1:=123.0}, 321)
+    (Result.Elem0 = 42) and (Result.Elem1 = 123.0)
+
+# Test multiple result using native struct with nested struct
+assert:
+    Result := test_vni.MultiResultStructNested()
+    (Result.Elem0 = 42) and (Result.Elem1.Elem1 = 123.0)
+
+# Test multiple result using native tuple type
+assert:
+    Result := test_vni.MultiResultTuple()
+    (Result(0) = 42) and (Result(1) = 123.0)
+
+# Test using native tuple type as parameter and result
+assert:
+    Result := test_vni.TupleThrough((42, 123.0), 321)
+    (Result(0) = 42) and (Result(1) = 123.0)
+
+# Test multiple result using native tuple type with nested newly discovered tuple
+assert:
+    Result := test_vni.MultiResultTupleNested()
+    (Result(0) = 42) and (Result(1)(1) = 123.0)
+
+# Test multiple result using native tuple type with nested native struct
+assert:
+    Result := test_vni.MultiResultTupleNestedStruct()
+    (Result(0) = 42) and (Result(1).Elem1 = 123.0)
+
+assert:
+    NativeClass:class_a = class_a{Elem0 := struct_f{Elem0 := 42}, Elem1 := (4711, 3.1416)}
+    NativeClass.Elem1(0) = 4711 and NativeClass.Elem1(1) = 3.1416
+
+############################################
+# Tuple unpacking
+
+# Calling routines with tuples repesenting multiple arguments and tuples as single argument
+MultipleArgsFunc(Arg1:int, Arg2:string):void = {}
+
+assert:
+    MyTuple := (1, "two")
+    MultipleArgsFunc(MyTuple(0), MyTuple(1))
+    MultipleArgsFunc(MyTuple)
+
+# Tuple splat / unpacking - passing single tuple for multiple args? Currently no splat symbol - just use tuple directly
+# Splat / unpacking can always be done by hand - FuncCall(MyTuple(0), MyTuple(1), MyTuple(2))
+
+SingleTupleFunc(Arg1:tuple(int, string)):void = {}
+
+assert:
+    MyTuple := (1, "two")
+    SingleTupleFunc(MyTuple(0), MyTuple(1))
+    SingleTupleFunc(MyTuple)
+
+EmptyTupleFunc(Arg1:tuple()):void = {}
+
+assert:
+    MyTuple := ()
+    EmptyTupleFunc()
+    EmptyTupleFunc(MyTuple)
+
+
+############################################
+# Tuple Destructuring and partial assignment - Jira SOL-1998
+
+assert_valid_syntax {"(X:int, Y:string, Z:string) = MyTuple"}
+assert_valid_syntax {"(X:float, Y:float) = (1.0, 2.0)"}
+
+# Skipped element destructuring
+assert_valid_syntax {"(X:int, _, Z:string) = MyTuple"}
+
+############################################
+# Tuple required type
+assert_valid:
+    X:[]?int = (false, false)
+
+assert:
+    X:[]?int = (false, false)
+    not X[0]?
+    not X[1]?
+
+bp_vm_only:
+    assert_ir_error(3502, 3502):
+        ArrayAndNamedToString(X:string, ?Y:int = 1):string = X
+        ArrayToString(X:string):string = X
+        Main()<decides>:void =
+            F:type{_(:string):string} = if (false?) then ArrayAndNamedToString else ArrayToString
+            F("hello") = "hello"
+            G:type{_(:string):string} = if (true?) then ArrayAndNamedToString else ArrayToString
+            G("hello") = "hello"
+verse_vm_only
+{
+    ArrayAndNamedToString(X:string, ?Y:int = 1):string = X
+    ArrayToString(X:string):string = X
+    Main()<decides>:void =
+        F:type{_(:string):string} = if (false?) then ArrayAndNamedToString else ArrayToString
+        F("hello") = "hello"
+        G:type{_(:string):string} = if (true?) then ArrayAndNamedToString else ArrayToString
+        G("hello") = "hello"
+assert:
+    Main[]
+}

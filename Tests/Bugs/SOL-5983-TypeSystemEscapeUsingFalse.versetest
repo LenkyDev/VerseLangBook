@@ -1,0 +1,26 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3601):
+  test_class := class<concrete>:
+    False:false = _False:false
+
+# More like the original reported bug
+assert_semantic_error(3601):
+  base_class<public> := class<concrete>:
+
+  test_class := class<concrete>(base_class):
+    False:false = _False:false
+
+# Some variants without class
+assert_semantic_error(3601):
+  F():void = X:false = _False:false
+
+assert_semantic_error(3625, 3601):
+  F(X:false = _False:false):void = {}
+
+assert_semantic_error(3601):
+  F(?X:false = _False:false):void = {}
+
+
+
+

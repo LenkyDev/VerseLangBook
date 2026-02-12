@@ -1,0 +1,27 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert:
+    var X:[int]int = map{}
+    set X[0] = 42
+    set X[1] = 666
+    set X[2] = 4242
+    for (A->B : X) { (A, B) } = array{(0, 42), (1, 666), (2, 4242)}
+    X = map{0=>42, 1=>666, 2=>4242}
+    X <> map{1=>666, 0=>42, 2=>4242}
+
+assert:
+    var X:[int]int = map{}
+    set X[0] = 42
+    set X[1] = 666
+    set X[2] = 4242
+
+    set X[0] = 666666
+    X = map{0=>666666, 1=>666, 2=>4242}
+    X <> map{1=>666, 2=>4242, 0=>666666}
+    for (Key->Value:X) { Key } = array{0, 1, 2}
+
+assert:
+    X := map{0=>0, 1=>1, 0=>1}
+    for (Key->Value:X) { (Key, Value) } = array{(1, 1), (0, 1)}
+    X = map{1=>1, 0=>1}
+

@@ -1,0 +1,225 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    Equal(X:t, Y:comparable where t:subtype(comparable))<decides>:t =
+        X = Y
+
+Equal(X:t, Y:comparable where t:subtype(comparable))<computes><decides>:t =
+    X = Y
+
+# Utility to box a value into a `comparable`
+AsComparable(X:comparable)<computes>:comparable = X
+
+assert:
+    Equal[1, 1]
+
+assert:
+    Equal['a', 'a']
+
+# dynamic = dynamic
+assert:
+    Equal[array{AsComparable(1)}, array{AsComparable(1)}]
+
+# dynanmic <> dynamic
+assert:
+    not Equal[array{AsComparable(1)}, array{AsComparable(2)}]
+
+# dynamic = int
+assert:
+    Equal[array{AsComparable(1)}, array{1}]
+
+# dynamic <> int
+assert:
+    not Equal[array{AsComparable(1)}, array{2}]
+
+# int = dynamic
+assert:
+    Equal[array{1}, array{AsComparable(1)}]
+
+# int <> dynamic
+assert:
+    not Equal[array{1}, array{AsComparable(2)}]
+
+# array = array
+assert:
+    Equal[array{1}, array{1}]
+
+# array <> array
+assert:
+    not Equal[array{1}, array{2}]
+
+# array = dynamic
+assert:
+    Equal[array{array{1}}, array{AsComparable(array{1})}]
+
+# array <> dynamic
+assert:
+    not Equal[array{array{1}}, array{AsComparable(array{2})}]
+
+# string = string
+assert:
+    Equal["abc", "abc"]
+
+# string <> string
+assert:
+    not Equal["abc", "def"]
+# string = dynamic
+assert:
+    Equal[array{"abc"}, array{AsComparable("abc")}]
+
+# string <> dynamic
+assert:
+    not Equal[array{"abc"}, array{AsComparable("def")}]
+
+# option = option
+assert:
+    Equal[option{1}, option{1}]
+
+# option <> option
+assert:
+    not Equal[option{1}, option{2}]
+
+# option = dynamic
+assert:
+    Equal[array{option{1}}, array{AsComparable(option{1})}]
+
+# option <> dynamic
+assert:
+    not Equal[array{option{1}}, array{AsComparable(option{2})}]
+
+# map = map
+assert:
+    Equal[map{1=>1}, map{1=>1}]
+
+# map <> map
+assert:
+    not Equal[map{1=>1}, map{1=>2}]
+
+# map <> map
+assert:
+    not Equal[map{1=>1}, map{2=>1}]
+
+# map <> map
+assert:
+    not Equal[map{1=>1}, map{1=>1, 2=>2}]
+
+# map <> map
+assert:
+    not Equal[map{1=>1, 2=>2}, map{1=>1}]
+
+# map = dynamic
+assert:
+    Equal[array{map{1=>1}}, array{AsComparable(map{1=>1})}]
+
+# map <> dynamic
+assert:
+    not Equal[array{map{1=>1}}, array{AsComparable(map{1=>2})}]
+
+# empty tuple = empty tuple
+assert:
+    () = ()
+
+assert:
+    Equal[(), ()]
+
+# array = tuple
+assert:
+    Equal[array{1, 2, 3}, (1, 2, 3)]
+
+# array <> tuple
+assert:
+    not Equal[array{1, 2, 3}, (1, 2, 4)]
+
+# tuple = array
+assert:
+    Equal[(4, 5, 6), array{4, 5, 6}]
+
+# array <> tuple
+assert:
+    not Equal[(4, 5, 6), array{4, 5, 3}]
+
+letters := enum:
+    A, B, C
+
+numbers := enum:
+    One, Two, Three
+
+# enum = enum
+assert:
+    Equal[letters.A, letters.A]
+
+# enum <> enum
+assert:
+    not Equal[letters.A, letters.B]
+
+# enum <> enum
+assert:
+    not Equal[letters.A, numbers.One]
+
+assert_valid:
+    NotEqual(X:t, Y:comparable where t:subtype(comparable))<decides>:t =
+        X <> Y
+
+NotEqual(X:t, Y:comparable where t:subtype(comparable))<computes><decides>:t =
+    X <> Y
+
+assert:
+    NotEqual[1, 2]
+
+Find(Map:[t]u, Key:t where t:subtype(comparable), u:type)<computes><decides>:tuple(t, u) =
+    (Key, Map[Key])
+
+assert:
+    X := map{1=>2, 3=>4}
+    Find[X, 1] = (1, 2)
+    Find[X, 3] = (3, 4)
+    not Find[X, 2]
+    not Find[X, 4]
+
+# Test overload distinctness of comparable
+assert_semantic_error(3532):
+    F(:int):void = {}
+    F(:comparable):void = {}
+
+assert_semantic_error(3532):
+    comparable_class := class<unique>{}
+    F(:comparable_class):void = {}
+    F(:comparable):void = {}
+    
+assert_valid:
+    incomparable_class := class{}
+    F(:incomparable_class):void = {}
+    F(:comparable):void = {}
+
+# Test joining of comparable and another type
+assert_valid:
+    comparable_class := class<unique>{}
+    F(:comparable):void = {}
+    G(X:?comparable_class):void=F(X? or 1)
+
+assert_semantic_error(3509):
+    incomparable_class := class{}
+    F(:comparable):void = {}
+    G(X:?incomparable_class):void=F(X? or 1)
+
+# Test meeting of comparable and another type
+#assert_valid: - Should be valid, but currently produces: Verse compiler error V3502: Using a value of type comparable->void as a value of type comparable_class->void is not yet implemented.
+bp_vm_only
+{
+assert_ir_error(3502):
+    comparable_class := class<unique>{}
+    F(H(:comparable_class):void):void = {}
+    G(H1(:comparable_class):void, H2(:comparable):void):void=F(if(true?){H1}else{H2})
+}
+verse_vm_only
+{
+assert_valid:
+    comparable_class := class<unique>{}
+    F(H(:comparable_class):void):void = {}
+    G(H1(:comparable_class):void, H2(:comparable):void):void=F(if(true?){H1}else{H2})
+}
+
+assert_semantic_error(3509):
+    incomparable_class := class{}
+    F(H(:incomparable_class):void):void = {}
+    G(H1(:incomparable_class):void, H2(:comparable):void):void=F(if(true?){H1}else{H2})

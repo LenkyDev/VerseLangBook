@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3625, 3540, 3542, 3625, 3540, 3502, 3542, 3502, 3532, 3532):
+    F(F():=G(F():=G):=G):=0

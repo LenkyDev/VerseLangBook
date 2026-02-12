@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{/Verse.org/Tests/VerseTestScriptCmd}
+
+# Try to generate a lot of coercion functions. They are added to the member definitions while the compiler is iterating over the member definitions.
+# This test is not big enough to fail the compiler before the fix :-( but running with ASAN will detect the problem ). 
+
+Apply(F(:t)<transacts>:any, X:t where t:type)<transacts>:any = F(X)
+
+IntFun(X:int)<transacts>:int=X
+FloatFun(X:float)<transacts>:float=X
+CharFun(X:char)<transacts>:char=X
+StringFun(X:string)<transacts>:string=X
+LogicFun(X:logic)<transacts>:logic=X
+
+assert:
+    Apply(IntFun, 1)
+    Apply(FloatFun, 1.0)
+    Apply(CharFun, '!')
+    Apply(StringFun, "hello")
+    Apply(LogicFun, false)

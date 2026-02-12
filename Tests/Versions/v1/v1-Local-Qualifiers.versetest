@@ -1,0 +1,115 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Make sure that `local` is not being used as a data definition identifier since now it is reserved.
+# While still being valid in previous language versions, it should now produce a warning.
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            PreviouslyDefinedModuleA<public> := module:
+                local<public>:int = 999
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            M<public> := module:
+                local<public> := class {}
+    
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            M<public> := module:
+                local<public>():void= {}
+
+# In newer language versions, these would be errors (since they need to be explicitly qualified instead).
+assert_semantic_error(3514):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            PreviouslyDefinedModuleA<public> := module:
+                local<public>:int = 999
+
+assert_semantic_error(3514):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            M<public> := module:
+                local<public> := class {}
+    
+assert_semantic_error(3514):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            M<public> := module:
+                local<public>():void= {}
+    
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            M0 := module:
+                Foo():[]int=
+                    for (local := 0..2):
+                        local
+    
+assert_semantic_error(3514, 3672):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            M0 := module:
+                Foo():[]int=
+                    for (local := 0..2):
+                        local
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            S0 := struct:
+                local<public>:int = 0
+
+assert_semantic_error(3514):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            S0 := struct:
+                local<public>:int = 0
+
+# Check that in previous language versions, `(local:)` still resolves and behaves as it did originally
+# even though it now throws a warning.
+# TODO: This actually needs to be combined with an `assert` but we don't have that capability right now.
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            M<public> := module:
+                Foo<public>():int=
+                    local:int = 5
+                    local
+
+# However, in newer langauge versions, this should be upgraded to an error.
+assert_semantic_error(3514, 3672):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            M<public> := module:
+                Foo<public>():int=
+                    local:int = 5
+                    local
+
+assert_semantic_error(3514):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            ModuleA<public> := module:
+                (/A/ModuleA:)spawn<public> := module {}
+
+# Also test that parametric interfaces now raise the right warnings/errors in old/new versions of Verse.
+assert_semantic_error(2015, 2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            M := module:
+                ParametricI(local:type) := interface:
+                    Foo(:local):int
+
+                C := class(ParametricI(int)):
+                    Foo<override>(local:int):int = 5
+    
+assert_semantic_error(3514, 3514, 3672):
+    vpackage(P0, /A, ?VerseVersion:=1):
+        snippet:
+            M := module:
+                ParametricI(local:type) := interface:
+                    Foo(:local):int
+
+                C := class(ParametricI(int)):
+                    Foo<override>(local:int):int = 5

@@ -1,0 +1,218 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+bivariant_class(t:type) := class:
+    Data:int
+
+assert:
+    var X:[]bivariant_class(any) = array{}
+    set X += array{bivariant_class(int){Data := 1}}
+    X[0].Data = 1
+
+assert:
+    var X:[]bivariant_class(int) = array{}
+    set X += array{bivariant_class(any){Data := 1}}
+    X[0].Data = 1
+
+assert:
+    X := bivariant_class(int){Data := 1}
+    Y := bivariant_class(string){Data := 2}
+    Z:bivariant_class(float) = if (false?) then X else Y
+    Z.Data = 2
+
+covariant_class(t:type) := class:
+    Data:t
+
+assert:
+    var X:[]covariant_class(comparable) = array{}
+    set X += array{covariant_class(int){Data := 1}}
+    X[0].Data = 1
+
+assert_semantic_error(3509):
+    covariant_class(t:type) := class:
+        Data:t
+    Main()<transacts><decides>:void =
+        var X:[]covariant_class(int) = array{}
+        set X += array{covariant_class(comparable){Data := 1}}
+        X[0].Data = 1
+
+assert:
+    X := covariant_class(int){Data := 1}
+    Y := covariant_class(any){Data := 2}
+    Z:covariant_class(any) = if (false?) then X else Y
+
+assert_semantic_error(3509):
+    covariant_class(t:type) := class:
+        Data:t
+    Main()<transacts><decides>:void =
+        X := covariant_class(int){Data := 1}
+        Y := covariant_class(any){Data := 2}
+        Z:covariant_class(int) = if (false?) then X else Y
+
+contravariant_class(t:type) := class<abstract>:
+    Method(:t)<transacts><decides>:void
+
+contravariant_class_impl(t:subtype(comparable)) := class(contravariant_class(t)):
+    Data:t
+    Method<override>(Arg:t)<transacts><decides>:void = Data = Arg
+
+assert:
+    var X:[]contravariant_class(int) = array{}
+    set X += array{contravariant_class_impl(comparable){Data := 1}}
+    X[0].Method[1]
+
+assert_semantic_error(3509):
+    contravariant_class(t:type) := class<abstract>:
+        Method(:t)<transacts><decides>:void
+    contravariant_class_impl(t:subtype(comparable)) := class(contravariant_class(t)):
+        Data:t
+        Method<override>(Arg:t)<transacts><decides>:void = Data = Arg
+    Main()<transacts><decides>:void =
+        var X:[]contravariant_class(comparable) = array{}
+        set X += array{contravariant_class_impl(int){Data := 1}}
+        X[0].Method[2.0]
+
+assert:
+    X:contravariant_class(int) = contravariant_class_impl(int){Data := 1}
+    Y:contravariant_class(comparable) = contravariant_class_impl(comparable){Data := 2}
+    Z:contravariant_class(int) = if (false?) then X else Y
+    Z.Method[2]
+
+assert_semantic_error(3509):
+    contravariant_class(t:type) := class<abstract>:
+        Method(:t)<transacts><decides>:void
+    contravariant_class_impl(t:subtype(comparable)) := class(contravariant_class(t)):
+        Data:t
+        Method<override>(Arg:t)<transacts><decides>:void = Data = Arg
+    Main()<transacts><decides>:void =
+        X:contravariant_class(int) = contravariant_class_impl(int){Data := 1}
+        Y:contravariant_class(comparable) = contravariant_class_impl(comparable){Data := 2}
+        Z:contravariant_class(comparable) = if (false?) then X else Y
+        Z.Method[2]
+
+bivariant_interface(t:type) := interface:
+    Method():int
+
+bivariant_interface_impl(t:type) := class(bivariant_interface(t)):
+    Data:int
+    Method<override>():int = Data
+
+assert:
+    var X:[]bivariant_interface(any) = array{}
+    set X += array{bivariant_interface_impl(int){Data := 1}}
+    X[0].Method() = 1
+
+assert:
+    var X:[]bivariant_interface(int) = array{}
+    set X += array{bivariant_interface_impl(any){Data := 1}}
+    X[0].Method() = 1
+
+assert:
+    X:bivariant_interface(int) = bivariant_interface_impl(int){Data := 1}
+    Y:bivariant_interface(string) = bivariant_interface_impl(string){Data := 2}
+    Z:bivariant_interface(float) = if (false?) then X else Y
+    Z.Method() = 2
+
+covariant_interface(t:type) := interface:
+    Method()<transacts>:t
+
+covariant_interface_impl(t:type) := class(covariant_interface(t)):
+    Data:t
+    Method<override>()<transacts>:t = Data
+
+assert:
+    var X:[]covariant_interface(comparable) = array{}
+    set X += array{covariant_interface_impl(int){Data := 1}}
+    X[0].Method() = 1
+
+assert_semantic_error(3509):
+    covariant_interface(t:type) := interface:
+        Method()<transacts>:t
+    covariant_interface_impl(t:type) := class(covariant_interface(t)):
+        Data:t
+        Method<override>()<transacts>:t = Data
+    Main()<transacts><decides>:void =
+        var X:[]covariant_interface(int) = array{}
+        set X += array{covariant_interface_impl(comparable){Data := 1}}
+        X[0].Method() = 1
+
+assert:
+    X:covariant_interface(int) = covariant_interface_impl(int){Data := 1}
+    Y:covariant_interface(any) = covariant_interface_impl(any){Data := 2}
+    Z:covariant_interface(any) = if (false?) then X else Y
+
+assert_semantic_error(3509):
+    covariant_interface(t:type) := interface:
+        Method()<transacts>:t
+    covariant_interface_impl(t:type) := class(covariant_interface(t)):
+        Data:t
+        Method<override>()<transacts>:t = Data
+    Main()<transacts><decides>:void =
+        X:covariant_interface(int) = covariant_interface_impl(int){Data := 1}
+        Y:covariant_interface(any) = covariant_interface_impl(any){Data := 2}
+        Z:covariant_interface(int) = if (false?) then X else Y
+
+contravariant_interface(t:type) := interface:
+    Method(:t)<transacts><decides>:void
+
+contravariant_interface_impl(t:subtype(comparable)) := class(contravariant_interface(t)):
+    Data:t
+    Method<override>(Arg:t)<transacts><decides>:void = Data = Arg
+
+assert:
+    var X:[]contravariant_interface(int) = array{}
+    set X += array{contravariant_interface_impl(comparable){Data := 1}}
+    X[0].Method[1]
+
+assert_semantic_error(3509):
+    contravariant_interface(t:type) := class<abstract>:
+        Method(:t)<transacts><decides>:void
+    contravariant_interface_impl(t:subtype(comparable)) := class(contravariant_interface(t)):
+        Data:t
+        Method<override>(Arg:t)<transacts><decides>:void = Data = Arg
+    Main()<transacts><decides>:void =
+        var X:[]contravariant_interface(comparable) = array{}
+        set X += array{contravariant_interface_impl(int){Data := 1}}
+        X[0].Method[2.0]
+
+assert:
+    X:contravariant_interface(int) = contravariant_interface_impl(int){Data := 1}
+    Y:contravariant_interface(comparable) = contravariant_interface_impl(comparable){Data := 2}
+    Z:contravariant_interface(int) = if (false?) then X else Y
+    Z.Method[2]
+
+assert_semantic_error(3509):
+    contravariant_interface(t:type) := interface:
+        Method(:t)<transacts><decides>:void
+    contravariant_interface_impl(t:subtype(comparable)) := class(contravariant_interface(t)):
+        Data:t
+        Method<override>(Arg:t)<transacts><decides>:void = Data = Arg
+    Main()<transacts><decides>:void =
+        X:contravariant_interface(int) = contravariant_interface_impl(int){Data := 1}
+        Y:contravariant_interface(comparable) = contravariant_interface_impl(comparable){Data := 2}
+        Z:contravariant_interface(comparable) = if (false?) then X else Y
+        Z.Method[2]
+
+assert_semantic_error(3509):
+    class1(t:type) := class:
+        F(:t):void = {}
+    class2 := class(class1(int)):
+        F<override>(:int):void = {}
+    class3 := class(class1(float)):
+        F<override>(:float):void = {}
+    Main(P:logic):void =
+        X := class2{}
+        Y := class3{}
+        Z:class1(comparable) = if (P?) then X else Y
+
+iface(t:type) := interface:
+    F():t
+
+impl(t:type) := class(iface(t)):
+    Data:t
+    F<override>():t = Data
+
+my_nat := type{Val:int where Val >= 0}
+
+assert:
+    X:impl(int) = if (false?) then impl(my_nat){Data := 1} else impl(int){Data := -1}
+    X.F() = -1

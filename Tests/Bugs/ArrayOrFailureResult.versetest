@@ -1,0 +1,12 @@
+super_class := class<unique>{}
+sub_class_a := class(super_class) {}
+sub_class_b := class(super_class):
+    MethodWhichCanFail()<transacts><decides>:sub_class_a =
+    {
+        return (sub_class_a[Self])
+    }
+
+assert:
+    B := sub_class_b{}
+    Arr:[]super_class := array{B, B.MethodWhichCanFail[]} or array{B}
+    Arr=array{B}

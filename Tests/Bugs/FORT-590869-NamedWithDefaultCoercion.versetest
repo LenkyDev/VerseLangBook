@@ -1,0 +1,30 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+Apply(F(X:t):u, X:t where t:type, u:type):u = F(X)
+
+G(X:int, ?Y:int = 1):int = X + Y
+
+assert:
+    Apply(G, 2) = 3
+    Apply(G, (2, ?Y := 3)) = 5
+
+class1 := class:
+    Method1(X:int, ?Y:int = 1):int = X + Y
+    Method2()<decides>:void =
+        Apply(Method1, 2) = 3
+        Apply(Method1, (2, ?Y := 3)) = 5
+
+assert:
+    X := class1{}
+    X.Method2[]
+
+class2 := class(class1):
+    Method1<override>(X:any):int = 1
+
+assert:
+    X:class1 = class2{}
+    X.Method1(2) = 1
+    X.Method1(3, ?Y := 4) = 1
+}

@@ -1,0 +1,104 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# you can call public methods of public modules
+assert_valid:
+    vmodule(A):        
+        snippet:
+             AB<public> := module:
+                abf<public>():void={}
+    vmodule(B):
+        snippet:
+            using { A.AB }
+            bf():void={ abf() }
+
+# you can't import internal modules
+assert_semantic_error(3593, 3593, 3593):
+    vmodule(A):
+        snippet:
+             AB<internal> := module:
+                abf<public>():void={}
+    vmodule(B):
+        snippet:
+            using { A.AB }
+            bf():void={ abf() }
+
+# you can't instantiate internal classes of another module
+assert_semantic_error(3593, 3593):
+    vmodule(A):
+        snippet:
+             ABC<internal> := class { a<public>:int }
+    vmodule(B):
+        snippet:
+            using{A}
+            bf():void={ abc := ABC{ a:=4 } }
+
+# if an internal and public class are equally visible,
+# the internal one doesn't cause an ambiguity
+assert_valid:
+    vmodule(A):
+        snippet:
+             ABC<internal> := class { a:int }
+    vmodule(B):
+        snippet:
+             ABC<public> := class { b<public>:int }
+    vmodule(C):
+        snippet:
+            using{A}
+            using{B}
+            cf():void={ abc := ABC{ b:=4 } }
+
+
+# you can't call an internal method of another module
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+             af<internal>():void={}
+    vmodule(B):
+        snippet:
+            using{A}
+            bf():void={ af() }
+
+# if an internal and public method are equally visible,
+# the internal one doesn't cause an ambiguity
+assert_valid:
+    vmodule(A):
+        snippet:
+             af<internal>():float={ 4.1 }
+    vmodule(B):
+        snippet:
+             af<public>():int={ 4 }
+    vmodule(C):
+        snippet:
+            using{A}
+            using{B}
+            cf():int={af()}
+
+# you can't reference internal data of another module
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+             IntData<internal> : int = 77
+    vmodule(B):
+        snippet:
+            using{A}
+            BIntData : int = IntData
+
+# you can't reference an internal enum of another module
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+             colors<internal> := enum {red, green, mauve}
+    vmodule(C):
+        snippet:
+            using{A}
+            CC := class { c:colors }
+
+# you can't implement an internal interface of another module
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+             T<internal> := interface {}
+    vmodule(B):
+        snippet:
+            using{A}
+            C := class(T) {}

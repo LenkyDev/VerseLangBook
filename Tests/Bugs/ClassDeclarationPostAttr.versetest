@@ -1,0 +1,2 @@
+# TODO: This currently triggers an ensure, but should produce a nice compile error at least.
+#ClassPostAttr := class<native> {}

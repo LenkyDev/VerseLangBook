@@ -1,0 +1,89 @@
+# Test return statement type checking
+assert_semantic_error(3510){               f(x:int  ):float = { return x } }
+assert_semantic_error(3510){               f(x:int  ):logic = { return x } }
+assert_semantic_error(3510){ c := class{}; f(x:int  ):c     = { return x } }
+assert_semantic_error(3510){               f(x:float):int   = { return x } }
+assert_semantic_error(3510){               f(x:float):logic = { return x } }
+assert_semantic_error(3510){ c := class{}; f(x:float):c     = { return x } }
+assert_semantic_error(3510){               f(x:logic):int   = { return x } }
+assert_semantic_error(3510){               f(x:logic):float = { return x } }
+assert_semantic_error(3510){ c := class{}; f(x:logic):c     = { return x } }
+
+# Test implicit return type checking
+<#> These don't work yet because the semantic analyzer doesn't type-check the implicitly returned value.
+    assert_semantic_error(3510){               f(x:int  ):float = { x } }
+    assert_semantic_error(3510){               f(x:int  ):logic = { x } }
+    assert_semantic_error(3510){ c := class{}; f(x:int  ):c     = { x } }
+    assert_semantic_error(3510){               f(x:float):int   = { x } }
+    assert_semantic_error(3510){               f(x:float):logic = { x } }
+    assert_semantic_error(3510){ c := class{}; f(x:float):c     = { x } }
+    assert_semantic_error(3510){               f(x:logic):int   = { x } }
+    assert_semantic_error(3510){               f(x:logic):float = { x } }
+    assert_semantic_error(3510){ c := class{}; f(x:logic):c     = { x } }
+
+# Test argument type checking.
+assert_semantic_error(3509){             f(x:logic):void={}; g(x: int) :void={f(x)} }
+assert_semantic_error(3509){             f(x:float):void={}; g(x: int) :void={f(x)} }
+assert_semantic_error(3509){ c:=class{}; f(x:c    ):void={}; g(x: int) :void={f(x)} }
+assert_semantic_error(3509){             f(x:logic):void={}; g(x:float):void={f(x)} }
+assert_semantic_error(3509){             f(x:int  ):void={}; g(x:float):void={f(x)} }
+assert_semantic_error(3509){ c:=class{}; f(x:c    ):void={}; g(x:float):void={f(x)} }
+assert_semantic_error(3509){             f(x:float):void={}; g(x:logic):void={f(x)} }
+assert_semantic_error(3509){             f(x:int  ):void={}; g(x:logic):void={f(x)} }
+assert_semantic_error(3509){ c:=class{}; f(x:c    ):void={}; g(x:logic):void={f(x)} }
+
+# Test type checking using variables as arguments.
+assert_valid               {               f(x:int   ):void={}; g():void={f(y)}; y:int=0          }
+assert_valid               {               f(x:[]int ):void={}; g():void={f(y)}; y:[]int=array{}  }
+assert_valid               {               f(x:?int  ):void={}; g():void={f(y)}; y:?int=false}
+assert_semantic_error(3509){               f(x:logic ):void={}; g():void={f(y)}; y:int=0          }
+assert_semantic_error(3509){               f(x:float ):void={}; g():void={f(y)}; y:int=0          }
+assert_semantic_error(3509){ c := class{}; f(x:c     ):void={}; g():void={f(y)}; y:int=0          }
+assert_semantic_error(3509){               f(x:logic ):void={}; g():void={f(y)}; y:float=0.0      }
+assert_semantic_error(3509){               f(x:int   ):void={}; g():void={f(y)}; y:float=0.0      }
+assert_semantic_error(3509){ c := class{}; f(x:c     ):void={}; g():void={f(y)}; y:float=0.0      }
+assert_semantic_error(3509){               f(x:float ):void={}; g():void={f(y)}; y:logic=false    }
+assert_semantic_error(3509){               f(x:int   ):void={}; g():void={f(y)}; y:logic=false    }
+assert_semantic_error(3509){ c := class{}; f(x:c     ):void={}; g():void={f(y)}; y:logic=false    }
+
+# Test type checking types that have the same "key type".
+assert_semantic_error(3509){ f(x:?int)  :void={}; g(x:?float)  :void={f(x)} }
+assert_semantic_error(3509){ f(x:[]int) :void={}; g(x:[]float) :void={f(x)} }
+assert_semantic_error(3509){ f(x:?[]int):void={}; g(x:?[]float):void={f(x)} }
+assert_semantic_error(3509){ f(x:[]?int):void={}; g(x:[]?float):void={f(x)} }
+
+assert_semantic_error(3509){ E0 := enum{}; E1 := enum{}; f(x:E0):void={}; g(x:E1):void={f(x)} }
+
+# Check handling of void
+assert_valid { f():void={}; g():void={ h:=f() } }
+assert_valid { _f()<suspends>:void={}; _g()<suspends>:void={ h:=_f() } }
+
+# Optional types are covariant in their value type.
+assert_valid               { Base := class {}; Derived := class(Base) {}; F():?Base     = option{Derived{}} }
+assert_valid               { Base := class {}; Derived := class(Base) {}; F():?Base     = option{Base{}   } }
+assert_valid               { Base := class {}; Derived := class(Base) {}; F():?Derived  = option{Derived{}} }
+assert_semantic_error(3510){ Base := class {}; Derived := class(Base) {}; F():?Derived  = option{Base{}   } }
+
+# Array types are covariant in their value type.
+assert_valid               { Base := class {}; Derived := class(Base) {}; F():[]Base     = array{Derived{}} }
+assert_valid               { Base := class {}; Derived := class(Base) {}; F():[]Base     = array{Base{}   } }
+assert_valid               { Base := class {}; Derived := class(Base) {}; F():[]Derived  = array{Derived{}} }
+assert_semantic_error(3510){ Base := class {}; Derived := class(Base) {}; F():[]Derived  = array{Base{}   } }
+
+# Pointer types are invariant in their value type, but we can't test this until we support non-unique pointers.
+#assert_valid               { Base := class {}; Derived := class(Base) {}; var x:Base    = Base{}   ; y:^Base    = x  }
+#assert_semantic_error(3509){ Base := class {}; Derived := class(Base) {}; var x:Derived = Derived{}; y:^Base    = x  }
+#assert_semantic_error(3509){ Base := class {}; Derived := class(Base) {}; var x:Base    = Base{}   ; y:^Derived = x  }
+#assert_valid               { Base := class {}; Derived := class(Base) {}; var x:Derived = Derived{}; y:^Derived = x  }
+
+# Function types are contravariant in their parameter type.
+assert_valid               { Base := class {}; Derived := class(Base) {}; h(:Base):void={};    x:type{_(:Base   ):void} = h }
+assert_valid               { Base := class {}; Derived := class(Base) {}; h(:Base):void={};    x:type{_(:Derived):void} = h }
+assert_valid               { Base := class {}; Derived := class(Base) {}; h(:Derived):void={}; x:type{_(:Derived):void} = h }
+assert_semantic_error(3509){ Base := class {}; Derived := class(Base) {}; h(:Derived):void={}; x:type{_(:Base   ):void} = h }
+
+# Function types are covariant in their return type.
+assert_valid               { Base := class {}; Derived := class(Base) {}; h():Base=Base{};       x:type{_():Base   } = h }
+assert_valid               { Base := class {}; Derived := class(Base) {}; h():Derived=Derived{}; x:type{_():Base   } = h }
+assert_valid               { Base := class {}; Derived := class(Base) {}; h():Derived=Derived{}; x:type{_():Derived} = h }
+assert_semantic_error(3509){ Base := class {}; Derived := class(Base) {}; h():Base=Base{};       x:type{_():Derived} = h }

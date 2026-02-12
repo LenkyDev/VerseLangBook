@@ -1,0 +1,21 @@
+struct1 := struct:
+    X:int
+    Y:int
+
+class1 := class:
+    X:int
+    Y:int
+    GetStruct1():struct1 = struct1{X := X, Y := Y}
+    GetTuple():tuple(int, int) = (X, Y)
+
+# Ensure a function invocation can be a struct context.
+assert:
+    X :=  class1{X:= 1, Y := 2}
+    Y := X.GetStruct1().Y
+    Y = 2
+
+# Ensure a function invocation can be a tuple context.
+assert:
+    X :=  class1{X:= 1, Y := 2}
+    Y := X.GetTuple()(1)
+    Y = 2

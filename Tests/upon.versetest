@@ -1,0 +1,95 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Concurrency }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_only {
+assert_valid:
+    Main():void =
+        upon(1){2}
+
+assert_valid:
+    F()<computes><reads><decides>:void = {}
+    Main():void =
+        upon(F[]){}
+
+assert_semantic_error(3512):
+    F()<computes><reads><suspends>:void = {}
+    Main():void =
+        upon(F()){}
+
+assert_semantic_error(3512):
+    F()<computes><writes>:void = {}
+    Main():void =
+        upon(F()){}
+
+assert_semantic_error(3512):
+    F()<computes><allocates>:void = {}
+    Main():void =
+        upon(F()){}
+
+assert_semantic_error(3552):
+    Main():void =
+        loop:
+            upon(1):
+                break
+            break
+
+assert_semantic_error(3684):
+    Main():void =
+        upon(1):
+            return
+
+int_ref := class:
+    var Contents:int = 0
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    upon(X):
+        set Y = X
+    set X = 1
+    Y = 1
+
+assert:
+    var X:int = 0
+    var Y:int = 1
+    upon(X = 0):
+        set Y = 2
+    Y = 1
+    set X = X
+    Y = 2
+
+assert:
+    var X:int = 0
+    var Y:int = 1
+    upon(X):
+        set Y = Y + 1
+    Y = 1
+    set X = 1
+    Y = 2
+    set X = 3
+    Y = 2
+
+Cancel := module:
+    F<public>(Y:int_ref)<suspends>:int =
+        var X:int = 0
+        Task := upon(X):
+            set Y.Contents = X
+        Task.Cancel()
+        set X = 1
+
+assert:
+    X:int_ref = int_ref{}
+    spawn:
+        Cancel.F(X)
+    X.Contents = 0
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    Task:task(int) = upon(X):
+        set Y = X
+    set X = 1
+    Y = 1
+}

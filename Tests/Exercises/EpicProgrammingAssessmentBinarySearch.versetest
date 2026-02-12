@@ -1,0 +1,74 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+<# 
+Question 1 - Epic Games - Programming Exercise
+
+Assumptions:
+- We are assuming that both xboxes have the same threshold/durability.
+- We are assuming that an xbox will not break even if it is dropped from the same floor multiple times, even though
+- we want to minimize the number of times it is dropped.
+
+Basically, we use the first xbox to perform a binary search (favouring higher floors).
+If it breaks, we use the second xbox to perform a linear search (starting from lower floors first).
+
+Worst case: it drops on the first try for binary search and we have to linear search. i.e. drop from 60th floor
+results in a break and we have to linear search from 1 - 59 stories, thus 60 drops is worst case.
+
+Pseudocode-ish method described below:
+#>
+# This threshold means the highest floor that the XBox can be dropped from and survive.
+
+drop_result := class:
+    var XBoxThreshold:int = 59
+    var NumDrops:int = 0
+
+DropXBoxFromFloorAndDidItBreak(storey:int, r:drop_result)<transacts>:logic =
+    set r.NumDrops += 1
+    if (storey > r.XBoxThreshold):
+        return true;
+    else:
+        return false;
+
+FindHighestFloorForDrop(r:drop_result):int = 
+    var FirstXBoxBroken:int = 0
+    var start:int = 1;
+    var end:int = 120; # Top floor.
+    var mid:int = 0;
+    
+    # Binary search with bias towards upper floors.
+    loop:
+        if (FirstXBoxBroken <> 1 or start > end):
+            break
+        # TODO: Uhh, figure out how to "do this right" and not just wrap in failure contexts like this.
+        if(NewMid := Floor((start + end) / 2)):
+            set mid = NewMid
+        if (DropXBoxFromFloorAndDidItBreak(mid, r) = true):
+            set FirstXBoxBroken = 1
+            break
+        # If it didn't break, let's go higher!
+        set start = mid + 1
+    
+    if (mid = 120):
+        if (FirstXBoxBroken = 1):  # Means that we broke on the 120th floor so it has to be 119.
+            return mid + 1
+        else:
+            return mid
+    
+    # We only have 1 XBox left, so linear search is the safest option out...
+    for (i := start..mid):
+        if (DropXBoxFromFloorAndDidItBreak(i, r) = true):
+            return i - 1
+    return mid - 1
+
+# On success, this returns `-1` and on failure, returns a positive number.
+TestDoDrops():int = 
+    for (i := 1..120):
+        r:drop_result = drop_result{}
+        set r.XBoxThreshold = i
+        FloorAnswer:int = FindHighestFloorForDrop(r)
+        if (FloorAnswer <> i):
+            return FloorAnswer
+    return -1 
+
+assert:
+    TestDoDrops() = -1

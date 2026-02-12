@@ -1,0 +1,64 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+float3<public> := struct<concrete><computes>:
+    X:float = 1.0
+    Y:float = 2.0
+    Z:float = 3.0
+
+float4<public> := struct<concrete><computes>:
+    X:float = 1.0
+    Y:float = 2.0
+    Z:float = 3.0
+    W:float = 4.0
+
+float_holder<public> := struct<concrete><computes>:
+    Translation<public>:float3 := float3{}
+    Rotation<public>:float4 := float4{}
+
+chest<public> := class:
+
+    var<private> FloatHolderInternal<private>:float_holder = float_holder{}
+
+    var FloatHolder<public><getter(GetFloatHolder)><setter(SetFloatHolder)>:float_holder = external{}
+
+    GetFloatHolder<private>(:accessor)<transacts>:float_holder = FloatHolderInternal
+    GetFloatHolder(:accessor,MemberName:[]char)<transacts>:any =
+        case(MemberName):
+                "Translation" => FloatHolderInternal.Translation
+                "Rotation" => FloatHolderInternal.Rotation
+                _ => Err("shouldn't get here. unknown member name")
+    GetFloatHolder(:accessor,MemberName1:[]char,MemberName2:[]char)<transacts>:float =
+        case(MemberName1):
+                "Translation" =>
+                    case(MemberName2):
+                            "X" => FloatHolderInternal.Translation.X
+                            "Y" => FloatHolderInternal.Translation.Y
+                            "Z" => FloatHolderInternal.Translation.Z
+                            _ => Err("shouldn't get here. unknown member name")
+                _ => Err("shouldn't get here. unknown member name")
+
+    SetFloatHolder<private>(:accessor, NewFloatHolder:float_holder)<transacts>:void = set FloatHolderInternal = NewFloatHolder
+    SetFloatHolder(:accessor,MemberName:[]char,NewValue:any)<transacts>:void =
+        case(MemberName):
+                "Translation" => set FloatHolderInternal.Translation = UnsafeCast(NewValue, float3)
+                "Rotation" => set FloatHolderInternal.Rotation = UnsafeCast(NewValue, float4)
+                _ => Err("shouldn't get here. unknown member name")
+
+    SetFloatHolder(:accessor,MemberName1:[]char,MemberName2:[]char,NewValue:float)<transacts>:void =
+        case(MemberName1):
+                "Translation" =>
+                    case(MemberName2):
+                            "X" => set FloatHolderInternal.Translation.X = NewValue
+                            "Y" => set FloatHolderInternal.Translation.Y = NewValue
+                            "Z" => set FloatHolderInternal.Translation.Z = NewValue
+                            _ => Err("shouldn't get here. unknown member name")
+                _ => Err("shouldn't get here. unknown member name")
+
+assert:
+    Chest := chest{}
+    T := Chest.FloatHolder.Translation
+    T.Z = 3.0
+    set Chest.FloatHolder.Translation = float3{X:=9.0, Y:=10.0, Z:=11.0}
+    T2 := Chest.FloatHolder.Translation
+    T2.Z = 11.0

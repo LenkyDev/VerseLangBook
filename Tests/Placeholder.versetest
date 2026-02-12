@@ -1,0 +1,33 @@
+assert_semantic_error(3560):
+    stub{}
+
+assert_semantic_error(3501):
+    Main():void =
+        stub{}
+
+assert_semantic_error(3501):
+    Main():void =
+        X:int = stub{}
+
+assert_semantic_error(3501):
+    Identity(X:t where t:type):t = X
+    Main():void =
+        X:int = Identity(stub{})
+
+assert_semantic_error(3540):
+    F(stub{}:int):void = {}
+
+assert_semantic_error(3501):
+    F(:stub{}):void = {}
+
+assert_semantic_error(3501):
+    F():stub{} = {}
+
+assert_semantic_error(3540, 3501):
+    F(stub{Param}:stub{type}):void = {}
+
+assert_semantic_error(3501):
+    Identity(X:t where t:type):t = X
+    Main():void =
+        F := stub{}
+        F(Identity(1))

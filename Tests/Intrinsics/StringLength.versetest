@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Basic string length tests.
+assert{"".Length=0}
+assert{"a".Length=1}
+assert{"ab".Length=2}
+assert{"abc".Length=3}
+assert{"abcdef".Length=6}
+
+# Test string length when coerced to array.
+ArrayLength(Array:[]t where t:type):int=Array.Length
+assert{ArrayLength("")=0}
+assert{ArrayLength("a")=1}
+assert{ArrayLength("ab")=2}
+assert{ArrayLength("abc")=3}
+assert{ArrayLength("abcdef")=6}
+
+# Test string length when coerced from array.
+MakeArrayFromRepeatedElement(A:t, N:int where t:type)<computes>:[]t=for(I:=0..N-1) do A
+assert{MakeArrayFromRepeatedElement('a', -1).Length=0}
+assert{MakeArrayFromRepeatedElement('a', 0).Length=0}
+assert{MakeArrayFromRepeatedElement('a', 1).Length=1}
+assert{MakeArrayFromRepeatedElement('a', 2).Length=2}
+assert{MakeArrayFromRepeatedElement('a', 3).Length=3}

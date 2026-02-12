@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+assert:
+    TestRationals:[]rational := array{0/1, -1/2, +1/2, -2/3, +2/3, -9223372036854775808/1, +9223372036854775807/1}
+    for(Index1->Rational1:TestRationals; Index2->Rational2:TestRationals):
+        logic{Index1=Index2} = logic{Rational1=Rational2}
+        logic{Index1<>Index2} = logic{Rational1<>Rational2}
+
+assert:
+    TestInts:[]int = array{0, 1, 2, 3, 9223372036854775807}
+    for(TestInt:TestInts):
+        TestInt=(TestInt/1)
+
+assert:
+    TestInts:[]int = array{1, 2, 3, 9223372036854775807}
+    for(TestInt:TestInts):
+        TestIntAsRational:rational = TestInt/1
+        TestHalfInt:rational = TestInt/2
+        Map := map{TestInt=>1, TestIntAsRational=>2, TestHalfInt=>3}
+        Map[TestInt] = 2
+        Map[TestIntAsRational] = 2
+        Map[TestHalfInt] = 3

@@ -1,0 +1,80 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Basic map call tests.
+assert{map{0=>"0"}[0]="0"}
+assert{not map{0=>"0"}[1]}
+
+assert{map{0=>"0", 1=>"1"}[0]="0"}
+assert{map{0=>"0", 1=>"1"}[1]="1"}
+assert{not map{0=>"0", 1=>"1"}[2]}
+
+# Maps can only be called with a subtype of their key type.
+super_class := class<unique>{}
+sub_class := class(super_class){}
+
+assert:
+    Super:super_class = super_class{}
+    map{Super=>0}[Super]=0
+assert:
+    Super:super_class = super_class{}
+    Sub:sub_class = sub_class{}
+    not map{Super=>0}[Sub]
+
+assert:
+    Super:super_class = super_class{}
+    Sub:sub_class = sub_class{}
+    map{Super=>0, Sub=>1}[Super]=0
+assert:
+    Super:super_class = super_class{}
+    Sub:sub_class = sub_class{}
+    map{Super=>0, Sub=>1}[Sub]=1
+assert:
+    Super:super_class = super_class{}
+    Sub:sub_class = sub_class{}
+    not map{Super=>0, Sub=>1}[sub_class{}]
+assert_semantic_error(3512, 2017){X:void=map{0=>"0"}[0.0]}
+assert_semantic_error(3512, 2017){X:void=map{0.0=>"0"}[0]}
+assert_semantic_error(3512, 2017){X:void=map{false=>"false"}[0]}
+assert_semantic_error(3512, 2017){X:void=map{"false"=>false}[false]}
+assert_semantic_error(3512):
+    super_class := class<unique><computes><allocates>{}
+    sub_class := class<computes><allocates>(super_class){}
+    a := class:
+        f():void=
+            map{sub_class{}=>0}[super_class{}]
+assert_semantic_error(3512, 2017):
+    class_a := class<unique><computes><allocates>{}
+    class_b := class<unique><computes><allocates>{}
+    a := class:
+        f():void=
+            map{class_a{}=>0}[class_b{}]
+
+# Require that the calls can fail unless the compiler knows it won't fail.
+assert_semantic_error(3511){F():void=map{0=>"0"}(1)}
+assert_semantic_error(3511){F():void=map{false=>"0"}(true)}
+
+# Require that fallible map calls occur in failure contexts.
+assert_semantic_error(3512){F():void=map{0=>0}[0]}
+
+# Calling a map returns a value of the map's value type.
+assert{X:logic  = map{0=>false}[0]}
+assert{X:int    = map{0=>0    }[0]}
+assert{X:float  = map{0=>0.0   }[0]}
+assert{X:char   = map{0=>'0'  }[0]}
+assert{X:string = map{0=>"0"  }[0]}
+
+# Test calling maps of various key types.
+assert{map{false=>"0", true=>"1"}[true]="1"}
+assert{map{0    =>"0", 1   =>"1"}[1   ]="1"}
+assert{map{'0'  =>"0", '1' =>"1"}['1' ]="1"}
+assert{map{"0"  =>"0", "1" =>"1"}["1" ]="1"}
+
+# Test calling maps with a non-nullable reference type as the value type.
+assert:
+    Super:super_class = super_class{}
+    map{0=>Super}[0]=Super
+
+# Test calling maps with a non-nullable optional reference type as the value type.
+assert:
+    Super:super_class = super_class{}
+    map{0=>option{Super}}[0]?=Super

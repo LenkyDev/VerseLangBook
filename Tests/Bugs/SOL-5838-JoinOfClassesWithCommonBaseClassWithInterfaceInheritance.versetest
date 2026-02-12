@@ -1,0 +1,30 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+super_interface_1 := interface{}
+super_interface_2 := interface{}
+super_class := class(super_interface_1, super_interface_2){}
+sub_class_1 := class(super_class){}
+sub_class_2 := class(super_class){}
+
+F(X:[]super_class):void={}
+
+assert{F(array{sub_class_1{}, sub_class_2{}})}
+
+assert_semantic_error(3509):
+    super_interface := interface{}
+    super_class := class{}
+    sub_class_1 := class(super_class, super_interface){}
+    sub_class_2 := class(super_class, super_interface){}
+
+    F(X:[]super_class):void={}
+    G():void=F(array{sub_class_1{}, sub_class_2{}})
+
+assert_semantic_error(3509):
+    interface1 := interface {}
+    class1 := class(interface1) {}
+    interface2 := interface(interface1) {}
+    class2 := class(class1, interface2) {}
+    class3 := class(class1, interface2) {}
+
+    F(X:[]interface1):void={}
+    G():void=F(array{class2{}, class3{}})

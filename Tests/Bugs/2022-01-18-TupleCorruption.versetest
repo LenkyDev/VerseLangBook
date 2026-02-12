@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# we had a bug with copying native tuples from native -> verse overwriting
+# adjacent memory. this attempts to repro and test that
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Tests/VerseTestScriptCmd/test_vni }
+
+tuple_corruption := struct:
+    S0: int = -1
+    S1: int = -1
+    S2: tuple(int, tuple(float,float))
+    S3: int = -1
+    S4: int = -1
+
+assert:
+    S : tuple_corruption = tuple_corruption{ S2:= MultiResultTupleNested()}
+    S.S0 = -1
+    S.S1 = -1
+    S.S2(0) = 42
+    S.S2(1)(0) = 42.0
+    S.S2(1)(1) = 123.0
+    S.S3 = -1
+    S.S4 = -1

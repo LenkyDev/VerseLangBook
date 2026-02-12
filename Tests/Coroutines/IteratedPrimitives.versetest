@@ -1,0 +1,270 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+############################################
+# Sequential - do block
+assert_valid:
+    print(msg:string)                 : void  = {}
+    _waitNext()<suspends>             : void  = {}
+    _printTimed(msg:string)<suspends> : float = { return (123.0) }
+    _doStuffFloat()<suspends>         : float = { return (42.0) }
+
+    
+    _coroFlow(strings:[]string)<suspends>:void=
+    {
+        # Non-iterated
+
+        # sequential
+        block:
+            _waitNext()
+            print("Test")
+            _doStuffFloat()
+
+        lastResult := block:
+            _waitNext()
+            print("Test")
+            _doStuffFloat()  # result used for whole block
+
+
+        # Iterated
+
+        # run in sequence across all list items and go to
+        # next expression after last item task completes
+        # braced style
+        for(str:strings)
+        {
+            _printTimed(str)
+        }
+
+        # Significant whitespace syle
+        for(str:strings):
+            _printTimed(str)
+        
+        # Using result - result of each iteration is stored in new array
+        resultFloats := for(str:strings):
+            _printTimed(str)
+
+        # Multiple expressions
+        for(str:strings):
+            _waitNext()
+            print(str)
+            _doStuffFloat()
+
+        # Multiple expressions with array of result
+        moreFloats := for(str:strings):
+            _waitNext()
+            print(str)
+            _doStuffFloat()  # result used for whole block
+
+        # Allow infinite loops with at least one async expression
+        loop:
+            print("test")
+            _waitNext()
+
+        loop:
+            print("test")
+            sync:
+                _waitNext()
+                _doStuffFloat()
+
+        return
+    }
+
+############################################
+# Simultaneous - sync
+assert_semantic_error(3552, 3552, 3552, 3552, 3552):
+    print(msg:string)                  : void  = {}
+     _printTimed(msg:string)<suspends> : float = { return 123.0 }
+     _doStuffFloat()<suspends>         : float = { return 42.0 }
+     _doMoreFloat()<suspends>          : float = { return 321.0 }
+
+    
+    _coroSync(strings:[]string)<suspends>:void=
+    {
+        # Non-iterated
+
+        sync:
+            _printTimed("Test")
+            _doStuffFloat()
+            _doMoreFloat()
+
+        results := sync:
+            _printTimed("Test")
+            _doStuffFloat()
+            _doMoreFloat()  # result used for whole block
+
+
+        # Iterated
+
+        # run concurrently/simultaneously across all list items and go
+        # to next expression after longest item task completes
+        # braced style
+        sync(str:strings)
+        {
+            _printTimed(str)
+        }
+
+        # Significant whitespace syle
+        sync(str:strings):
+            _printTimed(str)
+        
+        # Using results - accumulated results of each task
+        iterResults := sync(str:strings):
+            _printTimed(str)
+
+        # Multiple expressions
+        sync(str:strings):
+            # Acts as do block run concurrently across items
+            _doStuffFloat()
+            print(str)
+            _doMoreFloat()
+
+        # Multiple expressions with the accumulated results of each
+        # collection item task
+        doMoreResults := sync(str:strings):
+            _doStuffFloat()
+            print(str)
+            _doMoreFloat()
+    }
+
+# Test iteration over range
+assert_semantic_error(3552):
+    
+    _f0<native>(x:int)<suspends><transacts>:int
+    
+    _f1()<suspends>:[]int :=
+        return(sync(i:=0..3){_f0(i)})
+
+
+############################################
+# Simultaneous with abort on first completed - race
+assert_semantic_error(3552, 3552, 3552, 3552, 3552):
+    print(msg:string)                 : void  = {}
+    _printTimed(msg:string)<suspends> : float = { return 123.0 }
+    _doStuffFloat()<suspends>         : float = { return 42.0 }
+    _doMoreFloat()<suspends>          : float = { return 321.0 }
+
+    
+    _coroRace(strings:[]string)<suspends>:void=
+    {
+        # Non-iterated
+
+        # run concurrently and next expression executed when *fastest/first* expression
+        # task completed and all other expression timelines are aborted
+        race:
+            _printTimed("Test")
+            _doStuffFloat()
+            _doMoreFloat()
+
+        firstA := race:
+            _printTimed("Test")
+            _doStuffFloat()
+            _doMoreFloat()  # result used for whole block
+
+
+        # Iterated
+
+        # Run simultaneously across all collection items and go to next
+        # expression after fastest/shortest task completes.
+        # All other collection item timelines are aborted.
+        # braced style
+        race(str:strings)
+        {
+            _printTimed(str)
+        }
+
+        # Significant whitespace syle
+        race(str:strings):
+            _printTimed(str)
+        
+        # Using result - result of first/fastest running item task
+        firstB := race(str:strings):
+            _printTimed(str)
+
+        # Multiple expressions
+        race(str:strings):
+            # Acts as do block run concurrently across items
+            _doStuffFloat()
+            print(str)
+            _doMoreFloat()
+
+        # Multiple expressions with the result of the first/fastest
+        # running collection item task
+        firstC := race(str:strings):
+            _doStuffFloat()
+            print(str)
+            _doMoreFloat()
+    }
+
+# Test iteration over range
+assert_semantic_error(3552):
+    
+    _f0<native>(x:int)<suspends><transacts>:int
+    
+    _f1()<suspends>:int =
+        return(race(i:=0..3){_f0(i)})
+
+
+############################################
+# Simultaneous with continue on first completed - rush
+assert_semantic_error(3552, 3552, 3552, 3552, 3552):
+    print(msg:string)                 : void  = {}
+    _printTimed(msg:string)<suspends> : float = { return 123.0 }
+    _doStuffFloat()<suspends>         : float = { return 42.0 }
+    _doMoreFloat()<suspends>          : float = { return 321.0 }
+
+    
+    _coroRush(strings:[]string)<suspends>:void=
+    {
+        # Non-iterated
+
+        # run concurrently and next expression executed when *fastest/first*
+        # expression task completed and all other expression timelines
+        # continue independently until each is fully completed or aborted
+        # when enclosing/originating coroutine task completes
+        # - whichever is sooner
+        rush:
+            _printTimed("Test")
+            _doStuffFloat()
+            _doMoreFloat()
+
+        firstA := rush:
+            _printTimed("Test")
+            _doStuffFloat()
+            _doMoreFloat()  # result used for whole block
+
+
+        # Iterated
+
+        # Run simultaneously across all list items and go to next
+        # expression after fastest/shortest task completes.
+        # Any remaining list item timelines continue independently
+        # until the end of the enclosing coroutine where they are
+        # aborted if still not completed.
+        # braced style
+        rush(str:strings)
+        {
+            _printTimed(str)
+        }
+
+        # Significant whitespace syle
+        rush(str:strings):
+            _printTimed(str)
+        
+        # Using result - result of first/fastest running item task
+        firstB := rush(str:strings):
+            _printTimed(str)
+
+        # Multiple expressions
+        rush(str:strings):
+            # Acts as do block run concurrently across items
+            _doStuffFloat()
+            print(str)
+            _doMoreFloat()
+
+        # Multiple expressions with the result of the first/fastest
+        # running collection item task
+        firstC := rush(str:strings):
+            _doStuffFloat()
+            print(str)
+            _doMoreFloat()
+    }

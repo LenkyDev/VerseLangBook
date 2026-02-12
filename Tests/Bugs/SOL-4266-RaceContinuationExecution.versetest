@@ -1,0 +1,128 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+using { CoroUtils }
+
+Immediate()<suspends>:void = {}
+
+RaceTest()<suspends>:void =
+    Event1 := event(){}
+    var P:logic = false
+    race:
+        loop:
+            LogEvent("A")
+            if (P?):
+                Event1.Await()
+                LogEvent("B")
+                break
+            else:
+                Immediate()
+                set P = true
+                LogEvent("C")
+        block:
+            LogEvent("D")
+            Event1.Signal()
+            LogEvent("E")
+            Immediate()
+            LogEvent("F")
+    LogEvent("G")
+
+assert:
+    spawn{RaceTest()}
+    # The new VM is correct.
+    verse_vm_only.  GetEventLogString() = "ACADBEFG"
+    bp_vm_only.  GetEventLogString() = "ACADBGEF"
+
+verse_vm_only
+{
+RaceTest2()<suspends>:void =
+    Event1 := event(){}
+    var P:logic = false
+    race:
+        loop:
+            LogEvent("A")
+            if (P?):
+                Event1.Await()
+                LogEvent("B")
+                break
+            else:
+                Immediate()
+                set P = true
+                LogEvent("C")
+        block:
+            LogEvent("D")
+            Event1.Signal()
+            LogEvent("E")
+            Immediate()
+            LogEvent("F")
+            Event1.Await()
+            LogEvent("H")
+    LogEvent("G")
+    Event1.Signal()
+
+assert:
+    spawn{RaceTest2()}
+    GetEventLogString() = "ACADBEFG"
+}
+
+RushTest()<suspends>:void =
+    Event1 := event(){}
+    var P:logic = false
+    rush:
+        loop:
+            LogEvent("A")
+            if (P?):
+                Event1.Await()
+                LogEvent("B")
+                break
+            else:
+                Immediate()
+                set P = true
+                LogEvent("C")
+        block:
+            LogEvent("D")
+            Event1.Signal()
+            LogEvent("E")
+            Immediate()
+            LogEvent("F")
+    LogEvent("G")
+
+
+assert:
+    spawn{RushTest()}
+    # The new VM is correct.
+    verse_vm_only. GetEventLogString() = "ACADBEFG"
+    bp_vm_only. GetEventLogString() = "ACADBGEF"
+
+verse_vm_only
+{
+RushTest2()<suspends>:void =
+    Event1 := event(){}
+    var P:logic = false
+    rush:
+        loop:
+            LogEvent("A")
+            if (P?):
+                Event1.Await()
+                LogEvent("B")
+                break
+            else:
+                Immediate()
+                set P = true
+                LogEvent("C")
+        block:
+            LogEvent("D")
+            Event1.Signal()
+            LogEvent("E")
+            Immediate()
+            LogEvent("F")
+            Event1.Await()
+            LogEvent("H")
+    LogEvent("G")
+    Event1.Signal()
+
+assert:
+    spawn{RushTest2()}
+    GetEventLogString() = "ACADBEFGH"
+}

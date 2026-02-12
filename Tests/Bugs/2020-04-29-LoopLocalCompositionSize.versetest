@@ -1,0 +1,39 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+C := class:
+    intArr:[]int       
+
+CModule := module:    
+
+    my_class<public> := class:
+        var cees<public>:[]C = array{}
+
+        f<public>(inArr:[]int):void=
+            set cees = for (i:=0..(inArr.Length - 1)):
+                localArr := for(iVal:inArr):
+                    iVal
+                C{intArr:=localArr}
+
+
+# test array being repeatedly generated in loop
+assert:
+    arr := array{0,1};
+    TheClass:CModule.my_class = CModule.my_class{}
+    TheClass.f(arr)
+
+    TheClass.cees[0].intArr.Length = TheClass.cees[1].intArr.Length and
+    TheClass.cees[1].intArr.Length = arr.Length
+
+# assign array to itself
+assert:
+    var arr:[]int = array{0,1};
+    set arr = for(iVal:arr):
+        4 - iVal
+    set arr = array{4,3}
+
+# use array in range then assign to itself
+assert:
+    var arr:[]int = array{0,1};
+    set arr = for(i:=0..1):
+        if (j := arr[i]) { 9 - j } else { -1 }
+    set arr = array{9,8}

@@ -1,0 +1,68 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Clause only contains a comment
+assert:
+    X:={#
+    }
+    
+assert:
+    X:={<##>}
+    
+assert:
+    X:={
+        <#>
+    }
+
+# Clause contains a comment and one non-comment subexpression.
+assert:
+    X:=
+        #
+        1
+
+assert:
+    X:=
+        <##>
+        1
+
+assert:
+    X:=
+        <#>
+        1
+
+# Clause contains a comment and two non-comment subexpressions.
+assert:
+    X:=
+        #
+        1
+        2
+
+assert:
+    X:=
+        <##>
+        1
+        2
+
+assert:
+    X:=
+        <#>
+        1
+        2
+
+# Clause contains two comments and a non-comment subexpression.
+assert:
+    X:=
+        #
+        #
+        1
+
+assert:
+    X:=
+        <##>
+        <##>
+        1
+
+assert:
+    X:=
+        <#>
+        <#>
+        1

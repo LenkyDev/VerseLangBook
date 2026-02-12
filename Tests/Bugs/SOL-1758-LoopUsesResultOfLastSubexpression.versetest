@@ -1,0 +1,6 @@
+assert_valid:
+    F():void=
+        loop:
+            if (true?) {0}
+            else if (false?) {"1"}
+            else {break}

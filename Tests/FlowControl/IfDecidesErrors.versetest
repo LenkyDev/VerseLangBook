@@ -1,0 +1,32 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# These shouldn't give an error that there's no fallible subexpression in the `if`
+assert_semantic_error(3506, 3513):
+    FunctionThatExists(X:int)<computes>:int = X
+    Foo()<decides>:void =
+        if (FunctionThatExists(DataThatDoesntExist?)) {}
+        else:
+            false = true
+
+assert_semantic_error(3506, 3513):
+    FunctionThatExists(X:int)<computes>:int = X
+    Foo()<decides>:void =
+        if (FunctionThatExists(FunctionThatDoesntExist?(DataThatDoesntExist))) {}
+        else:
+            false = true
+
+assert_semantic_error(3506):
+    FunctionThatExists(X:int)<computes>:int = X
+    DataThatExists:?int = option{0}
+    Foo()<decides>:void =
+        if (FunctionThatDoesntExist(FunctionThatExists(DataThatExists?))) {}
+        else:
+            false = true
+
+assert_semantic_error(3506):
+    FunctionThatExists(X:int)<computes>:int = X
+    DataThatExists:?int = option{0}
+    Foo()<decides>:void =
+        if (FunctionThatDoesntExist(FunctionThatExists(DataThatDoesntExist?))) {}
+        else:
+            false = true

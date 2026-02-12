@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+TestArray(Input:[]int)<transacts>:void =
+	var R:[]int = Input
+	if:
+		set R[0] = R[0] or Err()
+
+TestGenericArray(Input:[]t where t:type)<transacts>:void =
+	var R:[]t = Input
+	if:
+		set R[0] = R[0] or Err()
+
+TestGenericMap(Input:[int]v where v: type)<transacts>:void =
+	var R:[int]v = Input
+	if:
+		set R[0] = R[0] or Err()
+
+###
+
+assert{not (TestArray(array{0}); false?)}										 # this ran fine before
+assert{not (TestGenericArray(array{0}); false?)}						 # prior to this bugfix, this crashed
+assert{not (TestGenericMap(map{0 => "a"}); false?)}					 # ... this also crashed

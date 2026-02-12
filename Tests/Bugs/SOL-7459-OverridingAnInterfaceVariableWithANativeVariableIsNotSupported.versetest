@@ -1,0 +1,78 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# The test that overriding an interface variable with a native variable works is done in VerseNativeTest.ccpp
+# Here we test that the compiler accept the syntax, and refuses things that aren't implemented.
+
+verse_vm_todo {
+
+assert_valid:
+    interface_with_data := interface:
+        var Value: int
+
+    native_class_override_interface_data<native> := class(interface_with_data):
+        var Value<override> : int
+
+assert_valid:
+    interface_with_data := interface:
+        var Value: int
+
+    native_class_override_interface_data<native> := class(interface_with_data):
+        var Value<override><native> : int
+
+# If we override with a native, then this must be the class that "first" used the interface
+assert_semantic_error(3502):
+    interface_with_data := interface:
+        var Value: int
+
+    native_class<native> := class(interface_with_data):
+
+    native_class_override_interface_data<native> := class(native_class):
+        var Value<override><native> : int
+
+# The implementation doesn't support native override if there is a name clash.
+# We want an error message from the verse compiler, not a compile error from the C++ compiler.
+# There is no explicit code in the compiler for this since other error messages are generated due
+# to the compiler failing to properly use the qualified data names. 
+
+assert_semantic_error(3609, 3609, 3532, 3532):
+    interface_with_data := interface:
+        var Value: int
+    interface_with_data2 := interface:
+        var Value: int
+
+    native_class_override_interface_data<native> := class(interface_with_data, interface_with_data2):
+        var (interface_with_data:)Value<override><native> : int
+        var (interface_with_data2:)Value<override><native> : int
+
+# A variant of the above, that also glitches due to name conflicts despite using qualified names.
+assert_semantic_error(3609, 3532):
+    interface_with_data := interface:
+        var Value: int
+
+    native_class_override_interface_data<native> := class(interface_with_data):
+        var Value<override> : int
+
+    interface_with_data2 := interface:
+        var Value: int
+
+    native_class_override_interface_data2<native> := class(native_class_override_interface_data, interface_with_data2):
+        var (interface_with_data2:)Value<override> : int
+
+
+
+# Verify that we don't change old behaviour
+assert_semantic_error(3562):
+    class_with_data := class:
+        var Value: int
+
+    native_class_override_class_data<native> := class(class_with_data):
+        var Value<override><native> : int
+
+assert_valid:
+    class_with_data<native> := class:
+        var Value: int
+
+    native_class_override_class_data<native> := class(class_with_data):
+        var Value<override><native> : int
+
+}

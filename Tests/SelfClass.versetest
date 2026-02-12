@@ -1,0 +1,13 @@
+# self_class doesn't work anymore.
+assert_semantic_error(3506):
+    foo := class:
+        Foo():subtype(foo) = self_class
+
+assert_valid{self_class := class {}}
+assert_valid{D := class {self_class():void={}}}
+assert_valid{D := class {f(self_class:int):void={}}}
+assert_valid{D := class {f(i:int):void={self_class:int=0}}}
+assert_valid{D := class {self_class:int}}
+
+assert_semantic_error(3506){D := class(self_class) {}}
+assert_semantic_error(3506){D := class {f(d:D):void={d.self_class}}}

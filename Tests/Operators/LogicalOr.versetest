@@ -1,0 +1,150 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{  true?  or true?  }
+assert{  true?  or false? }
+assert{  false? or true?  }
+assert{not(false? or false?)}
+assert{maybeInt1:?int = false; maybeInt2:?int = false; not (maybeInt1? or maybeInt2?)}
+
+assert{(0   =  0   or 1)   = 0  }
+assert{(0   <> 0   or 1)   = 1  }
+assert{(0.0 =  0.0 or 1.0) = 0.0}
+assert{(0.0 <> 0.0 or 1.0) = 1.0}
+
+LogicOrMin(lhs:int, rhs:int):int = { return(lhs < rhs or rhs) }
+LogicOrMax(lhs:int, rhs:int):int = { return(lhs > rhs or rhs) }
+
+oob(index:int):logic = { return(logic{index < 0 or index > 100}) }
+
+assert{LogicOrMin(-1, 1) = -1}
+assert{LogicOrMin(+0, 1) = +0}
+assert{LogicOrMin(+1, 1) = +1}
+assert{LogicOrMin(+2, 1) = +1}
+assert{LogicOrMin(+3, 1) = +1}
+
+assert{LogicOrMax(-1, 1) = 1}
+assert{LogicOrMax(+0, 1) = 1}
+assert{LogicOrMax(+1, 1) = 1}
+assert{LogicOrMax(+2, 1) = 2}
+assert{LogicOrMax(+3, 1) = 3}
+
+assert{oob(-10 ) = true }
+assert{oob(-1  ) = true }
+assert{oob(+0  ) = false}
+assert{oob(+1  ) = false}
+assert{oob(+10 ) = false}
+assert{oob(+50 ) = false}
+assert{oob(+100) = false}
+assert{oob(+101) = true }
+assert{oob(+200) = true }
+
+# Test that the logical `or` of two expressions yielding sibling classes yields the common parent class.
+assert_valid:
+    ParentClass := class {}
+    Sibling1 := class(ParentClass) {}
+    Sibling2 := class(ParentClass) {}
+    f(sibling1:?Sibling1, sibling2:?Sibling2):?ParentClass = { return(option{sibling1? or sibling2?}) }
+
+# Test that logical `or` works with operands of disjoint type.
+assert_valid {D := class {}; f(i:int,   d:?D)    : void = { logic{i = 0   or d?      } }}
+assert_valid {D := class {}; f(i:int,   d:?D)    : void = { logic{d?      or i = 0   } }}
+assert_valid {f(i:int,   r:float) : void = { logic{i = 0   or r < 1.0 } }}
+assert_valid {f(i:int,   r:float) : void = { logic{r < 1.0 or i = 0   } }}
+assert_valid {f(i:int,   b:logic) : void = { logic{i = 0   or b?      } }}
+assert_valid {f(i:int,   b:logic) : void = { logic{b?      or i = 0   } }}
+assert_valid {D := class {}; f(r:float, d:?D)    : void = { logic{r < 1.0 or d?      } }}
+assert_valid {D := class {}; f(r:float, d:?D)    : void = { logic{d?      or r < 1.0 } }}
+assert_valid {D := class {}; f(b:logic, d:?D)    : void = { logic{b?      or d?      } }}
+assert_valid {D := class {}; f(b:logic, d:?D)    : void = { logic{d?      or b?      } }}
+
+D := class{}
+
+f0(i:int, d:?D)           : ?any = { option{i = 0   or d?      } }
+assert{f0(0,false)}
+assert{f0(1,false)}
+assert{f0(1,option{D{}})}
+
+f1(i:int, d:?D)           : ?any = { option{d?      or i = 0   } }
+assert{f1(0,false)}
+assert{f1(1,false)}
+assert{f1(0,option{D{}})}
+
+f2(i:int, r:float)        : ?any = { option{i = 0   or r < 1.0  } }
+assert{f2(0,0.0)}
+assert{f2(0,1.0)}
+assert{f2(1,0.0)}
+assert{f2(1,1.0)}
+
+f3(i:int, r:float)        : ?any = { option{r < 1.0  or i = 0   } }
+assert{f3(0,0.0)}
+assert{f3(0,1.0)}
+assert{f3(1,1.0)}
+assert{f3(1,1.0)}
+
+f4(i:int, b:logic)        : ?any = { option{i = 0   or b?      } }
+assert{f4(0,false)}
+assert{f4(0,true)}
+assert{f4(1,false)}
+assert{f4(1,true)}
+
+f5(i:int, b:logic)        : ?any = { option{b?      or i = 0   } }
+assert{f5(0,false)}
+assert{f5(0,true)}
+assert{f5(1,false)}
+assert{f5(1,true)}
+
+f6(r:float, d:?D)         : ?any = { option{r < 1.0 or d?      } }
+f7(r:float, d:?D)         : ?any = { option{d?      or r < 1.0  } }
+f8(b:logic, d:?D)         : ?any = { option{b?      or d?      } }
+f9(b:logic, d:?D)         : ?any = { option{d?      or b?      } }
+
+f10(d:?D, ai:[]int)       : ?any = { option{d?      or ai      } }
+assert{f10(false, array{0,1,2})}
+assert{f10(option{D{}}, array{0,1,2})}
+
+f11(o1:?int, o2:?float)<transacts>   : ?[]any = { option{array{o1?} or array{o2?} } }
+assert{not f11(false,false)?}
+assert{    f11(false,option{0.0})?.Length = 1}
+assert{    f11(option{0},false)?.Length = 1}
+assert{    f11(option{0},option{0.0})?.Length = 1}
+
+f12(d:?D, mi:[int]string) : ?any = { option{d?      or mi      } }
+assert{f12(false, map{0=>"0",1=>"1"})}
+assert{f12(option{D{}}, map{0=>"0",1=>"1"})}
+
+f13(o1:?int, o2:?float)<transacts>:?[int]comparable =
+    Result:=option{map{0=>o1?} or map{1=>o2?}}
+    return Result
+assert:
+    f13(option{1}, false)? = map{0 => 1}
+    f13(false, option{2.0})? = map{1 => 2.0}
+    not f13(false, false)?
+
+E := struct{X:[]int=array{10,20,30}, Y:float=10.0}
+F := struct{Z:logic=true, W:E=E{Y:=20.0}}
+
+f14(e:?E, f:?F)<transacts>         : ?any = { option{e? or f? } }
+assert{not f14(false,false)?}
+assert{    f14(false,option{F{}})?}
+assert{    f14(option{E{}},false)?}
+assert{    f14(option{E{}},option{F{}})?}
+
+f15(e:?E, f:?F, g:logic)<transacts>: ?any = if(g?) then e else f
+assert{not f15(false,false, false)?}
+assert{not f15(false,false, true )?}
+assert{    f15(false,option{F{}}, false)?}
+assert{not f15(false,option{F{}}, true )?}
+assert{not f15(option{E{}},false, false)?}
+assert{    f15(option{E{}},false, true )?}
+assert{    f15(option{E{}},option{F{}}, false)?}
+assert{    f15(option{E{}},option{F{}}, true )?}
+
+# Test that the left operand is required to be fallible.
+assert_semantic_error(3513):
+    f1()<transacts>:int = { 0 }
+    f2():int = { f1() or f1() }
+
+# Test that the right operand may not be fallible outside of a failure context.
+assert_semantic_error(3512):
+    f1()<transacts><decides>:int = { 0 }
+    f2():int = { f1[] or f1[] }

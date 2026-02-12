@@ -1,0 +1,27 @@
+
+assert_valid:  # This one is only for reference
+    test_class := class:
+        doOk(Y:int):int=
+            if (Y/2):
+                return 1
+            else:
+                return 2
+
+assert_valid: # A failable expression inside a struct wasn't detected befreo the fix
+              # This was the original bug in SOL-1987                
+    s := struct:
+        X:int
+
+    doArchetypeInitialisation(Y:int):int=
+        if (s{X:=Floor(Y/2)}):
+            return 1
+        else:
+            return 2
+
+assert_semantic_error(3512): # Failable inside loop is disallowed.
+    doLoop(Y:int):int=
+        if (loop{X:=Floor(Y/2); break}):
+            return 1
+        else:
+            return 2
+           

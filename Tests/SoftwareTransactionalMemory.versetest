@@ -1,0 +1,518 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+<#>
+  Test all failure contexts, FC
+    if ( FC )
+    for ( FC )
+    optional{ FC }
+    FC or ..
+    not FC
+
+  Some of them behave differently with and wihtout retrun value, test both
+    X := optional { }
+    X := .. or ..
+    X := not FC
+
+  Special mention for `not` since its argument should always rollback, either it failed itself or the `not` failed.
+  `not not p()` is not the same as `p()`, but `not not not p()` is the same as `not p()`.
+
+###############################################
+######################## Test with int
+IntClass := class:
+    var Variable:int
+    AddVoid(Value:int, Limit:int)<transacts><decides>:void=
+        set Variable = Variable + Value
+        Variable < Limit
+        return
+
+    AddReturn(Value:int, Limit:int)<transacts><decides>:int=
+        set Variable =Variable + Value
+        Variable < Limit
+
+    Verify(Value:int)<transacts><decides>:void = Value = Variable 
+
+################# if
+assert:
+    Object := IntClass{Variable:=0}
+
+    if (Object.AddVoid[1,10]) { Object.Verify[1] }
+    else { 1 = 0 }
+
+    if (Object.AddVoid[10,1]) { 1 = 0 }
+    else { Object.Verify[1] }
+
+assert:
+    Object := IntClass{Variable:=0}
+
+    if (V := Object.AddReturn[1,10]) { Object.Verify[1] }
+    else { 1 = 0 }
+
+    if (V := Object.AddReturn[10,1]) { 1 = 0 }
+    else { Object.Verify[1] }
+################# for
+assert:
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= 1 .. 5, Object.AddVoid[Value, 8]) { Object.Variable }
+    L = array{1, 3, 6}
+    Object.Verify[6]
+
+assert:
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= 1 .. 5, V := Object.AddReturn[Value, 8]) { V }
+    L = array{1, 3, 6}
+    Object.Verify[6]   
+
+assert: # Nothing fails
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= Object.AddReturn[1, 10] .. Object.AddReturn[1, 10]; V := Object.AddReturn[1,10]) { V }
+    L.Length = 2
+    L = array{ 3, 4 }
+    Object.Verify[4]   
+
+assert: # Fail setup of begin value of iterator
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= Object.AddReturn[10, 10] .. Object.AddReturn[1, 10]; V := Object.AddReturn[1,10]) { V }
+    L.Length = 0
+    Object.Verify[0]   
+
+assert: # Fail setup of end value of iterator
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= Object.AddReturn[1, 10] .. Object.AddReturn[10, 10]; V := Object.AddReturn[1,10]) { V }
+    L.Length = 0
+    Object.Verify[0]   
+
+assert: # Fail setup assignment inside for
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= Object.AddReturn[1, 10] .. Object.AddReturn[1, 10]; V := Object.AddReturn[10,10]) { V }
+    L.Length = 0
+    Object.Verify[0]
+
+assert: # Fail in for body
+    Object := IntClass{Variable:=0}
+
+    if (for(Value:= Object.AddReturn[1, 10] .. Object.AddReturn[1, 10]; V := Object.AddReturn[1,10]) { Object.AddReturn[10,10] }):
+        false?
+    else:
+        Object.Verify[0]
+
+assert:  # Triggered a bug in code generation at one time
+    Object := IntClass{Variable:=0}
+
+    if (for(Value:= 1 .. 5) { Value < 3; set Object.Variable += 1; Object.Variable}):
+        false?
+    else:
+        Object.Verify[0]
+
+assert: # As above but condition moved from body
+    Object := IntClass{Variable:=0}
+
+    L := for(Value:= 1 .. 5, Value < 3) { set Object.Variable += 1; Object.Variable}
+    L = array{1, 2}
+    Object.Verify[2]   
+
+################# option
+assert:
+    Object := IntClass{Variable:=0}
+
+    OptionalOk := option{ Object.AddVoid[1, 10]; Object.Variable }
+    OptionalOk? = 1
+    Object.Verify[1]
+
+    OptionalFail := option{ Object.AddVoid[10, 1]; Object.Variable }
+    if (O := OptionalFail?) { 1 = 0 }
+    else { 1 = 1 }
+    Object.Verify[1]
+
+assert:
+    Object := IntClass{Variable:=0}
+
+    OptionalOk := option{ Object.AddReturn[1, 10] }
+    OptionalOk? = 1
+    Object.Verify[1]
+
+    OptionalFail := option{ Object.AddReturn[10, 1] }
+    if (O := OptionalFail?) { 1 = 0 }
+    else { 1 = 1 }
+    Object.Verify[1]
+
+################# `or`
+assert:
+    Object := IntClass{Variable:=0}
+
+    Object.AddVoid[1,10] or 42
+    Object.Verify[1]
+
+    Object.AddVoid[10,1] or 42
+    Object.Verify[1]
+
+assert:
+    Object := IntClass{Variable:=0}
+
+    1 = (Object.AddReturn[1,10] or 42)
+    Object.Verify[1]
+
+    42 = (Object.AddReturn[10,1] or 42)
+    Object.Verify[1]
+
+################# not
+assert:
+    Object := IntClass{Variable:=0}
+
+    Object.AddVoid[1,10]
+    Object.Verify[1]
+
+    not Object.AddVoid[10,1]
+    Object.Verify[1]
+
+    not not Object.AddVoid[1,10]
+    Object.Verify[1]
+
+    not not not Object.AddVoid[10,1]
+    Object.Verify[1]
+
+assert:
+    Object := IntClass{Variable:=0}
+
+    Object.AddVoid[1,10]
+    Object.Verify[1]
+
+    not Object.AddVoid[10,1]
+    Object.Verify[1]
+
+    not not Object.AddVoid[1,10]
+    Object.Verify[1]
+
+    not not not Object.AddVoid[10,1]
+    Object.Verify[1]
+
+
+################# return
+# Calling return does not introduce a failure scope, but return breaks out of stm scope.
+# There is code in VerseTestScriptCmd that detects unclosed StmCommit and asserts if not all stm scopes are closed properly.
+
+ForReturn():int =
+    for (i := 1 .. 10):
+        if (i = 2):
+            return i
+    return 0
+
+assert:
+    ForReturn() = 2
+
+ForVoid():void =
+    for (i := 1 .. 10):
+        if (i = 2):
+            return
+
+assert:
+    ForVoid()
+    1 = 1
+
+################# defer
+
+UseDefer(Object:IntClass)<transacts><decides>:int =
+    Object.AddVoid[1,1000]
+    defer:
+        set Object.Variable = Object.Variable + 10
+    Object.AddVoid[100,1000]
+    return Object.Variable
+
+assert:
+    Object := IntClass{Variable:=0}
+    101 = UseDefer[Object]
+    Object.Verify[111]
+
+assert:
+    Object := IntClass{Variable:=900}
+    if (UseDefer[Object]):
+        0 = 1
+    else:
+        Object.Verify[900]
+
+assert:
+    Object := IntClass{Variable:=900}
+    if:
+        Object.AddVoid[1,1000]
+        defer:
+            if (Object.AddVoid[10,1000]):
+                1
+        Object.AddVoid[100,1000]
+    else:
+        Object.Verify[900]
+
+###############################################    
+######################## Test with float
+FloatClass := class:
+    var Variable:float
+    AddVoid(Value:float, Limit:float)<transacts><decides>:void=
+        set Variable =Variable + Value
+        Variable < Limit
+        return
+
+    AddReturn(Value:float, Limit:float)<transacts><decides>:float=
+        set Variable =Variable + Value
+        Variable < Limit
+
+    Verify(Value:float)<transacts><decides>:void = Value = Variable 
+
+################# if
+assert:
+    Object := FloatClass{Variable:=0.0}
+
+    if (Object.AddVoid[1.0,10.0]) { Object.Verify[1.0] }
+    else { 1 = 0 }
+
+    if (Object.AddVoid[10.0,1.0]) { 1 = 0 }
+    else { Object.Verify[1.0] }
+
+    if (V := Object.AddReturn[1.0,10.0]) { Object.Verify[2.0] }
+    else { 1 = 0 }
+
+    if (V := Object.AddReturn[10.0,1.0]) { 1 = 0 }
+    else { Object.Verify[2.0] }
+
+###############################################
+######################## Test with struct
+Struct := struct<computes>:
+    Item0:int
+    Item1:float
+
+StructClass := class:
+    var Variable:Struct
+
+    AddVoid(Value:int, Limit:int)<transacts><decides>:void=
+        set Variable.Item0 =Variable.Item0 + Value
+        Variable.Item0 < Limit
+        return
+
+    AddVoid(Value:float, Limit:float)<transacts><decides>:void=
+        set Variable.Item1 =Variable.Item1 + Value
+        Variable.Item1 < Limit
+        return
+
+    AddReturn(Value:int, Limit:int)<transacts><decides>:int=
+        set Variable.Item0 =Variable.Item0 + Value
+        Variable.Item0 < Limit
+
+    AddReturn(Value:float, Limit:float)<transacts><decides>:float=
+        set Variable.Item1 =Variable.Item1 + Value
+        Variable.Item1 < Limit
+
+    Verify(Value0:int, Value1:float)<transacts><decides>:void = Value0 = Variable.Item0 and Value1 = Variable.Item1 
+
+################# if
+assert:
+    Object := StructClass{Variable:=Struct{Item0:=0, Item1:=0.0}}
+
+    if (Object.AddVoid[1,10]) { Object.Verify[1, 0.0] }
+    else { 1 = 0 }
+
+    if (Object.AddVoid[10,1]) { 1 = 0 }
+    else { Object.Verify[1, 0.0] }
+
+    if (V := Object.AddReturn[1,10]) { Object.Verify[2, 0.0] }
+    else { 1 = 0 }
+
+    if (V := Object.AddReturn[10,1]) { 1 = 0 }
+    else { Object.Verify[2, 0.0] }
+
+    if (Object.AddVoid[1.0,10.0]) { Object.Verify[2, 1.0] }
+    else { 1 = 0 }
+
+    if (Object.AddVoid[10.0,1.0]) { 1 = 0 }
+    else { Object.Verify[2, 1.0] }
+
+    if (V := Object.AddReturn[1.0,10.0]) { Object.Verify[2, 2.0] }
+    else { 1 = 0 }
+
+    if (V := Object.AddReturn[10.0,1.0]) { 1 = 0 }
+    else { Object.Verify[2, 2.0] }
+
+###############################################
+######################## Test with array
+ArrayClass := class:
+    var Variable:[]int
+    AddVoid(Index:int, Value:int, Limit:int)<transacts><decides>:void=
+        PriorValue := Variable[Index]
+        set Variable[Index] = PriorValue + Value
+        Variable[Index] < Limit
+        return
+
+    AddReturn(Index:int, Value:int, Limit:int)<transacts><decides>:int=
+        PriorValue := Variable[Index]
+        set Variable[Index] = PriorValue + Value
+        Variable[Index] < Limit
+
+    Verify(Value:[]int)<transacts><decides>:void = Value = Variable
+
+################# if
+assert:
+    Object := ArrayClass{Variable:=array{1,10,100}}
+
+    if (Object.AddVoid[0,1,10]) { Object.Verify[array{2,10,100}] }
+    else { 1 = 0 }
+
+    if (Object.AddVoid[2, 10,1]) { 1 = 0 }
+    else { Object.Verify[array{2,10,100}] }
+
+    if (V := Object.AddReturn[1,1,20]) { Object.Verify[array{2,11,100}] }
+    else { 1 = 0 }
+
+    if (V := Object.AddReturn[1,10,1]) { 1 = 0 }
+    else { Object.Verify[array{2,11,100}] }
+
+###############################################
+######################## A "real" example
+
+# Module with methods on a simple implementation of binary trees
+BT<public>:= module:
+
+    # Node contains int values, no special leaf nodes
+    Node<public> := class:
+        Value<public>:int
+        var Left<public>:?Node=false
+        var Right<public>:?Node=false    
+
+    # Create functions to make it easer to create trees
+    MakeEmpty<public>():?Node = false
+    MakeLeaf<public>(Value:int):?Node=MakeNode(MakeEmpty(), Value, MakeEmpty())
+    MakeNode<public>(Left:?Node, Value:int, Right:?Node):?Node= option{Node{Left:=Left, Value:=Value, Right:=Right}}
+
+    # Private help function
+    max(a:int, b:int):int= a>= b or b
+
+    # Flatten a tree to a list
+    TreeToList(Tree:?Node):[]int =
+        if (N := Tree?):
+            TreeToList(N.Left) + array{N.Value} + TreeToList(N.Right)
+        else:
+            array{}
+
+    # Creates an int from a list of digits. No error check.  
+    ListToInt(List:[]int):int =
+        var Total:int = 0
+        for (I := 0 .. List.Length-1, D:=List[I]):
+            set Total = 10*Total + D
+        Total
+
+    # Creates an int from a tree of digits. No error check. 
+    TreeToInt<public>(Tree:?Node):int =
+        ListToInt(TreeToList(Tree))
+
+    # Flip the tree inplace, unless Fail is a value in the tree in which case it fails and nothing is changed.
+    # Relies on rollback to restore the tree in case of failure.
+    FlipUnless<public>(Tree:?Node, Fail:int)<transacts><decides>:void =
+        if (N := Tree?):
+            Tmp := N.Left
+            set N.Left = N.Right
+            set N.Right = Tmp
+            FlipUnless[N.Left, Fail]
+            Fail <> N.Value 
+            FlipUnless[N.Right, Fail]
+    
+          
+
+using { BT }
+
+assert:
+    Tree:?Node= MakeNode(MakeLeaf(1), 2, MakeNode(MakeLeaf(3), 4, MakeLeaf(5)))
+    TreeToInt(Tree) = 12345
+
+    FlipUnless[Tree, 10]
+    TreeToInt(Tree) = 54321
+
+    FlipUnless[Tree, 1] or 1
+    TreeToInt(Tree) = 54321
+
+    L := for(I:=0..7):
+            if (FlipUnless[Tree, I]):
+               TreeToInt(Tree) 
+            else:
+               -TreeToInt(Tree)  
+
+    L[0] = 12345
+    L[1] = -12345
+    L[2] = -12345
+    L[3] = -12345
+    L[4] = -12345
+    L[5] = -12345
+    L[6] = 54321
+    L[7] = 12345
+
+    Optional0 := option{FlipUnless[Tree,10]}
+    TreeToInt(Tree) = 54321
+
+    Optional1 := option{FlipUnless[Tree,4]}
+    TreeToInt(Tree) = 54321
+
+    option{FlipUnless[Tree,10]}
+    TreeToInt(Tree) = 12345
+
+    option{FlipUnless[Tree,4]}
+    TreeToInt(Tree) = 12345
+
+    FlipUnless[Tree,2] or true
+    TreeToInt(Tree) = 12345
+
+    FlipUnless[Tree,10] or 1<>0
+    TreeToInt(Tree) = 54321
+
+    not FlipUnless[Tree, 4]     
+    TreeToInt(Tree) = 54321
+
+    not not FlipUnless[Tree, 10]
+    TreeToInt(Tree) = 54321 
+
+    not not not FlipUnless[Tree, 4]
+    TreeToInt(Tree) = 54321
+
+##############################################
+# The semantic of arrays are that they are immutable, but the implementation does update in place.
+# (Which is ok as we only have unique pointers.)
+# This caused bugs in the first implementation of STM and the introduction of these tests.
+
+assert:
+    var Array:[]int=array{1,2,3,4}
+    if:
+        set Array[0] += 10
+        set Array = array{}            # free the array's memory
+        set Array = array{10, 20, 30}  # allocate new memory
+        set Array[0] += 10              # Array[0] has a different address than before
+        set Array = array{}            # free the new memory
+        false?
+    Array = array{1,2,3,4}
+
+# Check that the items can be arrays.
+assert:
+    var Array:[][]int=array{array{1,2}, array{1,2,3}, array{1,2,3,4}}
+    EmptyIntArray:[]int = array{}
+    if:
+        set Array[1][1] += 10
+        set Array[1] = EmptyIntArray
+        Array[1] = array{10, 20, 30}
+        set Array[1][1] += 10   
+        set Array = array{}
+        false?
+    Array = array{array{1,2}, array{1,2,3}, array{1,2,3,4}}
+
+########## STM doesn't support spawn, don't allow in decides
+bp_vm_only {
+assert_semantic_error(3512):
+    DoSomething()<suspends>:void = {}
+    DoSpawn()<transacts><decides>:void = spawn{ DoSomething() }
+}
+
+# Test map addition rollback
+assert:
+    var X:[int]int = map{}
+    if:
+        set X[1] = 5
+        false?
+    not X[1]
+
+

@@ -1,0 +1,235 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+TestDiagnosticString(Value:any, ExpectedString:string)<reads><decides>:void=
+    Diagnostic := ToDiagnostic(Value)
+    if (Diagnostic.String <> ExpectedString):
+        DebugPrint("TestDiagnosticString expected {ExpectedString}, but got {Diagnostic.String}")
+        false?
+
+# Booleans
+
+assert{TestDiagnosticString[false, "false"]}
+assert{TestDiagnosticString[true, "true"]}
+
+# Integers
+
+TestSignedIntToDiagnosticString(Value:int, ExpectedString:string)<reads><decides>:void=
+    TestDiagnosticString[Value, ExpectedString]
+    TestDiagnosticString[-Value, "-{ExpectedString}"]
+
+assert{TestDiagnosticString[0, "0"]}
+assert{TestSignedIntToDiagnosticString[1, "1"]}
+assert{TestSignedIntToDiagnosticString[99, "99"]}
+assert{TestSignedIntToDiagnosticString[100, "100"]}
+assert{TestSignedIntToDiagnosticString[999, "999"]}
+assert{TestSignedIntToDiagnosticString[1000, "1000"]}
+assert{TestSignedIntToDiagnosticString[4294967295, "4294967295"]}
+assert{TestSignedIntToDiagnosticString[4294967296, "4294967296"]}
+assert{TestSignedIntToDiagnosticString[10000000000, "10000000000"]} # Hit the new VM's int64 printing code with a number that doesn't fit in int32.
+assert{TestSignedIntToDiagnosticString[9223372036854775807, "9223372036854775807"]}
+
+verse_vm_only
+{
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+0)*1+0,    "9223372036854775807"]} # 2^63-1
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*1+0,    "9223372036854775808"]} # 2^63
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*2-1,   "18446744073709551615"]} # 2^64-1
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*2+0,   "18446744073709551616"]} # 2^64
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*2+1,   "18446744073709551617"]} # 2^64+1
+assert{TestSignedIntToDiagnosticString[10000000000*10000000000,      "100000000000000000000"]}
+}
+
+# Rationals
+
+TestSignedRationalToDiagnosticString(SeedPrime:int)<reads><decides>:void=
+    ExpectedSeedString := ToDiagnostic(SeedPrime).String
+    TestDiagnosticString[SeedPrime/1, "{ExpectedSeedString}"]
+    TestDiagnosticString[SeedPrime/2, "{ExpectedSeedString}/2"]
+    TestDiagnosticString[SeedPrime/3, "{ExpectedSeedString}/3"]
+    TestDiagnosticString[1/SeedPrime, "1/{ExpectedSeedString}"]
+    TestDiagnosticString[2/SeedPrime, "2/{ExpectedSeedString}"]
+    TestDiagnosticString[-SeedPrime/1, "-{ExpectedSeedString}"]
+    TestDiagnosticString[-SeedPrime/2, "-{ExpectedSeedString}/2"]
+    TestDiagnosticString[-SeedPrime/3, "-{ExpectedSeedString}/3"]
+    TestDiagnosticString[-1/SeedPrime, "-1/{ExpectedSeedString}"]
+    TestDiagnosticString[-2/SeedPrime, "-2/{ExpectedSeedString}"]
+
+assert{TestDiagnosticString[0/1, "0"]}
+assert{TestDiagnosticString[0/2, "0"]}
+assert{TestDiagnosticString[1/2, "1/2"]}
+assert{TestDiagnosticString[2/4, "1/2"]}
+assert{TestDiagnosticString[-2/-4, "1/2"]}
+assert{TestSignedRationalToDiagnosticString[5]}
+assert{TestSignedRationalToDiagnosticString[7]}
+assert{TestSignedRationalToDiagnosticString[11]}
+assert{TestSignedRationalToDiagnosticString[13]}
+assert{TestSignedRationalToDiagnosticString[1645333507]}
+
+# Floats
+
+TestSignedFloatToDiagnosticString(Value:float, ExpectedString:string)<reads><decides>:void=
+    TestDiagnosticString[Value, ExpectedString]
+    TestDiagnosticString[-Value, "-{ExpectedString}"]
+
+assert{TestDiagnosticString[0.0, "0.0"]}
+assert{TestDiagnosticString[NaN, "NaN"]}
+
+assert{TestSignedFloatToDiagnosticString[1.0, "1.0"]}
+assert{TestSignedFloatToDiagnosticString[1.5, "1.5"]}
+
+assert{TestSignedFloatToDiagnosticString[1.2345678901234567, "1.2345678901234567"]}
+assert{TestSignedFloatToDiagnosticString[1234567890123456.0, "1234567890123456.0"]}
+assert{TestSignedFloatToDiagnosticString[1e100, "1e+100"]}
+assert{TestSignedFloatToDiagnosticString[12.34e100, "1.234e+101"]}
+assert{TestSignedFloatToDiagnosticString[FloatConstants.DoubleMax, "1.7976931348623157e+308"]}
+assert{TestSignedFloatToDiagnosticString[FloatConstants.SmallestSubnormal, "5e-324"]}
+assert{TestSignedFloatToDiagnosticString[Inf, "Inf"]}
+
+# Characters and strings
+
+assert{TestDiagnosticString[0o00, "0o00"]}
+assert{TestDiagnosticString['a', "'a'"]}
+assert{TestDiagnosticString['\t', "'\\t'"]}
+assert{TestDiagnosticString['\#', "'\\\#'"]}
+assert{TestDiagnosticString[0o7f, "0o7f"]}
+
+assert{TestDiagnosticString[0u9, "0u9"]}
+assert{TestDiagnosticString[0u20, "0u20"]}
+assert{TestDiagnosticString[0u100, "0u100"]}
+assert{TestDiagnosticString[0u1f600, "0u1f600"]}
+
+assert{TestDiagnosticString["", "\"\""]}
+assert{TestDiagnosticString["abc", "\"abc\""]}
+assert{TestDiagnosticString["abc{0o00}def", "\"abc\{0o00\}def\""]}
+assert{TestDiagnosticString["\t\n\r\"\#\&\'\<\>\\\{\}\~", "\"\\t\\n\\r\\\"\\\#\\\&\\\'\\\<\\\>\\\\\\\{\\\}\\\~\""]}
+assert{TestDiagnosticString["{0o08}{0o09}{0o0a}{0o0b}", "\"\{0o08\}\\t\\n\{0o0b\}\""]}
+assert{TestDiagnosticString["Smiley face: 😀, rocket: 🚀", "\"Smiley face: \{0u1f600\}, rocket: \{0u1f680\}\""]}
+
+assert{TestDiagnosticString["{0odf}{0obf}", "\"\{0u7ff\}\""]}
+assert{TestDiagnosticString["{0odf}{0o00}", "\"\{0odf\}\{0o00\}\""]}
+
+assert{TestDiagnosticString["{0oef}{0obf}{0obf}", "\"\{0uffff\}\""]}
+assert{TestDiagnosticString["{0oef}{0o00}{0o00}", "\"\{0oef\}\{0o00\}\{0o00\}\""]}
+assert{TestDiagnosticString["{0oef}{0obf}{0o00}", "\"\{0oef\}\{0obf\}\{0o00\}\""]}
+
+assert{TestDiagnosticString["{0of4}{0o8f}{0obf}{0obf}", "\"\{0u10ffff\}\""]}
+assert{TestDiagnosticString["{0off}{0o00}{0o00}{0o00}", "\"\{0off\}\{0o00\}\{0o00\}\{0o00\}\""]}
+assert{TestDiagnosticString["{0off}{0obf}{0o00}{0o00}", "\"\{0off\}\{0obf\}\{0o00\}\{0o00\}\""]}
+assert{TestDiagnosticString["{0off}{0obf}{0obf}{0o00}", "\"\{0off\}\{0obf\}\{0obf\}\{0o00\}\""]}
+
+# Options
+
+assert{TestDiagnosticString[option{false?}, "false"]}
+assert{TestDiagnosticString[option{1}, "option\{1\}"]}
+assert{TestDiagnosticString[option{1.1}, "option\{1.1\}"]}
+assert{TestDiagnosticString[option{'a'}, "option\{'a'\}"]}
+assert{TestDiagnosticString[option{"abc"}, "option\{\"abc\"\}"]}
+
+# Arrays
+
+assert{TestDiagnosticString[array{1}, "array\{1\}"]}
+assert{TestDiagnosticString[array{1,2}, "(1, 2)"]}
+assert{TestDiagnosticString[array{1,2,3}, "(1, 2, 3)"]}
+assert{TestDiagnosticString[array{1.2,3.4,5.6}, "(1.2, 3.4, 5.6)"]}
+assert{TestDiagnosticString[array{array{1,2},array{3,4}}, "((1, 2), (3, 4))"]}
+
+assert{TestDiagnosticString[(1,2,3), "(1, 2, 3)"]}
+assert{TestDiagnosticString[((1,2),(3,4)), "((1, 2), (3, 4))"]}
+
+# Maps
+
+assert{TestDiagnosticString[map{0.0=>1}, "map\{0.0 =\> 1\}"]}
+assert{TestDiagnosticString[map{0.0=>1,1.0=>1}, "map\{0.0 =\> 1, 1.0 =\> 1\}"]}
+assert{TestDiagnosticString[map{0.0=>1,1.0=>1,2.0=>2}, "map\{0.0 =\> 1, 1.0 =\> 1, 2.0 =\> 2\}"]}
+assert{TestDiagnosticString[map{(0,0)=>0,(1,1)=>1,(2,2)=>2}, "map\{(0, 0) =\> 0, (1, 1) =\> 1, (2, 2) =\> 2\}"]}
+
+# Classes
+
+TestClassInstanceToDiagnosticString(Value:any, ExpectedString:string, UObjectNameForClassPrefix:string)<reads><decides>:void=
+    Diagnostic := ToDiagnostic(Value)
+    if (Diagnostic.String <> ExpectedString and Diagnostic.String.Slice[0,UObjectNameForClassPrefix.Length] <> UObjectNameForClassPrefix):
+        DebugPrint("TestDiagnosticString expected {ExpectedString} or {UObjectNameForClassPrefix}..., but got {Diagnostic.String}")
+        false?
+
+my_class := class{X:int}
+
+UObjectNameForMyClassPrefix:string = "my_class /Engine/Transient.PlaceholderObjectForContentScope_0:my_class_"
+
+assert{TestClassInstanceToDiagnosticString[my_class{X:=10}, "(/Verse.org/VerseTests:)my_class\{X := 10\}", UObjectNameForMyClassPrefix]}
+assert{TestClassInstanceToDiagnosticString[my_class{X:=11}, "(/Verse.org/VerseTests:)my_class\{X := 11\}", UObjectNameForMyClassPrefix]}
+
+my_parametric_class(t:type) := class{X:t}
+
+UObjectNameForMyParametricClassPrefix:string = "my_parametric_class /Engine/Transient.PlaceholderObjectForContentScope_0:my_parametric_class_"
+
+assert{TestClassInstanceToDiagnosticString[my_parametric_class(int){X:=0}, "(/Verse.org/VerseTests:)my_parametric_class\{X := 0\}", UObjectNameForMyParametricClassPrefix]}
+assert{TestClassInstanceToDiagnosticString[my_parametric_class([]float){X:=array{1.0, 2.0}}, "(/Verse.org/VerseTests:)my_parametric_class\{X := (1.0, 2.0)\}", UObjectNameForMyParametricClassPrefix]}
+
+class_with_diagnostic_string<public> := class(diagnosable):
+    DiagnosticString<public>:string
+    GetDiagnostic<override>()<reads>:diagnostic=diagnostic{String:=DiagnosticString}
+
+assert{TestDiagnosticString[class_with_diagnostic_string{DiagnosticString:="Object1"}, "Object1"]}
+assert{TestDiagnosticString[class_with_diagnostic_string{DiagnosticString:="Object2"}, "Object2"]}
+
+# Enums
+
+e := enum{A, B}
+
+assert{TestDiagnosticString[e.A, "(/Verse.org/VerseTests:)e.A"]}
+assert{TestDiagnosticString[e.B, "(/Verse.org/VerseTests:)e.B"]}
+
+# Structs
+
+s := struct{X:int, Y:float}
+
+assert{TestDiagnosticString[s{X:=10,Y:=11.1}, "(/Verse.org/VerseTests:)s\{X := 10, Y := 11.1\}"]}
+assert{TestDiagnosticString[s{X:=12,Y:=13.1}, "(/Verse.org/VerseTests:)s\{X := 12, Y := 13.1\}"]}
+
+assert{TestDiagnosticString[tuple_struct{Elem0:=14,Elem1:=15.1}, "(/Verse.org/Tests/VerseTestScriptCmd:)tuple_struct\{Elem0 := 14, Elem1 := 15.1\}"]}
+
+# Functions
+
+class_with_method := class(class_with_diagnostic_string):
+    Method(X:int):void={}
+
+GlobalFunction(Y:float):void={}
+
+assert{TestDiagnosticString[GlobalFunction, "(/Verse.org/VerseTests:)GlobalFunction(:float)"]}
+assert{TestDiagnosticString[ToDiagnostic, "(/Verse.org/Verse:)ToDiagnostic(:any)"]}
+bp_vm_only{ assert{TestDiagnosticString[class_with_method{DiagnosticString:="Object3"}.Method, "Object3.(/Verse.org/VerseTests/class_with_method:)Method(:int)"]} }
+verse_vm_only{ assert{TestDiagnosticString[class_with_method{DiagnosticString:="Object3"}.Method, "(/Verse.org/VerseTests/class_with_method:)Method(:int)"]} }
+
+# Types
+
+TestTypeDiagnosticString(Value:any, ExpectedString:string, ExpectedStringBPVM:string, ExpectedStringVerseVM:string)<reads><decides>:void=
+    Diagnostic := ToDiagnostic(Value)
+    verse_vm_only   { ExpectedStringForThisVM := ExpectedStringVerseVM }
+    bp_vm_only{ ExpectedStringForThisVM := ExpectedStringBPVM }
+    if (Diagnostic.String <> ExpectedString and Diagnostic.String <> ExpectedStringForThisVM):
+        DebugPrint("TestTypeDiagnosticString expected {ExpectedString} or {ExpectedStringForThisVM}, but got {Diagnostic.String}")
+        false?
+
+# WIP
+assert{TestTypeDiagnosticString[void                               , "void"                                              , "None"                                                                        , "void"                                                   ]}
+assert{TestTypeDiagnosticString[int                                , "int"                                               , "None"                                                                        , "int"                                                    ]}
+assert{TestTypeDiagnosticString[type{X:int where 0<=X}             , "nat"                                               , "None"                                                                        , "nat"                                                    ]}
+assert{TestTypeDiagnosticString[type{X:int where X<=10}            , "type\{:int\<=10\}"                                 , "None"                                                                        , "type\{:int\<=10\}"                                      ]}
+assert{TestTypeDiagnosticString[type{X:int where 0<=X, X<=10}      , "type\{0..10\}"                                     , "None"                                                                        , "type\{0..10\}"                                          ]}
+assert{TestTypeDiagnosticString[float                              , "float"                                             , "None"                                                                        , "float"                                                  ]}
+assert{TestTypeDiagnosticString[type{X:float where 0.0<=X}         , "type\{:float\>=0.0\}"                              , "None"                                                                        , "type\{:float\>=0.0\}"                                   ]}
+assert{TestTypeDiagnosticString[type{X:float where X<=10.0}        , "type\{:float\<=10.0\}"                             , "None"                                                                        , "type\{:float\<=10.0\}"                                  ]}
+assert{TestTypeDiagnosticString[type{X:float where 0.0<=X, X<=10.0}, "type\{:float\>=0.0\<=10.0\}"                       , "None"                                                                        , "type\{:float\>=0.0\<=10.0\}"                            ]}
+assert{TestTypeDiagnosticString[?int                               , "?int"                                              , "None"                                                                        , "false"                                                  ]}
+assert{TestTypeDiagnosticString[[int]?[]int                        , "[int]?[]int"                                       , "None"                                                                        , "false"                                                  ]}
+assert{TestTypeDiagnosticString[class_with_method                  , "(/Verse.org/VerseTests:)class_with_method"         , "VerseClass /SolIdeDataSources/_Verse.class_with_method"                      , "(/Verse.org/VerseTests:)class_with_method"              ]}
+assert{TestTypeDiagnosticString[my_class                           , "(/Verse.org/VerseTests:)my_class"                  , "VerseClass /SolIdeDataSources/_Verse.my_class"                               , "(/Verse.org/VerseTests:)my_class"                       ]}
+assert{TestTypeDiagnosticString[my_parametric_class                , "(/Verse.org/VerseTests:)my_parametric_class(:type)", "(/Verse.org/VerseTests:)my_parametric_class(:t where t)"                     , "(/Verse.org/VerseTests:)my_parametric_class(:t where t)"]}
+assert{TestTypeDiagnosticString[my_parametric_class(int)           , "(/Verse.org/VerseTests:)my_parametric_class(int)"  , "VerseClass /SolIdeDataSources/_Verse.my_parametric_class"                    , "(/Verse.org/VerseTests:)my_parametric_class"            ]}
+assert{TestTypeDiagnosticString[diagnosable                        , "(/Verse.org/Verse:)diagnosable"                    , "VerseClass /Verse/_Verse/VNI/Verse.Verse_diagnosable"                        , "(/Verse.org/Verse:)diagnosable"                         ]}
+assert{TestTypeDiagnosticString[e                                  , "(/Verse.org/VerseTests:)e"                         , "None"                                                                        , "(/Verse.org/VerseTests:)e"                              ]}
+assert{TestTypeDiagnosticString[s                                  , "(/Verse.org/VerseTests:)s"                         , "VerseStruct /SolIdeDataSources/_Verse.s"                                                                        , "(/Verse.org/VerseTests:)s"                              ]}
+
+# ToDiagnostic on a diagnostic should just yield the diagnostic again.
+assert{TestDiagnosticString[ToDiagnostic("test"), "\"test\""]}

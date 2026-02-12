@@ -1,0 +1,138 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3532):
+    t := class {}
+    # `option` and `logic` are not distinct.
+    f(:?t):void={}
+    f(:logic):void={}
+
+assert_semantic_error(3532):
+    domain := enum { A, B, C}
+    range := class {}
+    # Maps and variable-size arrays are not distinct.
+    f(:[]range):void={}
+    f(:[domain]range):void={}
+
+assert_semantic_error(3532):
+    domain := enum { A, B, C}
+    range := class {}
+    # Functions and and maps are not distinct.
+    f(:[domain]range):void={}
+    f(g(:domain)<transacts><decides>:range):void={}
+
+assert_semantic_error(3532):
+    domain := enum { A, B, C}
+    range := class {}
+    # Functions and arrays (regardless of size) are not distinct.  `f` may be
+    # called with an overloaded function argument that includes both
+    # `[:int]:range` (and `[:domain]:range`), which is not distinct from
+    # `[]range`
+    f(:[]range):void={}
+    f(g(:domain)<transacts><decides>:range):void={}
+
+assert_semantic_error(3532):
+    i := interface {}
+    t := class(i) {}
+    # An interface and a class that implements the interface are not distinct.
+    f(:i):void={}
+    f(:t):void={}
+
+assert_semantic_error(3532):
+    i := interface {}
+    t := class {}
+    # `interface` and `class` are not distinct, regardless of if the class
+    # implements the interface.  A subtype of the class may implement the
+    # interface.
+    f(:i):void={}
+    f(:t):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    b := class {}
+    # No functions are distinct.  In particular, changing the effect does not
+    # matter.
+    f(g(:a)<transacts><decides>:b):void={}
+    f(g(:a):b):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    b := class {}
+    # No functions are distinct.  Differing function types are subtyped by an
+    # overload that implements both types.
+    f(g(:b):b):void={}
+    f(g(:a):b):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    b := class(a) {}
+    # Non-empty `tuple`s and arrays are only distinct if at least one `tuple`
+    # element type is distinct.
+    f(:tuple(a, b), :a):void={}
+    f(:[]a, :a):void={}
+
+assert_valid:
+    a := class {}
+    b := class {}
+    # Non-empty `tuple`s and arrays are only distinct if at least one `tuple`
+    # element type is distinct.
+    f(:tuple(a, b), :a):void={}
+    f(:[]a, :a):void={}
+
+assert_valid:
+    a := class {}
+    # Non-empty `tuple`s and maps are distinct for non-`int` key.
+    f(:tuple(a), :a):void={}
+    f(:[logic]a, :a):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    # Non-empty `tuple`s and maps are not distinct for `int` key.
+    f(:tuple(a), :a):void={}
+    f(:[int]a, :a):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    # Empty `tuple`s and arrays are not distinct.
+    f(:tuple(), :a):void={}
+    f(:[]a, :a):void={}
+
+assert_valid:
+    a := class {}
+    # Singleton `tuple`s and `optional` are distinct for non-`int` value.
+    f(:tuple(a), :a):void={}
+    f(:?a, :a):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    # Singleton `tuple`s and `optional` are not distinct for `int`.
+    f(:tuple(int), :a):void={}
+    f(:?int, :a):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    b := class(a) {}
+    # Classes with a subtyping relationship are not distinct.
+    f(:a):void={}
+    f(:b):void={}
+
+assert_semantic_error(3532):
+    # `void` is treated as equivalent to top - it is a functor accepting `any`.
+    F(:int):void={}
+    F(:void):void={}
+
+assert_semantic_error(3532):
+    # `void` is treated as equivalent to top - it is a functor accepting `any`.
+    F(:int):void={}
+    F(:void):void={}
+
+assert_semantic_error(3532):
+    a := struct {}
+    # `void` is treated as equivalent to top - it is a functor accepting `any`.
+    F(:a):void={}
+    F(:void):void={}
+
+assert_semantic_error(3532):
+    a := class {}
+    # `void` is treated as equivalent to top - it is a functor accepting `any`.
+    F(:a):void={}
+    F(:void):void={}

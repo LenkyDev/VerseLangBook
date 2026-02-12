@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# This code leaked before if the iteration was done 2 or more times. (Need ASAN to verify no leaks.)
+(Input:[int]u where u:type).RemoveKey<public>(KeyToRemove:int)<transacts><decides>:[int]u=
+    var Result:[int]u = map{}
+    for(Key->Value : Input; Key<>KeyToRemove):
+        set Result = ConcatenateMaps(Result, map{Key=>Value})
+    Result.Length<Input.Length
+    Result
+
+assert{not map{}.RemoveKey[0]}
+assert{not map{1=>1}.RemoveKey[0]}
+assert{not map{1=>"1"}.RemoveKey[0]}
+assert{not map{1=>1, 2=>2}.RemoveKey[0]}
+assert{not map{1=>1, 2=>2, 3=>3}.RemoveKey[0]}
+assert{not map{1=>"1", 2=>"2", 3=>"3"}.RemoveKey[0]}
+assert{    map{1=>1, 2=>2}.RemoveKey[1]}
+assert{    map{1=>"1", 2=>"2", 3=>"3"}.RemoveKey[1]=map{2=>"2", 3=>"3"}}
+assert{    map{1=>"1", 2=>"2", 3=>"3"}.RemoveKey[2]=map{1=>"1", 3=>"3"}}
+assert{    map{1=>"1", 2=>"2", 3=>"3"}.RemoveKey[3]=map{1=>"1", 2=>"2"}}
+assert{not map{1=>"1", 2=>"2", 3=>"3"}.RemoveKey[4]}

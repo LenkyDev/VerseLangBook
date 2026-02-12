@@ -1,0 +1,239 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+C1 := class<public>:
+    var<public> IntArray<public>:[]int
+
+assert:
+    X := C1 { IntArray:=array{42,20,30} }
+    X.IntArray[0] = 42
+    X.IntArray[1] = 20
+    X.IntArray[2] = 30
+
+
+
+C2<public> := class:
+    var<public> IntArray<public>:[]int = array{1,2,3}
+C3<public> := class(C2):
+    var IntArray<override>:[]int = array{10,20,30}
+
+assert:
+    X := C3 { }
+    X.IntArray[0] = 10
+    X.IntArray[1] = 20
+    X.IntArray[2] = 30
+    X.IntArray.Length = 3
+
+assert:
+    X := C3 { IntArray := array{42, 43, 44} }
+    X.IntArray[0] = 42
+    X.IntArray[1] = 43
+    X.IntArray[2] = 44
+    X.IntArray.Length = 3
+
+
+assert_semantic_error(3509):
+    A := class<public>:
+        var<private> IntArray<public>:[]int
+    foo():void =
+        X := A { IntArray:=array{42,20,30} }
+        set X.IntArray = array{1,2,3}
+
+assert_semantic_error(3593):
+    A<public> := class:
+        var<public> IntArray<private>:[]int = array{1,2,3}
+    foo():void =
+        X := A { }
+        set X.IntArray = array{1,2,3}
+
+assert_semantic_error(3650):
+    A<public> := class:
+        var<public> IntArray<public>:[]int = array{1,2,3}
+    B<public> := class(A):
+        var<private> IntArray<override>:[]int = array{10,20,30}
+
+assert_semantic_error(3650):
+    A<public> := class:
+        var<public> IntArray<public>:[]int = array{1,2,3}
+    B<public> := class(A):
+        var<private> IntArray<override>:[]int = array{10,20,30}
+    foo():void =
+        X := B { }
+        set X.IntArray = array{1,2,3}
+
+C4<public> := class:
+    var<public> IntArray<public>:[]int = array{1,2,3}
+    GetArray():[]int = 
+        IntArray
+C5<public> := class(C4):
+    var IntArray<override>:[]int = array{10,20,30}
+
+assert:
+    X := C5 { }
+    X.IntArray[0] = 10
+    X.IntArray[1] = 20
+    X.IntArray[2] = 30
+    X.IntArray.Length = 3
+    X.GetArray() = X.IntArray
+    X.GetArray()[0] = 10
+    X.GetArray()[1] = 20
+    X.GetArray()[2] = 30
+
+    set X.IntArray = array{42}
+    X.IntArray[0] = 42
+    X.IntArray.Length = 1
+    X.GetArray() = X.IntArray
+    X.GetArray()[0] = 42
+
+C6<public> := class:
+    var<protected> IntArray<public>:[]int = array{1,2,3}
+
+C7<public> := class(C6):
+    Foo(X:int)<decides>: void = 
+        set IntArray[0] = X
+
+assert:
+    X := C7 { }
+    X.IntArray[0] = 1
+    X.IntArray[1] = 2
+    X.IntArray[2] = 3
+    X.IntArray.Length = 3
+
+    X.Foo[42]
+    X.IntArray[0] = 42
+    X.IntArray.Length = 3
+
+assert_semantic_error(3543):
+    A := class:
+        var<public><private> Field:int = 42
+
+assert_semantic_error(3642):
+    A := class:
+        var<public><public> Field:int = 42
+
+assert_semantic_error(3509):
+    A := class:
+        var<private> Field:int = 42
+    B := class(A):
+        Foo():void = 
+            set Field = 10
+
+c_public := class:
+    var<public> Variable<public>:int = 50
+    GetVar<public>():int =
+        Variable
+
+assert:
+    CP:c_public = c_public{}
+    CP.Variable = 50
+    CP.GetVar() = 50
+    set CP.Variable = 42
+    CP.Variable = 42
+    CP.GetVar() = 42
+
+assert_semantic_error(3509):
+    M3 := module:
+        c0<public> := class:
+            var<internal> M3Variable<public>:int = 50
+    using { M3 }
+    Foo():void =
+        set c0{}.M3Variable = 42
+
+assert_semantic_error(3593):
+    M3 := module:
+        c0<public> := class:
+            var<public> M3Variable<internal>:int = 50
+    using { M3 }
+    Foo():void =
+        set c0{}.M3Variable = 42
+
+c0 := class:
+    var<internal> M3Variable<public>:int = 50
+    GetM3Var<public>():int =
+        M3Variable
+    SetM3Var<public>(X:int):int =
+        set M3Variable = X
+assert:
+    C0:c0 = c0{}
+    C0.M3Variable = 50
+    C0.GetM3Var() = 50
+    C0.SetM3Var(42)
+    C0.M3Variable = 42
+    C0.GetM3Var() = 42
+
+assert_semantic_error(3509):
+    M2 := module:
+        c0<public> := class:
+            var<internal> Variable<public>:int = 50
+    Foo():void = 
+        set M2.c0{}.Variable = 42
+
+assert_semantic_error(3593):
+    M2 := module:
+        c0<public> := class:
+            var<public> Variable<internal>:int = 50
+    Foo():void = 
+        set M2.c0{}.Variable = 42
+
+assert_semantic_error(3641):
+    Foo():void =
+        var<internal> X:int = 42
+
+auto_qualify_todo {
+
+vmodule(M4):
+    snippet:
+        cm4<public> := class:
+            var<public> M4Variable<public>:int = 42
+            GetM4Var<public>():int =
+                M4Variable
+            SetM4Var<public>(X:int):int =
+                set M4Variable = X
+assert:
+    CM4:M4.cm4 = M4.cm4{}
+    CM4.M4Variable = 42
+    CM4.GetM4Var() = 42
+
+    CM4.SetM4Var(50)
+    CM4.M4Variable = 50
+    CM4.GetM4Var() = 50
+
+    set CM4.M4Variable = 1
+    CM4.M4Variable = 1
+    CM4.GetM4Var() = 1
+}
+
+# Test that the digest generator preserves access specifiers on var
+assert:
+    X:test_var = test_var { Property := 42 }
+    X.Property = 42
+    set X.Property = 10
+    X.Property = 10
+
+C8<public> := class(test_var_protected):
+    SetField(X:int):void =
+        set Property = X
+assert:
+    X:C8 = C8 { Property := 42 }
+    X.Property = 42
+    X.SetField(10)
+    X.Property = 10
+
+# var is public by default, so it doesn't restrict field access unless we narrow it
+C9<public> := class:
+    var IntField<public>:int
+assert:
+    X:C9 = C9 { IntField := 42 }
+    X.IntField = 42
+    set X.IntField = 10
+    X.IntField = 10
+
+c10 := class:
+    var M5Variable<public>:int = 50
+assert:
+    C10:c10 = c10{}
+    C10.M5Variable = 50
+    set C10.M5Variable = 42
+    C10.M5Variable = 42

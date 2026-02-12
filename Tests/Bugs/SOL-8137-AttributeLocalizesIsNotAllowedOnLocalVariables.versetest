@@ -1,0 +1,31 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Code in the wild contains something like this ...
+assert_valid<depends_on_library>:
+  vpackage(P0, /M, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=3699):
+    snippet:
+      a := class:
+        DefaultText<public><localizes>:message := ""
+      b := class:
+        A:a = a{DefaultText := Sign<localizes>:message = "+"}
+
+# It is an error from 37.00, ...
+assert_semantic_error<depends_on_library>(3651):
+  vpackage(P0, /M, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=3700):
+    snippet:
+      a := class:
+        DefaultText<public><localizes>:message := ""
+      b := class:
+        A:a = a{DefaultText := Sign<localizes>:message = "+"}
+
+# ... but can be rewritten as:
+assert_valid<depends_on_library>:
+  vpackage(P0, /M, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=3700):
+    snippet:
+      a := class:
+        DefaultText<public><localizes>:message := ""
+
+      DefaultText_in_b<localizes>:message := "+"
+
+      b := class:
+        A:a = a{DefaultText := DefaultText_in_b}

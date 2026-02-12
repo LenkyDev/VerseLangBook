@@ -1,0 +1,87 @@
+using{/Verse.org/Tests/VerseTestScriptCmd/FloatConstants};
+
+assert{+1.0 * +0.0 = +0.0}
+assert{+0.0 * +1.0 = +0.0}
+
+assert{+0.0 * +0.0 = +0.0}
+assert{+0.0 * -0.0 = -0.0}
+assert{-0.0 * +0.0 = -0.0}
+assert{-0.0 * -0.0 = +0.0}
+
+assert{+1.0 * +1.0 = +1.0}
+assert{-1.0 * -1.0 = +1.0}
+assert{-1.0 * +1.0 = -1.0}
+assert{+1.0 * -1.0 = -1.0}
+
+assert{+1.0 * +2.0 = +2.0}
+assert{+2.0 * +1.0 = +2.0}
+
+assert{+1.0 * -2.0 = -2.0}
+assert{-2.0 * +1.0 = -2.0}
+
+assert{var x:float = +1.0; set x *= +0.0; x = +0.0}
+assert{var x:float = +0.0; set x *= +1.0; x = +0.0}
+
+assert{var x:float = +0.0; set x *= +0.0; x = +0.0}
+assert{var x:float = +0.0; set x *= -0.0; x = -0.0}
+assert{var x:float = -0.0; set x *= +0.0; x = -0.0}
+assert{var x:float = -0.0; set x *= -0.0; x = +0.0}
+
+assert{var x:float = +1.0; set x *= +1.0; x = +1.0}
+assert{var x:float = -1.0; set x *= -1.0; x = +1.0}
+assert{var x:float = -1.0; set x *= +1.0; x = -1.0}
+assert{var x:float = +1.0; set x *= -1.0; x = -1.0}
+
+assert{var x:float = +1.0; set x *= +2.0; x = +2.0}
+assert{var x:float = +2.0; set x *= +1.0; x = +2.0}
+
+assert{var x:float = +1.0; set x *= -2.0; x = -2.0}
+assert{var x:float = -2.0; set x *= +1.0; x = -2.0}
+
+# Exact multiplication of normalized numbers
+assert{1.25 * 4.0 = 5.0}
+assert{123.0 * 0.0 = 0.0}
+
+# Overflow to infinity
+assert{DoubleMax * 1.5 = PosInfty}
+assert{DoubleMax * 1.5 - DoubleMax = PosInfty}
+
+# Round to nearest, breaking ties towards even
+# (1 - 2^(-28)) * (1 + 2^(-28)) = 1 - 2^-56 by binomial formula, which clearly rounds up to 1 with 53-bit mantissa
+assert{(1.0 - Pow2_Minus28) * (1.0 + Pow2_Minus28) = 1.0}
+
+# Hitting an exact halfway case is a bit tricky
+# we use a variant of the above: (1 - 2^(-27)) (1 + 2^(-26))
+# = 1 - 2^(-27) + 2^(-26) - 2^(-53) = 1 + 2^(-27) - 2^(-53)
+# 1 + 2^(-27) is "even" (LSB 0) so that should be what we get rounded to
+assert{(1.0 - 2.0 * Pow2_Minus28) * (1.0 + 4.0 * Pow2_Minus28) = 1.0 + 2.0 * Pow2_Minus28}
+
+# Infinity*0 should be NaN
+assert{PosInfty * 0.0 = NaN}
+
+# Infinity*Infinity is Infinity
+assert{PosInfty * -PosInfty = -PosInfty}
+
+# NaN times anything should be NaN
+assert{NaN * 0.0 = NaN}
+assert{NaN * LargestSubnormal = NaN}
+assert{NaN * -1.0 = NaN}
+assert{NaN * PosInfty = NaN}
+assert{NaN * NaN = NaN}
+
+# Exact subnormal results from all-normalized inputs (gradual underflow)
+assert{SmallestNormal * 0.5 = HalfSmallestNormal}
+
+# Exact normalized results from subnormal inputs
+assert{HalfSmallestNormal * 2.0 = SmallestNormal}
+
+# Subnormal results, subnormal inputs, round-to-nearest (exact halfway case)
+assert{LargestSubnormal * 0.5 = HalfSmallestNormal}
+
+# One subnormal input, one small normalized input, should underflow to 0
+assert{LargestSubnormal * 1e-20 = 0.0}
+assert{-LargestSubnormal * 1e-20 = 0.0}
+
+# Tiny normalized input times small normalzied, should underflow to 0
+assert{SmallestNormal * 1e-20 = 0.0}
+assert{-SmallestNormal * 1e-20 = 0.0}

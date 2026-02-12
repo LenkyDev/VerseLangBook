@@ -1,0 +1,57 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+#         RequireEffects(*MacroCallAst.Name(), EEffect::allocates, ExprCtx.AllowedEffects, "mutable data definition");
+
+# <allocates> only works with classes, structs, & functions.
+#  Combines with <varies> and <computes>, but redundant with <transacts>
+assert_valid                     {   c := class<computes><allocates> { Value:int = 0 } }
+assert_valid                     {   c := class<reads><allocates> { Value:int = 0 } }
+assert_valid                     {   c := class<writes><allocates> { Value:int = 0 } }
+assert_semantic_error(3565,3565) {   c := class<varies><allocates> { Value:int = 0 } }
+assert_semantic_error(3565)      {   c := class<transacts><allocates> { Value:int = 0 } }
+assert_valid                     {   c := class<allocates> { Value:int = 0 } }
+
+assert_valid                     {   s := struct<computes><allocates> { Value:int = 0 } }
+assert_valid                     {   s := struct<reads><allocates> { Value:int = 0 } }
+assert_valid                     {   s := struct<writes><allocates> { Value:int = 0 } }
+assert_semantic_error(3565,3565) {   s := struct<varies><allocates> { Value:int = 0 } }
+assert_semantic_error(3565)      {   s := struct<transacts><allocates> { Value:int = 0 } }
+assert_valid                     {   c := struct<allocates> { Value:int = 0 } }
+
+assert_valid                     {    m := module { c := class {  func()<computes><allocates>:void= 42  } } }
+assert_valid                     {    m := module { c := class {  func()<reads><allocates>:void= 42  } } }
+assert_valid                     {    m := module { c := class {  func()<writes><allocates>:void= 42  } } }
+assert_semantic_error(3565,3565) {    m := module { c := class {  func()<varies><allocates>:void= 42  } } }
+assert_semantic_error(3565)      {    m := module { c := class {  func()<transacts><allocates>:void= 42  } } }
+assert_valid                     {    m := module { c := class {  func()<allocates>:void= 42  } } }
+
+# not allowed on interfaces, modules, and data definitions
+assert_semantic_error(3596):
+    i := interface<allocates>:                      #3596
+        func():void
+
+assert_semantic_error(3604):
+    m := module<allocates>:                         #3604
+        c := class:
+            Value:int = 0
+
+assert_semantic_error(3596):
+    m := module:
+        c := class:
+            Value<allocates>:int = 123;             # 3596
+
+<#>
+    Mutable values are only allowed inside <allocates> classes
+    so either <transacts>, <varies>, or an explicit <allocates>
+assert_valid                { var_class := class                         {  var ClassValue:int = 0  } }
+assert_valid                { var_class := class<transacts>              {  var ClassValue:int = 0  } }
+assert_valid                { var_class := class<allocates>              {  var ClassValue:int = 0  } }
+
+assert_semantic_error(3565) { var_class := class<varies>                 {  var ClassValue:int = 0  } }
+assert_semantic_error(2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { var_class := class<varies>                 {  var ClassValue:int = 0  } }
+
+assert_valid                { var_class := class<computes><allocates>    {  var ClassValue:int = 0  } }
+
+assert_semantic_error(3512) {  var_class := class<computes> {  var ClassValue:int = 0  } }
+

@@ -1,0 +1,213 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test the mapping between codepoints and source code characters.
+
+assert{" {0o09} " = " 	 "} # Be careful that this contains an ASCII tab character!
+assert{" {0o20} " = "   "}
+assert{" {0o21} " = " ! "}
+assert{" {0o23} " = " # "}
+assert{" {0o24} " = " $ "}
+assert{" {0o25} " = " % "}
+assert{" {0o26} " = " & "}
+assert{" {0o27} " = " ' "}
+assert{" {0o28} " = " ( "}
+assert{" {0o29} " = " ) "}
+assert{" {0o2a} " = " * "}
+assert{" {0o2b} " = " + "}
+assert{" {0o2c} " = " , "}
+assert{" {0o2d} " = " - "}
+assert{" {0o2e} " = " . "}
+assert{" {0o2f} " = " / "}
+assert{" {0o30} " = " 0 "}
+assert{" {0o31} " = " 1 "}
+assert{" {0o32} " = " 2 "}
+assert{" {0o33} " = " 3 "}
+assert{" {0o34} " = " 4 "}
+assert{" {0o35} " = " 5 "}
+assert{" {0o36} " = " 6 "}
+assert{" {0o37} " = " 7 "}
+assert{" {0o38} " = " 8 "}
+assert{" {0o39} " = " 9 "}
+assert{" {0o3a} " = " : "}
+assert{" {0o3b} " = " ; "}
+assert{" {0o3c} " = " < "}
+assert{" {0o3d} " = " = "}
+assert{" {0o3e} " = " > "}
+assert{" {0o3f} " = " ? "}
+assert{" {0o40} " = " @ "}
+assert{" {0o41} " = " A "}
+assert{" {0o42} " = " B "}
+assert{" {0o43} " = " C "}
+assert{" {0o44} " = " D "}
+assert{" {0o45} " = " E "}
+assert{" {0o46} " = " F "}
+assert{" {0o47} " = " G "}
+assert{" {0o48} " = " H "}
+assert{" {0o49} " = " I "}
+assert{" {0o4a} " = " J "}
+assert{" {0o4b} " = " K "}
+assert{" {0o4c} " = " L "}
+assert{" {0o4d} " = " M "}
+assert{" {0o4e} " = " N "}
+assert{" {0o4f} " = " O "}
+assert{" {0o50} " = " P "}
+assert{" {0o51} " = " Q "}
+assert{" {0o52} " = " R "}
+assert{" {0o53} " = " S "}
+assert{" {0o54} " = " T "}
+assert{" {0o55} " = " U "}
+assert{" {0o56} " = " V "}
+assert{" {0o57} " = " W "}
+assert{" {0o58} " = " X "}
+assert{" {0o59} " = " Y "}
+assert{" {0o5a} " = " Z "}
+assert{" {0o5b} " = " [ "}
+assert{" {0o5d} " = " ] "}
+assert{" {0o5e} " = " ^ "}
+assert{" {0o5f} " = " _ "}
+assert{" {0o60} " = " ` "}
+assert{" {0o61} " = " a "}
+assert{" {0o62} " = " b "}
+assert{" {0o63} " = " c "}
+assert{" {0o64} " = " d "}
+assert{" {0o65} " = " e "}
+assert{" {0o66} " = " f "}
+assert{" {0o67} " = " g "}
+assert{" {0o68} " = " h "}
+assert{" {0o69} " = " i "}
+assert{" {0o6a} " = " j "}
+assert{" {0o6b} " = " k "}
+assert{" {0o6c} " = " l "}
+assert{" {0o6d} " = " m "}
+assert{" {0o6e} " = " n "}
+assert{" {0o6f} " = " o "}
+assert{" {0o70} " = " p "}
+assert{" {0o71} " = " q "}
+assert{" {0o72} " = " r "}
+assert{" {0o73} " = " s "}
+assert{" {0o74} " = " t "}
+assert{" {0o75} " = " u "}
+assert{" {0o76} " = " v "}
+assert{" {0o77} " = " w "}
+assert{" {0o78} " = " x "}
+assert{" {0o79} " = " y "}
+assert{" {0o7a} " = " z "}
+assert{" {0o7c} " = " | "}
+assert{" {0o7e} " = " ~ "}
+
+assert{" {0u000a0} " = "   "}
+assert{" {0u00800} " = " ࠀ "}
+assert{" {0u0597d} " = " 好 "}
+assert{" {0u10000} " = " 𐀀 "}
+assert{" {0u1f600} " = " 😀 "}
+assert{" {0u1f680} " = " 🚀 "}
+
+# Test escaped characters.
+assert{" {0o09} " = " \t "}
+assert{" {0o0a} " = " \n "}
+assert{" {0o0d} " = " \r "}
+assert{" {0o22} " = " \" "}
+assert{" {0o23} " = " \# "}
+assert{" {0o26} " = " \& "}
+assert{" {0o27} " = " \' "}
+assert{" {0o3c} " = " \< "}
+assert{" {0o3e} " = " \> "}
+assert{" {0o5c} " = " \\ "}
+assert{" {0o7b} " = " \{ "}
+assert{" {0o7d} " = " \} "}
+assert{" {0o7e} " = " \~ "}
+
+# Test that curly braces produce a syntax error if they are not escaped.
+assert_syntax_error(3100){"\"\{\""}
+assert_syntax_error(3100){"\"\}\""}
+
+# From https://en.wikipedia.org/wiki/Bidirectional_text: Many computer programs fail to display
+# bidirectional text correctly. For example, the Hebrew name Sarah (שרה) is spelled: sin (ש) (which
+# appears rightmost), then resh (ר), and finally heh (ה) (which should appear leftmost).
+assert{"Sarah (שרה)" = "Sarah ({0u005e9}{0u005e8}{0u005d4})"}
+
+assert:
+    var S : string = "hey"
+    set S[1] = 'a'
+    S = "hay"
+
+assert:
+    S0 : string = "hey1"
+    S1 : []char = "hey2"
+    S2 := S0 + S1
+    S2 = "hey1hey2"
+    S2 <> "hey1hey1"
+    S2[1] = 'e'
+    S2.Length = 8
+
+assert:
+    X:string = array{}
+    X = ""
+
+assert{X := ""; X = array{}}
+assert{X := array{}; X = ""}
+
+assert:
+    X:string = array{'a'}
+    X = "a"
+
+assert:
+    X := "a"
+    X = array{'a'}
+
+assert:
+    X:string = array{'a', 'b', 'c'}
+    X = "abc"
+
+assert:
+    X := "abc"
+    X = array{'a', 'b', 'c'}
+
+assert{"a {10+1} b"="a 11 b"}
+
+assert:
+    "01234567" = "0123{"4"}567"
+
+assert:
+    "01234567" = "0123{2+2}567"
+
+assert:
+    "4567" = "{2+2}567"
+
+assert:
+    "01234" = "0123{2+2}"
+
+# NOTE: We have to use `assert_valid` here since otherwise it wouldn't try to concatenate the string literal
+# and thus wouldn't trigger the relevant semantic analysis error.
+assert_valid:
+    a:string := "this is a multi-line{
+    }string literal{
+    }that spans across lines"
+
+# Check that empty string interpolants don't affect the resulting string.
+assert:
+    "ab{}cd" = "abcd"
+assert:
+    "ab{
+    }cd" = "abcd"
+assert:
+    "ab{       }cd" = "abcd"
+
+assert:
+    "ab{<#blkcmt#>
+    }cd" = "abcd"
+
+# Comments in strings should be ignored.
+assert{"abc<#def#>ghi" = "abcghi"}
+
+# String interpolation
+assert{"Zero: {0}."="Zero: 0."}
+assert{"Zero: {0}, One: {1}."="Zero: 0, One: 1."}
+
+ToString(X:int, Y:int, ?Factor:int=1):string=ToString((X+Y)*Factor)
+
+assert{"abc {2, 3} def" = "abc 5 def"}
+assert{"abc {2, 3, ?Factor:=4} def" = "abc 20 def"}
+
+assert{"abc {"def"} ghi" = "abc def ghi"}
+assert{"abc {'d'}{'e'}{'f'} ghi" = "abc def ghi"}

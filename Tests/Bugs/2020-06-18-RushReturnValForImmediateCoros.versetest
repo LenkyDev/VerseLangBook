@@ -1,0 +1,18 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd } # for CoroUtils
+
+c0 := class:
+    var i<public>:int = 1337
+
+     _f0<public>(v:int)<suspends>:int={ return(v) }
+     _f1<public>()<suspends>:void=     
+        set i = rush:
+            _f0(42)
+            _f0(84)
+
+assert:
+    C0:c0 = c0{}
+    spawn { C0._f1() }
+    CoroUtils.Tick(1)
+    C0.i = 42

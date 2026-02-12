@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# This triggers the bug in the semantic analyzer where an unidentified identifier in the case condition
+# triggers the asserts when analyzing the case macro call when doing the final steps of processing the VST.
+assert_semantic_error(3506, 3512):
+    test_class := class:
+        TestFunction():void=
+            case(UndefinedIdentifier):
+                1 => 
+                    a:int = 1
+                2 =>
+                    b:int = 2
+
+# This triggers another bug if the unidentified identifier is in the case pattern itself because
+# it doesn't process the domain sub-expressions.
+assert_semantic_error(3506, 3617, 3618):
+    test_class2 := class:
+        TestFunction2():void=
+            case(1):
+                UndefinedIdent => 
+                    a:int = 1
+                2 =>
+                    b:int = 2

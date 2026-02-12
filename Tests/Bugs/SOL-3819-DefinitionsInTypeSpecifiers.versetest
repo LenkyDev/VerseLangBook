@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Ensure additional data of functions added during type processing don't result
+# in a crash.
+assert_semantic_error(3547):
+    class1 := class:
+        X:(Y:int)
+
+assert_semantic_error(3547):
+    class1 := class:
+        X:(F():void = {})
+
+assert_semantic_error(3547):
+    class1 := class:
+        X:(F():void = {})
+
+assert_semantic_error(3547):
+    class1 := class:
+        F():(G():void = {}) = {}
+
+assert_semantic_error(3547, 3598):
+    interface1 := interface:
+        F():(G():void)

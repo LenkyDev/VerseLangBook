@@ -1,0 +1,197 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{"abcdef" = "abcdef"}
+assert{"acbde" <> "abcdef"}
+
+# Test that string comparison is case-sensitive.
+assert{"a" <> "A"}
+assert{not ("a" = "A")}
+
+# Test string vs []char comparison
+
+assert{""=array{}}
+assert{""<>array{0o00}}
+assert{""<>array{0}}
+
+assert{"a"=array{'a'}}
+assert{"a"<>array{'a',0o00}}
+assert{"a"<>array{97}}
+assert{"a"<>array{97,0}}
+
+assert{"abc"=array{'a','b','c'}}
+assert{"abc"<>array{97,98,99}}
+assert{"abc"<>array{97,98,990}}
+assert{"abc"<>array{'a','b','c',0o00}}
+
+assert{"a"=array{comparable('a')}}
+assert{"ab"=array{comparable('a'),comparable('b')}}
+
+assert{array{}=""}
+assert{array{0o00}<>""}
+assert{array{0}<>""}
+
+assert{array{'a'}="a"}
+assert{array{'a',0o00}<>"a"}
+assert{array{97}<>"a"}
+assert{array{97,0}<>"a"}
+
+assert{array{'a','b','c'}="abc"}
+assert{array{97,98,99}<>"abc"}
+assert{array{97,98,990}<>"abc"}
+assert{array{'a','b','c',0o00}<>"abc"}
+
+assert{array{comparable('a')}="a"}
+assert{array{comparable('a'),comparable('b')}="ab"}
+
+# Test comparing strings that have been coerced to an array.
+AreArraysEqual(A:[]t, B:[]t where t:subtype(comparable))<computes><decides>:void=A=B
+assert{AreArraysEqual["", ""]}
+assert{AreArraysEqual["a", "a"]}
+assert{AreArraysEqual["ab", "ab"]}
+
+assert{    AreArraysEqual["abc", "abc"]}
+assert{not AreArraysEqual["abc", "aaa"]}
+assert{not AreArraysEqual["abc", "bbb"]}
+assert{not AreArraysEqual["abc", "ccc"]}
+assert{not AreArraysEqual["abc", "aa"]}
+assert{not AreArraysEqual["abc", "bb"]}
+assert{not AreArraysEqual["abc", "cc"]}
+assert{not AreArraysEqual["abc", "ab"]}
+assert{not AreArraysEqual["abc", "ba"]}
+assert{not AreArraysEqual["abc", "ac"]}
+assert{not AreArraysEqual["abc", "ca"]}
+assert{not AreArraysEqual["abc", "a"]}
+assert{not AreArraysEqual["abc", "b"]}
+assert{not AreArraysEqual["abc", "c"]}
+assert{not AreArraysEqual["abc", ""]}
+
+# Test comparing arrays to strings.
+assert{array{}       =""}
+assert{array{'a'}    ="a"}
+assert{array{'a','b'}="ab"}
+
+assert{array{'a','b','c'}= "abc"}
+assert{array{'a','b','c'}<>"aaa"}
+assert{array{'a','b','c'}<>"bbb"}
+assert{array{'a','b','c'}<>"ccc"}
+assert{array{'a','b','c'}<>"aa"}
+assert{array{'a','b','c'}<>"bb"}
+assert{array{'a','b','c'}<>"cc"}
+assert{array{'a','b','c'}<>"ab"}
+assert{array{'a','b','c'}<>"ba"}
+assert{array{'a','b','c'}<>"ac"}
+assert{array{'a','b','c'}<>"ca"}
+assert{array{'a','b','c'}<>"a"}
+assert{array{'a','b','c'}<>"b"}
+assert{array{'a','b','c'}<>"c"}
+assert{array{'a','b','c'}<>""}
+assert{""  =array{}}
+
+assert{"a" =array{'a'}}
+assert{"ab"=array{'a','b'}}
+
+assert{"abc"= array{'a','b','c'}}
+assert{"aaa"<>array{'a','b','c'}}
+assert{"bbb"<>array{'a','b','c'}}
+assert{"ccc"<>array{'a','b','c'}}
+assert{"aa" <>array{'a','b','c'}}
+assert{"bb" <>array{'a','b','c'}}
+assert{"cc" <>array{'a','b','c'}}
+assert{"ab" <>array{'a','b','c'}}
+assert{"ba" <>array{'a','b','c'}}
+assert{"ac" <>array{'a','b','c'}}
+assert{"ca" <>array{'a','b','c'}}
+assert{"a"  <>array{'a','b','c'}}
+assert{"b"  <>array{'a','b','c'}}
+assert{"c"  <>array{'a','b','c'}}
+assert{""   <>array{'a','b','c'}}
+
+# Test comparing strings that have been coerced from an array.
+MakeArrayFromElements(A:t, B:t, C:t where t:type)<computes>:[]t=array{A,B,C}
+assert{MakeArrayFromElements('a','b','c')="abc"}
+assert{MakeArrayFromElements('a','b','c')<>"aaa"}
+assert{MakeArrayFromElements('a','b','c')<>"aa"}
+assert{MakeArrayFromElements('a','b','c')<>""}
+
+assert{"abc"=MakeArrayFromElements('a','b','c')}
+assert{"aaa"<>MakeArrayFromElements('a','b','c')}
+assert{"aa"<>MakeArrayFromElements('a','b','c')}
+assert{""<>MakeArrayFromElements('a','b','c')}
+
+# Test string vs tuple(char*) comparison.
+assert{()=""}
+
+assert{('a','b')="ab"}
+assert{('a','b',0o00)<>"ab"}
+
+assert{(97, 98)<>"ab"}
+assert{(97, 98, 0)<>"ab"}
+
+assert{(comparable('a'),comparable('b'))="ab"}
+
+assert{('a','b','c')="abc"}
+assert{('a','b','c',0o00)<>"abc"}
+
+
+assert{(97, 98, 99)<>"abc"}
+assert{(97, 98, 99, 0)<>"abc"}
+
+assert{""=()}
+assert{"ab"=('a','b')}
+assert{"ab"<>('a','b',0o00)}
+
+assert{"ab"<>(97, 98)}
+assert{"ab"<>(97, 98, 0)}
+
+assert{"ab"=(comparable('a'),comparable('b'))}
+
+assert{"abc"=('a','b','c')}
+assert{"abc"<>('a','b','c',0o00)}
+
+assert{"abc"<>(97, 98, 99)}
+assert{"abc"<>(97, 98, 99, 0)}
+
+# Test comparing strings that have been coerced from a tuple.
+MakeTupleFromElements(A:t, B:t, C:t where t:type)<computes>:[]t=(A,B,C)
+assert{MakeTupleFromElements('a','b','c')="abc"}
+assert{MakeTupleFromElements('a','b','c')<>"aaa"}
+assert{MakeTupleFromElements('a','b','c')<>"aa"}
+assert{MakeTupleFromElements('a','b','c')<>""}
+
+assert{"abc"=MakeTupleFromElements('a','b','c')}
+assert{"aaa"<>MakeTupleFromElements('a','b','c')}
+assert{"aa"<>MakeTupleFromElements('a','b','c')}
+assert{""<>MakeTupleFromElements('a','b','c')}
+
+# Test comparing strings to character tuples.
+DoesTupleEqualString(A:tuple(t,t,t), B:string where t:subtype(comparable))<computes><decides>:void=A=B
+assert{    DoesTupleEqualString[('a','b','c'), "abc"]}
+assert{not DoesTupleEqualString[('a','b','c'), "aaa"]}
+assert{not DoesTupleEqualString[('a','b','c'), "bbb"]}
+assert{not DoesTupleEqualString[('a','b','c'), "ccc"]}
+assert{not DoesTupleEqualString[('a','b','c'), "aa"]}
+assert{not DoesTupleEqualString[('a','b','c'), "bb"]}
+assert{not DoesTupleEqualString[('a','b','c'), "cc"]}
+assert{not DoesTupleEqualString[('a','b','c'), "ab"]}
+assert{not DoesTupleEqualString[('a','b','c'), "ba"]}
+assert{not DoesTupleEqualString[('a','b','c'), "ac"]}
+assert{not DoesTupleEqualString[('a','b','c'), "ca"]}
+assert{not DoesTupleEqualString[('a','b','c'), "a"]}
+assert{not DoesTupleEqualString[('a','b','c'), "b"]}
+assert{not DoesTupleEqualString[('a','b','c'), "c"]}
+assert{not DoesTupleEqualString[('a','b','c'), ""]}
+
+# Test comparing "" to other forms of false: false, (), (?t)(false), array{}, map{}.
+assert{X:string=""; Y:logic=false   ; X=Y}
+assert{X:string=""; Y:void={}       ; X=Y}
+assert{X:string=""; Y:tuple()=()    ; X=Y}
+assert{X:string=""; Y:?int=false    ; X=Y}
+assert{X:string=""; Y:[]int=array{} ; X=Y}
+assert{X:string=""; Y:[int]int=map{}; X=Y}
+
+assert{X:string="0"; Y:logic=false   ; X<>Y}
+assert{X:string="0"; Y:void={}       ; X<>Y}
+assert{X:string="0"; Y:tuple()=()    ; X<>Y}
+assert{X:string="0"; Y:?int=false    ; X<>Y}
+assert{X:string="0"; Y:[]int=array{} ; X<>Y}
+assert{X:string="0"; Y:[int]int=map{}; X<>Y}

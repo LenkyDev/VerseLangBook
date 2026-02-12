@@ -1,0 +1,59 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_todo
+{
+assert:
+    TestUtils.AreClassesEqual[int, int]
+
+# All non-`class` types will be considered equal by `TestUtils.AreClassesEqual`, as they
+# all share the same value - `nullptr`.
+assert:
+    TestUtils.AreClassesEqual[int, float]
+}
+
+class1 := class {}
+
+assert:
+    TestUtils.AreClassesEqual[class1, class1]
+
+class2 := class {}
+
+assert:
+    not TestUtils.AreClassesEqual[class1, class2]
+
+struct1 := struct {}
+
+assert:
+    TestUtils.AreClassesEqual[struct1, struct1]
+
+assert:
+    X := struct1
+    Y := X
+    TestUtils.AreClassesEqual[X, Y]
+
+struct2 := struct {}
+
+assert:
+    not TestUtils.AreClassesEqual[struct1, struct2]
+
+verse_vm_todo
+{
+assert:
+    not TestUtils.AreClassesEqual[class1, int]
+
+assert:
+    not TestUtils.AreClassesEqual[int, class1]
+}
+
+assert:
+    Types := for (I := 0..2):
+        class1
+    Types.Length = 3
+    TestUtils.AreClassesEqual[Types[0], class1]
+    TestUtils.AreClassesEqual[Types[1], class1]
+    TestUtils.AreClassesEqual[Types[2], class1]
+
+assert:
+    X:any = class1
+    Y:any = X
+

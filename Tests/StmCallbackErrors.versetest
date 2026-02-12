@@ -1,0 +1,13 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# this test makes sure that UVerseStmLibrary doesn't reach an
+# inconsistent state (which triggers an "ensure") whenever an OnCommit
+# handler signals (potentially indirectly) a Verse runtime error.
+    
+assert_runtime_error:
+    if (StmCallbackErrors.MakeRuntimeErrorOnCommit(); 1 = 1):
+}

@@ -1,0 +1,35 @@
+# Declare enough attributed data members that the class's data member array should be reallocated after the initial allocation.
+assert_valid:
+    C := class:
+        
+        m0<internal>:int
+        
+        m1<internal>:int 
+        
+        m2<internal>:int
+        
+        m3<internal>:int
+        
+        m4<internal>:int 
+        
+        m5<internal>:int
+        
+        m6<internal>:int 
+        
+        m7<internal>:int
+        
+        m8<internal>:int
+        
+        m9<internal>:int
+        
+        m10<internal>:int
+        
+        m11<internal>:int
+        
+        m12<internal>:int
+        
+        m13<internal>:int
+        
+        m14<internal>:int
+        
+        m15<internal>:int

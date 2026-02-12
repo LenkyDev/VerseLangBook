@@ -1,0 +1,13 @@
+A := class:
+    i:int = 42
+
+B := class:
+    a:A = A{i:=1337}
+
+assert:
+    b := B{}
+    b.a.i = 1337
+
+assert:
+    b := B{a:=A{i:=8675}}
+    b.a.i = 8675

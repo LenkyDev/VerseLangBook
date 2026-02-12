@@ -1,0 +1,27 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{option{1}=option{1}}
+assert{option{2}=option{2}}
+
+assert{option{1}<>option{2}}
+assert{option{2}<>option{1}}
+
+assert{option{1}<>false}
+assert{option{2}<>false}
+assert{false<>option{1}}
+assert{false<>option{2}}
+
+# Test comparing (?t)(false) to other forms of false: false, (), array{}, map{}, "".
+                  assert{X:?int=false; Y:logic=false   ; X=Y}
+                  assert{X:?int=false; Y:void={}       ; X=Y}
+assert{X:?int=false; Y:tuple()=()    ; X=Y}
+assert{X:?int=false; Y:[]int=array{} ; X=Y}
+assert{X:?int=false; Y:[int]int=map{}; X=Y}
+assert{X:?int=false; Y:string=""     ; X=Y}
+
+assert{X:?int=option{0}; Y:logic=false   ; X<>Y}
+assert{X:?int=option{0}; Y:void={}       ; X<>Y}
+assert{X:?int=option{0}; Y:tuple()=()    ; X<>Y}
+assert{X:?int=option{0}; Y:[]int=array{} ; X<>Y}
+assert{X:?int=option{0}; Y:[int]int=map{}; X<>Y}
+assert{X:?int=option{0}; Y:string=""     ; X<>Y}

@@ -1,0 +1,51 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+_testLoop()<suspends>:void=
+{
+    CoroUtils.LogEvent("A")
+
+    var idx:int = 0
+
+    loop:
+        var inner_idx:int = 0
+        CoroUtils.WaitTicks(2)
+        set idx += 10
+        CoroUtils.LogEvent("O")
+
+        # immediate inner loop
+        loop:
+            set inner_idx += 1
+            CoroUtils.LogEvent("I")
+
+            if (inner_idx = 3):
+                CoroUtils.LogEvent("B")
+                break
+
+        if (idx = 40):
+            CoroUtils.LogEvent("C")
+            break
+
+        CoroUtils.LogEvent("D")
+
+    CoroUtils.LogEvent("E")
+}
+
+# Test loop
+assert:
+    spawn { _testLoop() }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(8)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 2 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    CoroUtils.GetEventLogString() = "A,,OIIIBD,,OIIIBD,,OIIIBD,,OIIIBCE"
+
+# Test that loop yields void regardless of the contents of its body.
+assert_valid:
+    F():void=
+        return loop { if(true?) {0} else {break} }

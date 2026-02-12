@@ -1,0 +1,193 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Some constants.
+
+Tolerance:float= 0.0000001
+ValueOfE:float = 2.7182818284590452353602874713526624977572
+RecipOfE:float = 1.0 / ValueOfE
+Pi2:float = PiFloat / 2.0
+Pi4:float = PiFloat / 4.0
+
+IsNearlyEqual(A:float, B:float, ?T:float = Tolerance)<transacts><decides>:void=
+    A=B or Abs(A-B) <= T # Needs exact equality checking for special values.
+
+IsNearlyEqual(A:[]float, B:[]float)<transacts><decides>:void=
+    A.Length=B.Length and for (Index := 0..A.Length-1):
+        IsNearlyEqual[A[Index], B[Index], ?T := Tolerance]
+
+# Checks infinities and NaN propagation.
+CheckSpecials(F(:float):float, AtMinusInf:float, AtInf:float)<decides>:void=
+    F(-Inf)=AtMinusInf and F(Inf)=AtInf and F(NaN)=NaN
+
+# Checks arbitrary values, using IsNearlyEqual and default tolerance.
+CheckArgs(F(:float):float, Args:[]float, Expected:[]float)<decides>:void=
+    Values := for (Arg : Args) { F(Arg) }
+    IsNearlyEqual[Values, Expected]
+
+# Checks -1.0, 0.0, and 1.0
+CheckCommonArgs(F(:float):float, AtNegOne:float, AtZero:float, AtOne:float)<decides>:void=
+    CheckArgs[F, (-1.0, 0.0, 1.0), (AtNegOne, AtZero, AtOne)]
+
+CheckInverse(F(:float):float, FInv(:float):float, Args:[]float)<decides>:void=
+    for (Arg:Args) { IsNearlyEqual[FInv(F(Arg)), Arg] }
+
+### Sanity checks
+
+assert {
+    # Checks that the negative 0 representation is not observable.
+    for (N:array{-1.0, 1.0}, D:array{-Inf, Inf}):
+        Q:float = N/D = 0.0
+        1.0 / Q = Inf
+}
+
+assert { not IsNearlyEqual[1.0, 0.0] }
+
+assert { (0.0).IsFinite[] and not (-Inf).IsFinite[] and not (Inf).IsFinite[] and not (NaN).IsFinite[] }
+
+### Sqrt
+
+assert { CheckSpecials[Sqrt, NaN, Inf]}
+assert { CheckArgs[Sqrt, (-Tolerance, 0.0, 1.0, 4.0), (NaN, 0.0, 1.0, 2.0)] }
+
+### Circular trig and inverses
+
+assert { CheckSpecials[Sin, NaN, NaN] }
+assert { CheckArgs[Sin, (-PiFloat, -Pi2, 0.0, Pi2, PiFloat),
+                        (0.0,      -1.0, 0.0, 1.0, 0.0)] }
+
+assert { CheckSpecials[Cos, NaN, NaN] }
+assert { CheckArgs[Cos, (-PiFloat, -Pi2, 0.0, Pi2,  PiFloat),
+                        (-1.0,      0.0, 1.0, 0.0, -1.0)] }
+
+assert { CheckSpecials[Tan, NaN, NaN] }
+# Note: Tan(Pi2) is a large value rather than Inf, due to limited numerical precision.
+assert { CheckArgs[Tan, (-Pi4, 0.0, Pi4),
+                        (-1.0, 0.0, 1.0)] }
+
+# ArcSin and ArcCos do some kind of domain restriction in FMath that clamps
+# the domain rather than propagating NaN. Unclear if this is desirable in
+# the long term.
+# assert { CheckSpecials[ArcSin, NaN, NaN] }
+
+assert { CheckCommonArgs[ArcSin, -Pi2, 0.0, Pi2] }
+assert { CheckInverse[Sin, ArcSin, (-1.0, 0.0, 1.0)] }
+
+assert { CheckCommonArgs[ArcCos, PiFloat, Pi2, 0.0] }
+assert { CheckInverse[Cos, ArcCos, (0.0, 1.0, 2.0, 3.0)] }
+
+# Workaround for ShipVerse overload ambiguity in higher-order functions.
+# MaxVerse handles this properly, and will eventually support traits.
+ArcTan1(X:float):float = ArcTan(X)
+assert { CheckSpecials[ArcTan1, -Pi2, Pi2] }
+assert { CheckCommonArgs[ArcTan1, -Pi4, 0.0, Pi4] }
+
+assert {
+    Args:[]float = (-Inf, 0.0, Inf)
+    Values := for (Y:Args, X:Args) { ArcTan(Y, X) = ArcTan(Sgn(Y), Sgn(X)) }
+    Pi34 := Pi2 + Pi4
+    Expected:[]float = (-Pi34,   -Pi2, -Pi4,
+                         PiFloat, 0.0,  0.0,
+                         Pi34,    Pi2,  Pi4)
+    IsNearlyEqual[Values, Expected]
+}
+
+### Hyperbolic trig and inverses
+
+assert { CheckSpecials[Sinh, -Inf, Inf] }
+assert { CheckCommonArgs[Sinh, (RecipOfE-ValueOfE)/2.0, 0.0, (ValueOfE-RecipOfE)/2.0] }
+
+assert { CheckSpecials[Cosh, Inf, Inf] }
+assert { CheckCommonArgs[Cosh, (ValueOfE+RecipOfE)/2.0, 1.0, (ValueOfE+RecipOfE)/2.0] }
+
+assert { CheckSpecials[Tanh, -1.0, 1.0]}
+assert { CheckCommonArgs[Tanh, -Sinh(1.0)/Cosh(1.0), 0.0, Sinh(1.0)/Cosh(1.0)] }
+
+assert { CheckSpecials[ArSinh, -Inf, Inf]}
+assert { CheckInverse[Sinh, ArSinh, (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0)] }
+
+assert { CheckSpecials[ArCosh, NaN, Inf]}
+assert { CheckInverse[Cosh, ArCosh, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)] }
+
+assert { CheckSpecials[ArTanh, NaN, NaN] } # TODO: Should these be -Inf, Inf?
+assert { CheckInverse[Tanh, ArTanh, (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0)] }
+
+### Mod, Quotient
+
+assert { Mod[15, 4] = 3 }
+assert { Mod[-15, 4] = 1 }
+assert { Quotient[-15, 4] * 4 + Mod[-15, 4] = -15 }
+assert { Quotient[15, 4] * 4 + Mod[15, 4] = 15 }
+assert { Mod[-1, -2] = 1 }
+assert { Quotient[-1, -2] = 1 }
+assert { not Mod[10, 0] }
+assert { not Quotient[10, 0] }
+
+### Exp, Ln, Pow, Log
+
+assert { CheckSpecials[Exp, 0.0, Inf] }
+assert { CheckCommonArgs[Exp, RecipOfE, 1.0, ValueOfE] }
+
+assert { CheckSpecials[Ln, NaN, Inf] }
+assert { CheckArgs[Ln, (-Tolerance, -0.0, 0.0, ValueOfE), (NaN, -Inf, -Inf, 1.0)] }
+assert { CheckInverse[Exp, Ln, (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0)] }
+
+FakeExp(X:float):float = Pow(ValueOfE, X)
+assert { CheckSpecials[FakeExp, 0.0, Inf] }
+assert { CheckCommonArgs[FakeExp, RecipOfE, 1.0, ValueOfE] }
+
+FakeLn(X:float):float = Log(ValueOfE, X)
+assert { CheckSpecials[FakeLn, NaN, Inf] }
+assert { CheckArgs[FakeLn, (-Tolerance, -0.0, 0.0, ValueOfE), (NaN, -Inf, -Inf, 1.0)] }
+assert { CheckInverse[FakeExp, FakeLn, (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0)] }
+
+# TODO: more expansive testing of Pow and Log
+assert { Pow(0.0, 0.0) = 1.0 }
+assert { Pow(NaN, 0.0) = 1.0 }
+assert { Pow(1.0, NaN) = 1.0 }
+
+assert { IsNearlyEqual[Log(2.0, 2.0), 1.0] }
+assert { IsNearlyEqual[Log(10.0, 10.0), 1.0] }
+
+### Lerp
+
+assert {
+    Froms := array{NaN, -Inf, 0.0}
+    Tos := array{NaN, Inf, 1.0}
+    Parameters := array{NaN, -Inf, -1.0, 0.0, 0.5, 1.0, 2.0, Inf}
+    for (From:Froms, To:Tos, Parameter:Parameters):
+        L := Lerp(From, To, Parameter)
+        # TODO: check Lerp behavior for special values.
+        if (To.IsFinite[] and From.IsFinite[] and Parameter.IsFinite[]):
+            L = Parameter
+}
+
+assert {
+    HugePositive := Pow(2.0, 1023.0)
+    HugeNegative := -HugePositive
+    HugePositive.IsFinite[] and HugeNegative.IsFinite[] and 0 <> Tolerance
+    HugePositive = HugePositive + Tolerance # Checks that adding non-zero floats can be insignificant.
+    Inf = HugePositive - HugeNegative # Checks for numerical overflow.
+
+    # Checks exact endpoints.
+    HugeNegative = Lerp(HugeNegative, HugePositive, 0.0)
+    HugePositive = Lerp(HugeNegative, HugePositive, 1.0)
+}
+
+### Sgn
+
+# ShipVerse hack to avoid ambiguous overload resolution.
+SgnF(X:float):float = Sgn(X)
+assert { CheckSpecials[SgnF, -1.0, 1.0] }
+assert { CheckArgs[SgnF, (-10.0, 0.0, 10.0), (-1.0, 0.0, 1.0)] }
+
+### Utils
+
+assert { Ceil[-1.5]=-1 }
+assert { Floor[-1.5]=-2 }
+
+# Round() should round ties to nearest even number per IEEE-754 default implementation
+assert { Round[-1.5]=-2 }
+assert { Round[-0.5]=0 }
+assert { Round[1.5]=2 }
+assert { Round[0.5]=0 }
+assert { Int[-1.5]=-1 }

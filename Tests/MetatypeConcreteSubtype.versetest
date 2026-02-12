@@ -1,0 +1,330 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+assert_valid:
+    c := class:
+        ConcType:concrete_subtype(c)
+
+assert_valid:
+    i := interface:
+        ConcType:concrete_subtype(i)
+
+assert_valid:
+    c := class:
+        ConcType:concrete_subtype(any)
+
+assert_valid:
+    c := class {}
+    ConcType:[]concrete_subtype(any) = array{}
+
+# non-class, non-interface types are not allowed
+assert_semantic_error(3509):
+    c := class:
+        ConcType:concrete_subtype(int)
+
+# comparable can be concrete
+assert_valid:
+    c := class:
+        ConcType:concrete_subtype(comparable)
+
+# ...but not every comparable
+assert_semantic_error(3509):
+    c := class:
+        ConcType:concrete_subtype(comparable) = float
+
+assert_semantic_error(3545):
+    c := class<unique><concrete>:
+        str:string = ""
+    MainFunc():void =
+        c1:concrete_subtype(comparable) = c
+        C1 := c1{}                              # 3545 - comparable cannot be instanced here because we don't know if it's a class type
+
+assert_semantic_error(3509):
+    class1 := class {}
+    F(X:t where t:concrete_subtype(class1)):void = {}
+    MainFunc(P:logic):void =
+        c1:class1 = class1{}
+        F(c1)
+
+assert_valid:
+    class1 := class {}
+    class2 := class<concrete>(class1) {}
+    F(X:t where t:concrete_subtype(class1)):void = {}
+    MainFunc(P:logic):void =
+        c1:class1 = class1{}
+        c2:class2 = class2{}
+        F(c2)
+
+assert_valid:
+    entity<public> := class:
+        var Comps:[]component = array{}
+        AddEntities<public>(comps:[]component):void= {}
+
+    component<public> := class<final_super_base>:
+        Entity<public>:entity = entity{}
+
+    spawner_component<public> := class <final_super>(component):
+        #@editable
+        prefab_type<public>:concrete_subtype(entity)
+        component_type<public>:concrete_subtype(component)
+
+        OnSomethingHappened():void =
+            NewPrefab := prefab_type{}
+            NewComponent := component_type{}
+            Entity.AddEntities(array{ NewComponent }) 
+
+assert_semantic_error(3600):
+    classA := class:
+        Value:comparable
+
+    MainFunc():void=
+        foo := classA{}                               # 3600 - Value is unassigned and not a concrete_subtype
+
+assert_semantic_error(3600):
+    classA := class:
+        Value:comparable
+
+    MainFunc():void=
+        classA_type := classA
+        foo := classA_type{}                          # 3600 - Value is unassigned and not a concrete_subtype
+
+assert_semantic_error(3509):
+    classA := class:
+        Value:comparable
+
+    MainFunc():void=
+        classA_type:concrete_subtype(classA) = classA  # 3509 classA is not concrete
+        foo := classA_type{}
+
+assert_valid:
+    classA := class<concrete>:
+        Value:comparable = 0
+
+    MainFunc():void=
+        classA_type:concrete_subtype(classA) = classA  # ok classA is concrete
+        foo := classA_type{}
+
+assert_semantic_error(3552):
+    classA := class<abstract>:
+        Value:comparable
+    classB := class<concrete>(classA){ Value<override>:int = 123}
+
+    MainFunc():void=
+        classA_type:concrete_subtype(classA) = classB
+        foo := classA_type{Value := 987}              # 3552 - not allowed to initialize fields through concrete_subtype
+
+assert_valid:
+    classA := class<abstract>:
+        Value:comparable
+    classB := class<concrete>(classA){ Value<override>:int = 123}
+
+    MainFunc():void=
+        classA_type:concrete_subtype(classA) = classB
+        foo := classA_type{}                          # ok - using abstract classA is ok statically because it's a concrete_subtype
+
+assert_semantic_error(3601):
+    classA := class<abstract>:
+        Value:comparable
+    classB := class<concrete>(classA){ Value<override>:int = 123}
+
+    MainFunc():void=
+        classA_type:concrete_subtype(classA)          # 3601 - classA_type isn't initialized - tested here so we know we can't get an uninitialized metatype
+        foo := classA_type{}
+            
+assert_semantic_error(3600):
+    classA := class<abstract>:
+        Value:comparable
+    classB := class<concrete>(classA){ Value<override>:int = 123}
+
+    classZ := class:
+        classA_type:concrete_subtype(classA)             # ok uninitialized as a class member
+        Func():void=
+            foo := classA_type{}
+    MainFunc():void=
+        Z:classZ = classZ{}                          # 3600 - but not ok when the class is instantiated
+
+# can we still use a concrete type for object creation without the dynamic lookup
+assert_valid:
+    concrete_class := class<concrete>:
+        Value:int = 42
+    MainFunc():void=
+        concrete_class{ Value := 42 }
+
+assert_valid:
+    concrete_class := class<concrete>:
+        Value:int = 42
+    MainFunc():void=
+        # this should create a typetype with both bounds set to concrete_class
+        Type := concrete_class
+        Type{ Value := 42 }
+
+# How about through a tightly bounded concrete_subtype?
+assert_valid:
+    concrete_class := class<concrete>:
+        Value:int = 42
+    MainFunc():void=
+        # this should create a typetype with both bounds set to concrete_class
+        Type := if (false?) then concrete_class else concrete_class
+        Type{ Value := 42 }
+
+# We relaxed some of the analysis around archetypes and interfaces.
+# Direct refernce to an interface as an archetype should still fail though
+assert_semantic_error(3545):
+    iface := interface:
+        Value:int = 42
+    MainFunc():void=
+        I:iface = iface{Value:=123}
+
+# ############
+# test runtime 
+thing := class<abstract>:
+    Value1:comparable
+    GetAString():string
+    AnotherString:string = "blank"
+
+no_thing := class<concrete>(thing):
+    Value1<override>:logic = false
+    GetAString<override>():string = "Nada"
+
+devil_thing := class<concrete>(thing):
+    Value1<override>:float = 666.0
+    GetAString<override>():string = "Satan!!"
+
+drug_thing := class<concrete>(thing):
+    Value1<override>:int = 420
+    GetAString<override>():string = "Drugs are bad, m'kay?"
+
+every_thing := class<concrete>(thing):
+    Value1<override>:int = 42
+    GetAString<override>():string = "So long and thanks for all the fish."
+
+GetAType(Switch:int):concrete_subtype(thing)=
+    if (Switch = 42):
+        return every_thing
+    else if (Switch = 420):
+        return drug_thing
+    else if (Switch = 666):
+        return devil_thing
+    else:
+        return no_thing
+    
+thing_maker := class:
+    ThingType<public>:concrete_subtype(thing)
+    MakeIt():thing =
+        ThingType{}
+
+assert:
+    TM:thing_maker = thing_maker{ThingType:=every_thing}
+    T:thing := TM.MakeIt()
+    #DebugPrint("T.Value1 = {T.Value1} should be 42")
+    #DebugPrint("T.GetAString = {T.GetAString()} should be 'So long and thanks for all the fish.'")
+    #DebugPrint("T.AnotherString = '{T.AnotherString}' should be 'blank'")
+    T.Value1 = 42
+    T.GetAString() = "So long and thanks for all the fish."
+
+assert:
+    TM:thing_maker = thing_maker{ThingType:=drug_thing}
+    T:thing := TM.MakeIt()
+    T.Value1 = 420
+    T.GetAString() = "Drugs are bad, m'kay?"
+
+assert:
+    TM:thing_maker = thing_maker{ThingType:=devil_thing}
+    T:thing := TM.MakeIt()
+    T.Value1 = 666.0
+    T.GetAString() = "Satan!!"
+
+assert:
+    TM:thing_maker = thing_maker{ThingType:=no_thing}
+    T:thing := TM.MakeIt()
+    T.Value1 = false
+    T.GetAString() = "Nada"
+
+assert:
+    TM:thing_maker = thing_maker{ThingType:=GetAType(666)}   # devil_thing
+    T:thing := TM.MakeIt()
+    T.Value1 = 666.0
+    T.GetAString() = "Satan!!"
+    T.GetAString() <> "Satan"
+assert:
+    TM:thing_maker = thing_maker{ThingType:=GetAType(42)}   # every_thing
+    T:thing := TM.MakeIt()
+    T.Value1 = 42
+    T.GetAString() = "So long and thanks for all the fish."
+    T.GetAString() <> "So long and thanks for all the fish"
+        
+assert:
+    TM:thing_maker = thing_maker{ThingType:=GetAType(420)}   # drug_thing
+    T:thing := TM.MakeIt()
+    T.Value1 = 420
+    T.GetAString() = "Drugs are bad, m'kay?"
+    T.GetAString() <> "Drugs are bad, m'kay"
+
+assert:
+    TM:thing_maker = thing_maker{ThingType:=GetAType(123)}   # no_thing
+    T:thing := TM.MakeIt()
+    T.Value1 = false
+    T.GetAString() = "Nada"
+    T.GetAString() <> "Nodo"
+#####################################
+
+# test runtime through an interface
+interface_base := interface:
+    Value2:comparable
+
+class1 := class<concrete>(interface_base):
+    Value2<override>:int = 123
+
+class2 := class<concrete>(class1):
+    Value2<override>:int = 1234
+
+class3 := class<concrete>(class1):
+    Value2<override>:int = 321
+
+assert:
+    type_ref:concrete_subtype(class1) = class2
+    type_inst:class1 := type_ref{}
+    type_inst.Value2 = 1234
+
+assert:
+    type_ref:concrete_subtype(interface_base) = class1
+    type_inst := type_ref{}
+    type_inst.Value2 = 123
+
+assert:
+    type_ref:concrete_subtype(interface_base) = class3
+    type_inst := type_ref{}
+    type_inst.Value2 = 321
+
+#####################################
+# Test block function invocation
+mod<public> := module:
+    class_base<public> := class:
+        var Value3<public>:int
+
+    class11<public> := class<concrete>(class_base):
+        var Value3<override>:int := 123
+
+    class21<public> := class<concrete>(class11):
+        var Value3<override>:int := 1234
+
+    class31<public> := class<concrete>(class11):
+        var Value3<override>:int := 321
+
+assert:
+    type_ref:concrete_subtype(mod.class11) = mod.class21
+    type_inst:mod.class11 := type_ref{}
+    #DebugPrint("type_inst.Value = {type_inst.Value3} should be 1234")
+    type_inst.Value3 = 1234
+
+assert:
+    type_ref:concrete_subtype(mod.class_base) = mod.class11
+    type_inst := type_ref{}
+    #DebugPrint("type_inst.Value = {type_inst.Value3} should be 123")
+    type_inst.Value3 = 123
+
+assert:
+    type_ref:concrete_subtype(mod.class_base) = mod.class31
+    type_inst := type_ref{}
+    #DebugPrint("type_inst.Value = {type_inst.Value3} should be 321")
+    type_inst.Value3 = 321

@@ -1,0 +1,213 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# there are several valid forms for localized definitions.
+# this list is mirrored in Desugarer.cpp
+#
+# 1) TheMsg<localizes> := "The Message"
+# 2) TheMsg<localizes> : message = "The Message"
+# 3) TheMsg<localizes>(Name:string) := "The Message"
+# 4) TheMsg<localizes>(Name:string) : message = "The Message"
+# 5) TheMsg<localizes>(Name:string) := "The Message to {Name}"
+# 6) TheMsg<localizes>(Name:string) : message = "The Message to {Name}"
+#
+# NOTE that currently we do not support any of the forms (1, 3, 5) that omit the type name
+
+# test form 1
+assert_semantic_error(3639, 3560, 3560):
+    TheMsg<localizes> := "The Message"
+    Localize(TheMsg) = "The Message"
+
+# test form 2
+
+form2a<public> := module:
+    TheMsg<localizes> : message = "The Message"
+    func<public>()<decides>:void=
+        Localize(TheMsg) = "The Message"
+assert:
+    form2a.func[]
+
+form2b<public> := module:
+    TheMsg<localizes> : message = "The {0u004d}essage"
+    func<public>()<decides>:void=
+        Localize(TheMsg) = "The Message"
+assert:
+    form2b.func[]
+
+form2c<public> := module:
+    TheMsg<localizes> : message = "The \{0u004d\}essage \\r\n\t\"\'\#\<\>\&\~"
+    func<public>()<decides>:void=
+        Localize(TheMsg) = "The \{0u004d\}essage \\r\n\t\"\'\#\<\>\&\~"
+assert:
+    form2c.func[]
+
+# test form 3
+assert_semantic_error(3639, 3560, 3560):
+    TheMsg3<localizes>(Name:string) := "The Message"
+    Localize(TheMsg3("MyName")) = "The Message"
+
+# test form 4
+TheMsg4<localizes>(Name:string) : message = "The Message"
+assert:
+    Localize(TheMsg4("MyName")) = "The Message"
+
+# test form 5
+assert_semantic_error(3639, 3560, 3560):
+    TheMsg5<localizes>(Name:string) := "The Message to {Name}"
+    Localize(TheMsg5("MyName")) = "The Message to MyName"
+
+# test form 6
+TheMsg6<localizes>(Name:string) : message = "The Message to {Name}"
+assert:
+    Localize(TheMsg6("MyName")) = "The Message to MyName"
+
+TheMsg6b<localizes>(Name:string) : message = "The {0u004d}essage to {Name} \\\r\n\t\"\'\#\<\>\&\~"
+assert:
+    Localize(TheMsg6b("MyName")) = "The Message to MyName \\\r\n\t\"\'\#\<\>\&\~"
+
+TheMsg6c<localizes>(Name:string) : message = "The \{0u004d\}essage to {Name}"
+assert:
+    Localize(TheMsg6c("MyName")) = "The \{0u004d\}essage to MyName"
+    
+# test several arguments
+TheMsgWithArgs1<localizes>(Name:string, Number:int) : message = "Hey {Name}, your number is {Number}"
+assert:
+    Localize(TheMsgWithArgs1("MyName", 44)) = "Hey MyName, your number is 44"
+
+# test mentioning the same arguments several times
+TheMsgWithArgs2<localizes>(Name:string, Number:int) : message = "Hey {Number} {Name}, your number is {Number} and your name is {Name}"
+assert:
+    Localize(TheMsgWithArgs2("NameTwo", 747)) = "Hey 747 NameTwo, your number is 747 and your name is NameTwo"
+
+# test not mentioning all of the args
+TheMsgWithArgs3<localizes>(Name:string, Number:int) : message = "I like your name, {Name}"
+assert:
+    Localize(TheMsgWithArgs3("NameThree", 848)) = "I like your name, NameThree"
+
+# test not mentioning any of the args
+TheMsgWithArgs4<localizes>(Name:string, Number:int) : message = "Thanks for playing!"
+assert:
+    Localize(TheMsgWithArgs4("NameFour", 949)) = "Thanks for playing!"
+
+# test with a single argument int parameter
+TheSingleIntMsg<localizes>(Number:int) : message = "The Message to {Number}"
+assert:
+    Localize(TheSingleIntMsg(190091)) = "The Message to 190,091"
+
+# test with the default text being just the parameter
+TheSingleIntMsg2<localizes>(Number:int) : message = "{Number}"
+assert:
+    Localize(TheSingleIntMsg2(190092)) = "190,092"
+
+TheSingleStringMsg<localizes>(Name:string) : message = "{Name}"
+assert:
+    Localize(TheSingleStringMsg("SingleName")) = "SingleName"
+
+assert_semantic_error(3638, 3560):
+    # the rhs must be a string literal
+    BadMsg<localizes> : message = 12
+
+assert_semantic_error(3638, 3560):
+    # the rhs must be a string literal
+    BadMsg<localizes> : message = "A" < "B"
+
+assert_semantic_error<depends_on_library>(3509):
+    # not all argument types have support for localized printing
+    # No overload of the function `MakeLocalizableValue` matches the provided arguments (:c).
+    c := class{}
+    BadMsg<localizes>(C:c) :message= "The Message"
+
+assert_semantic_error<depends_on_library>(3509):
+    # the specified type must be 'message'
+    BadMsg<localizes> : int = "Thanks for playing!"
+    
+
+# See SOL-3472
+assert_valid<depends_on_library>:
+    OuterMsg<localizes>: message = "Hello" # this is fine
+    OuterMsg2<localizes>(X:int) : message = "Hello{X}" # this is fine
+
+assert_semantic_error<depends_on_library>(3651, 3651):
+    Foo():void =
+        InnerMsg<localizes>: message = "Hello" # 3651 because we're inside a function
+        InnerMsg2<localizes>(X:int) : message = "Hello {X}" # 3651 because we're inside a function
+
+# nesting in some control scopes, but still a local inside a function
+assert_semantic_error<depends_on_library>(3651):
+    Foo():void =
+        var count:int = 0
+        loop:
+            if(count >= 10):
+                set count += 1
+                InnerMsg<localizes>: message = "Hello" # 3651 because we're nested inside a function
+                break
+
+# Localized strings are more restricted than normal verse strings. The only things allowed between {} are parameter names and utf8 code points.
+
+InterpolantWithWhitespace1<localizes>(Name:string) : message = "The Message to { Name}"
+InterpolantWithWhitespace2<localizes>(Name:string) : message = "The Message to {Name }"
+InterpolantWithComment1<localizes>(Name:string) : message = "The Message to {<# Comment #>Name}"
+InterpolantWithComment2<localizes>(Name:string) : message = "The Message to {<#Comment#>0u0049}"
+InterpolantWithComment3<localizes>(Name:string) : message = "The Message to {0u0049<#Comment#>}"
+StringWithComment1<localizes>(Name:string) : message = "The Message to <#Comment#>{Name}"
+assert{Localize(InterpolantWithWhitespace1(Abc)) = "The Message to abc"}
+assert{Localize(InterpolantWithWhitespace2(Abc)) = "The Message to abc"}
+assert{Localize(InterpolantWithComment1(Abc)) = "The Message to abc"}
+assert{Localize(InterpolantWithComment2(Abc)) = "The Message to {0u49}"}
+assert{Localize(InterpolantWithComment3(Abc)) = "The Message to {0u49}"}
+assert{Localize(StringWithComment1(Abc)) = "The Message to abc"}
+
+assert_semantic_error<depends_on_library>(3652):
+    TheMsg<localizes>(Name:string) : message = "The Message to {"print"}"
+
+# Currently no check that identifier is one of the arguments
+Abc:string = "abc"
+TheMsg7<localizes>(Name:string) : message = "The Message to {Name} is {Abc}"
+assert:
+    Localize(TheMsg7("MyName")) = "The Message to MyName is \{Abc\}"
+
+super_class := class:
+    MyMessage<localizes>:message = "A"
+sub_class := class(super_class):
+    (super_class:)MyMessage<localizes><override>:message="B"
+    # (sub_class:)MyMessage<localizes>:message="C"
+
+# Extracted, simplified, and renamed from real life example
+common_code := class<abstract>:
+    Task<localizes><public> : message
+    Goal<localizes><protected> : message = "No Goal"
+
+case_a := class<final>(common_code):
+    Task<localizes><override> : message = "Collect A"
+    Goal<localizes><override> : message = "A"
+
+case_b := class<final>(common_code):
+    Task<localizes><override> : message = "Collect B"
+
+# Named parameters
+NamedParam<localizes>(?A:int):message = "{A}!"
+assert:
+  Localize(NamedParam(?A := 4)) = "4!"
+  Localize(NamedParam(?A := 4)) = "4!"
+
+NamedParams<localizes>(?A:int, ?B:int):message = "{A} {B}"
+assert:
+  Localize(NamedParams(?A := 4, ?B := 2)) = "4 2"
+
+NamedParamsWithDefaults<localizes>(?A:int = 2, ?B:int = 1):message = "{A} {B}"
+assert:
+  Localize(NamedParamsWithDefaults(?A := 4, ?B := 2)) = "4 2"
+  Localize(NamedParamsWithDefaults(?A := 4)) = "4 1"
+  Localize(NamedParamsWithDefaults(?B := 3)) = "2 3"
+  Localize(NamedParamsWithDefaults()) = "2 1"
+
+UsingTuple<localizes>(A:int, (B:int, C:int)):message = "{A} {B} {C}"
+assert:
+  Localize(UsingTuple(1,(2,3))) ="1 2 3"
+
+# Examples taken from code in the wild.
+
+assert_semantic_error<depends_on_library>(3509):
+  NamedMessage<localizes>(Agent:?int, Extra: string):message = "{Agent} {Extra}"
+
+assert_semantic_error<depends_on_library>(3540, 3540, 3540, 3506):
+  ComplexMessage<localizes>(title, string, [agent]int : players, splitter: string, end: string):message =  ""

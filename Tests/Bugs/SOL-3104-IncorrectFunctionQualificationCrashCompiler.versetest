@@ -1,0 +1,40 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Correct syntax
+M := module:
+    c := class:
+        (M.c:)F(X:int):int = X
+
+M2 := module:
+    N2 := module:
+        c := class:
+            (M2.N2.c:)F(X:int):int = X
+
+# Incorrect syntax
+assert_semantic_error(3612):
+    M := module:
+        c := class:
+            (M:c:)F(X:int):int = X
+
+assert_semantic_error(3612):
+    M2 := module:
+        N2 := module:
+            c := class:
+                (M2:N2:c:)F(X:int):int = X
+
+
+# The code that crashed the compiler before the fix. 
+# There are a lot of errors, but it was the (M:c:) qualifier that caused the crash.
+assert_semantic_error(3506, 3506, 3506, 3506, 3612, 3523, 3523, 3588, 3532, 3532):
+    c := class(interface_1, interface_2):
+        (interface_1:)F<override>(X:int):int = 20+X
+        (interface_2:)F<override>(X:int):int = 30+X
+    M := module:
+        F(X:int):int = X+1
+        (M:)c := class:
+            (M:c:)F(X:int):int = X+2 # Here Incorrect qualification
+            UseInnerF(X:int):int = (c:)F(X)
+        UseOutterF(X:int):int = (M:)F(X)
+

@@ -1,0 +1,268 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3661):
+    F():int =
+        G<public>():int = 1
+        G()
+
+assert_semantic_error(3661):
+    F():int =
+        G<internal>():int = 1
+        G()
+
+assert_semantic_error(3594, 3661):
+    F():int =
+        G<private>():int = 1
+        G()
+
+assert_semantic_error(3502):
+    F():void =
+        class1 := class {}
+
+assert_semantic_error(3502):
+    F():void =
+        class1(t:type) := class {}
+
+bp_vm_only {
+assert_link_error(9001, 9001):
+    F<public>():int =
+        G():int = 1
+        G()
+}
+
+verse_vm_only {
+HelloWorld := module:
+    F<public>(X:int):int =
+        G():int = X
+        G()
+
+assert:
+    HelloWorld.F(1) = 1
+    HelloWorld.F(2) = 2
+
+Nested := module:
+    F<public>(X:int):int =
+        G():int =
+            H():int = X
+            H()
+        G()
+
+assert:
+    Nested.F(1) = 1
+
+Recursive := module:
+    F<public>(X:int):int =
+        G(Y:int):int =
+            if (Y = 0) then X else G(Y - 1)
+        G(X)
+
+assert:
+    Recursive.F(2) = 2
+
+assert_semantic_error(3506):
+    Recursive := module:
+        F<public>():void =
+            X:int = G()
+            G():int = X
+
+assert_semantic_error(3506):
+    Recursive := module:
+        F<public>():void =
+            G():int = X
+            X:int = G()
+
+assert_semantic_error(3506):
+    MutuallyRecursive := module:
+        F<public>(X:int):int =
+            G(Y:int):int =
+                if (Y = 0) then X else H(Y - 1)
+            H(Y:int):int =
+                G(Y)
+            G(X)
+    Main()<decides>:void =
+        MutuallyRecursive.F(2) = 2
+
+assert_semantic_error(3506):
+    MutuallyRecursive := module:
+        F<public>():int =
+            G():int = H()
+            X:int = G()
+            H():int = X
+            G()
+
+Overloaded := module:
+    F<public>(X:int):int =
+        H(Y:int):int = X + Y
+        H(Y:float):float = Y + 1.0
+        G():int = H(X)
+        G()
+
+assert:
+    Overloaded.F(1) = 2
+
+OverloadNotCalled := module:
+    F<public>(X:int):int =
+        H(Y:int):int = X + Y
+        H(Y:float):float = Y + 1.0
+        G():int =
+            H
+            X
+        G()
+
+assert:
+    OverloadNotCalled.F(1) = 1
+
+assert_valid:
+    TypeVariables := module:
+        F(G(:t):u, X:t where t:type, u:type):u =
+            H(Y:t):t = Y
+            G(H(X))
+
+assert_semantic_error(3510):
+    TypeVariables := module:
+        F(G(:t):u, X:t where t:type, u:type):u =
+            H():t = 1
+            G(H())
+
+assert_semantic_error(3510):
+    TypeVariables := module:
+        F(G(:t):u, X:t where t:type, u:type):u =
+            H(Y:t):t = Y
+            H(X)
+
+FlatCopy := module:
+    F<public>(A:int, B:int, C:int, D:int, E:int):tuple() -> int =
+        G():tuple() -> int =
+            H():tuple() -> int =
+                I():tuple() -> int =
+                    J():int = A + B + C + D + E
+                    J
+                I()
+            H()
+        G()
+
+assert:
+    FlatCopy.F(1, 2, 3, 4, 5)() = 1 + 2 + 3 + 4 + 5
+
+DeepScopes := module:
+    F<public>(A:int):int =
+        G(B:int):int =
+            H(C:int):int =
+                I(D:int):int =
+                    J(E:int):int = A + B + C + D + E
+                    J(D + 1)
+                I(C + 1)
+            H(B + 1)
+        G(A + 1)
+
+assert:
+    DeepScopes.F(1) = 1 + (1 + 1) + (2 + 1) + (3 + 1) + (4 + 1)
+
+LinkedLeak := module:
+    F<public>():tuple() -> int =
+        Xs := array{1, 2, 3, 4, 5, 6, 7}
+        G():tuple() -> int =
+            N := Xs.Length
+            H():int = N
+            H
+        G()
+
+assert:
+    LinkedLeak.F()() = 7
+
+DefaultValue := module:
+    F<public>(X:int)<transacts>:int =
+        G(?Y:int = X)<transacts>:int = Y
+        G()
+
+assert:
+    DefaultValue.F(1) = 1
+
+assert:
+    not (DefaultValue.F(1) = 2)
+
+Fields := module:
+    class1 := class:
+        Data:int
+    F<public>(X:int):int =
+        Y := class1{Data := X}
+        G():int = Y.Data
+        G()
+
+assert:
+    Fields.F(1) = 1
+
+Mutation := module:
+    Ref<public>(X:t where t:type):tuple(tuple() -> t, t -> void) =
+        var State:t = X
+        Get():t = State
+        Set(Y:t):void = set State = Y
+        (Get, Set)
+
+assert:
+    Ref := Mutation.Ref(1)
+    Ref(0)() = 1
+    Ref(1)(2)
+    Ref(0)() = 2
+
+SelfAccess := module:
+    class1<public> := class:
+        Data<public>:int = 0
+        F<public>(X:int):int =
+            G():int =
+                X + Self.H()
+            G()
+        H():int =
+            Data
+
+assert:
+    X := SelfAccess.class1:
+        Data := 1
+    X.F(2) = 3
+
+# Only possible to use (super:) on the same function as being defined.
+assert_semantic_error(3612):
+    Super := module:
+        class1<public> := class:
+            F<public>(X:int):int =
+                X + 1
+        class2<public> := class(class1):
+            F<override>(X:int):int =
+                G():int =
+                    X + (super:)F(X)
+                G()
+    Main()<decides>:void =
+        X := Super.class2{}
+        X.F(1) = 1 + 1 + 1
+
+DuplicateCapture := module:
+    F<public>(X:int):int =
+        G():int = X + X
+        G()
+
+assert:
+    DuplicateCapture.F(1) = 2
+
+Block := module:
+    F<public>(X:int):int =
+        Y:int = 2
+        G():int = X + Y
+        block:
+            Z:int = 3
+            H():int = X + Y + Z
+            G() + H()
+
+assert:
+    Block.F(1) = 1 + 2 + 1 + 2 + 3
+
+EmptyCaptures := module:
+    F<public>(X:int):int =
+        G():int =
+            H():int = 1
+            I():int = X
+            H() + I()
+        G()
+
+assert:
+    EmptyCaptures.F(2) = 3
+}

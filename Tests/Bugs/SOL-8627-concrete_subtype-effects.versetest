@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3512):
+    c := class<reads>:
+
+    # More effects than c
+    d := class<concrete><reads><writes>(c):
+
+    e := class:
+        T:concrete_subtype(c)
+
+        # Could invoke d's constructor
+        # This could be relaxed in the future by giving `concrete_subtype` its own effects.
+        F()<reads>:c = T{}

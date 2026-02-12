@@ -1,0 +1,39 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{/Verse.org/Tests/VerseTestScriptCmd}
+
+F(X:int, Y:int):int = X
+
+assert:
+    X := (1, 2)
+    F(X) = 1
+
+G(X:tuple(int, int)):int = X(0)
+
+assert:
+    G(1, 2) = 1
+
+# Ensure order of evaluation
+assert:
+    var X:tuple(int, int) = (1, 2)
+    block{set X = (3, 4); F}(X) = 3
+
+
+
+H():type{_(:int, :int):int} =
+    #CoroUtils.LogEvent("a")
+    F
+
+K():tuple(int, int) =
+    #CoroUtils.LogEvent("b")
+    (1, 2)
+
+# Ensure order of evaluation
+assert:
+    H()(K()) = 1
+    #CoroUtils.GetEventLogString() = "ab"
+
+IdentityEmptyTuple(X:tuple()):tuple() = X
+
+assert:
+    IdentityEmptyTuple() = ()

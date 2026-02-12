@@ -1,0 +1,22 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# The reported bug (almost), didn't work before.
+
+Something(Test:int):int = Test + 1
+
+some_class(t:type) := class:
+    # The qualification didn't work before
+    (some_class:)Something(Test:int):int = Test + 2
+
+assert:
+    Something(10) = 11
+    some_class(int){}.Something(20) = 22
+
+# Some more checks
+assert_semantic_error(3612):
+    c0(t:type) := class:
+        (c0:)F(V:int):int = V
+    
+    c1(t:type) := class:
+        (c0:)F(V:int):int = V + 1
+

@@ -1,0 +1,672 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+<#>
+    "Exclusive" effects:
+        converges - only supported on native definitions
+        computes
+        varies
+        transacts
+
+    Additive effects:
+        suspends
+        decides
+        reads
+        writes
+        allocates
+
+# Only one exclusive effect is allowed on a definition.
+assert_valid                { F<native>()<converges>:void }
+assert_valid                { F<native>()<computes>:void }
+assert_semantic_error(3565) { F<native>()<varies>:void }
+assert_valid                { F<native>()<transacts>:void }
+
+# duplicated effect attributes
+assert_semantic_error(3565){ F<native>()<converges><converges>:void }
+assert_semantic_error(3565){ F<native>()<computes><computes>:void }
+assert_semantic_error(3565,3565,3565){ F<native>()<varies><varies>:void }
+assert_semantic_error(3565){ F<native>()<transacts><transacts>:void }
+assert_semantic_error(3565){ F<native>()<reads><reads>:void }
+assert_semantic_error(3565){ F<native>()<writes><writes>:void }
+assert_semantic_error(3565){ F<native>()<allocates><allocates>:void }
+assert_semantic_error(3565){ F<native>()<decides><decides>:void }
+assert_semantic_error(3565){ F<native>()<suspends><suspends>:void }
+
+# redundant effects
+assert_semantic_error(3565               ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class {F()<converges><computes>:void= {}} }
+
+assert_semantic_error(3565,2009          ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><varies>:void={}} }
+
+assert_semantic_error(3565               ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><varies><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><transacts><varies>:void={}} }
+
+assert_semantic_error(3565,2009          ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><varies>:void={}} }
+
+assert_semantic_error(3565,2009     ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><varies><computes>:void={}} }
+
+assert_semantic_error(3565,2009     ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><varies><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><varies><computes><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><varies><transacts><computes>:void={}} }
+
+assert_semantic_error(3565               ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts>:void={}} }
+
+assert_semantic_error(3565          ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><computes>:void={}} }
+
+assert_semantic_error(3565,2009     ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><varies>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><computes><varies>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><varies><computes>:void={}} }
+
+
+assert_semantic_error(3565               ) { C:=class {F()<converges><computes>:void= {}} }
+assert_semantic_error(3565               ) { C:=class { F()<converges><computes><transacts>:void={}} }
+assert_semantic_error(3565               ) { C:=class { F()<converges><transacts>:void={}} }
+assert_semantic_error(3565               ) { C:=class { F()<converges><transacts><computes>:void={}} }
+
+assert_semantic_error(3565               ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><allocates>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><allocates><varies>:void={}} }
+
+assert_semantic_error(3565     ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><allocates><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><allocates><varies><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><computes><allocates><transacts><varies>:void={}} }
+
+assert_semantic_error(3565,2009     ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><varies>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><varies><computes>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><varies><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><varies><computes><transacts>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><varies><transacts><computes>:void={}} }
+
+assert_semantic_error(3565          ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><transacts>:void={}} }
+
+assert_semantic_error(3565     ):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><allocates><transacts><computes>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><varies><allocates>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><computes><varies><allocates>:void={}} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet { C:=class { F()<converges><transacts><varies><allocates><computes>:void={}} }
+
+
+assert_semantic_error(3565               ){ C:=class { F()<converges><computes><allocates>:void={}} }
+assert_semantic_error(3565               ){ C:=class { F()<converges><computes><allocates><transacts>:void={}} }
+assert_semantic_error(3565               ){ C:=class { F()<converges><allocates><transacts>:void={}} }
+assert_semantic_error(3565               ){ C:=class { F()<converges><allocates><transacts><computes>:void={}} }
+
+
+assert_semantic_error(3565)     { F<native>()<computes><converges>:void }
+assert_valid                    { F<native>()<allocates><converges>:void }
+assert_semantic_error(3565,3565){ F<native>()<varies><converges>:void }
+assert_semantic_error(3565)     { F<native>()<transacts><converges>:void }
+
+assert_valid                    { F()<computes><allocates>:void={} }
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<computes><varies>:void={}
+assert_semantic_error(3565     ){ F()<computes><transacts>:void={} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<computes><allocates><varies>:void={}
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<computes><varies><allocates>:void={}
+
+
+
+assert_semantic_error(3565){ F()<computes><allocates><transacts>:void={} }
+assert_semantic_error(3565){ F()<computes><transacts><allocates>:void={} }
+assert_semantic_error(3565){ F()<computes><reads><transacts>:void={} }
+assert_semantic_error(3565){ F()<computes><writes><transacts>:void={} }
+assert_semantic_error(3565){ F()<computes><allocates><transacts>:void={} }
+assert_semantic_error(3565){ F()<computes><transacts><reads>:void={} }
+assert_semantic_error(3565){ F()<computes><transacts><writes>:void={} }
+assert_semantic_error(3565){ F()<computes><transacts><allocates>:void={} }
+
+assert_valid                    { F()<allocates><computes>:void={} }
+assert_semantic_error(3565     ){ F()<allocates><transacts>:void={} }
+assert_semantic_error(3565     ){ F()<allocates><computes><transacts>:void={} }
+assert_semantic_error(3565     ){ F()<allocates><transacts><computes>:void={} }
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<varies><computes>:void={}
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<varies><transacts>:void={}
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<varies><computes><transacts>:void={}
+
+assert_semantic_error(3565,2009):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=InternalAPI, ?UploadedAtFNVersion:=2900):
+        snippet:
+            F()<varies><transacts><computes>:void={}
+
+assert_semantic_error(3565     )     { F()<transacts><computes>:void={} }
+assert_semantic_error(3565,3565)     { F()<transacts><varies>:void={} }
+assert_semantic_error(3565     )     { F()<transacts><reads>:void={} }
+assert_semantic_error(3565     )     { F()<transacts><writes>:void={} }
+assert_semantic_error(3565     )     { F()<transacts><allocates>:void={} }
+assert_semantic_error(3565,3565)     { F()<transacts><computes><varies>:void={} }
+assert_semantic_error(3565,3565)     { F()<transacts><varies><computes>:void={} }
+
+# One exclusive effect can be combined with additive effects.
+assert_valid { F<native>()<converges><suspends>:void }
+assert_valid { F()<computes><suspends>:void={} }
+assert_valid { F()<reads><suspends>:void={} }
+assert_valid { F()<writes><suspends>:void={} }
+assert_valid { F()<allocates><suspends>:void={} }
+assert_valid { F()<transacts><suspends>:void={} }
+assert_valid { F()<suspends>:void={} }
+
+assert_valid { F<native>()<converges><decides>:void }
+assert_valid { F()<computes><decides>:void={} }
+assert_valid { F()<reads><decides>:void={} }
+assert_valid { F()<writes><decides>:void={} }
+assert_valid { F()<allocates><decides>:void={} }
+assert_valid { F()<transacts><decides>:void={} }
+assert_valid { F()<decides>:void={} }
+
+assert_valid                { F<native>()<converges><allocates>:void }
+assert_valid                { F()<computes><allocates>:void={} }
+assert_valid                { F()<reads><allocates>:void={} }
+assert_valid                { F()<writes><allocates>:void={} }
+assert_semantic_error(3565) { F()<transacts><allocates>:void={} }  # transacts already implies allocates
+assert_valid                { F()<allocates>:void={} }
+
+# The suspends and decides effects can't be combined.
+assert_semantic_error(3656) { F<native>()<converges><suspends><decides>:void }
+assert_semantic_error(3656) { F()<computes><suspends><decides>:void={} }
+assert_semantic_error(3656) { F()<reads><suspends><decides>:void={} }
+assert_semantic_error(3656) { F()<writes><suspends><decides>:void={} }
+assert_semantic_error(3656) { F()<allocates><suspends><decides>:void={} }
+assert_semantic_error(3656) { F()<transacts><suspends><decides>:void={} }
+assert_semantic_error(3656) { F()<suspends><decides>:void={} }
+
+# Can only call a decides function from a suspends function inside a failure context.
+assert_semantic_error(3512){F()<transacts><decides>:int=0; G()<suspends>:void=F[]}
+assert_valid               {F()<transacts><decides>:int=0; G()<suspends>:void=if(F[]) then 0 else 1}
+assert_valid               {F()<transacts><decides>:int=0; G()<suspends>:void=F[] or 1}
+assert_valid               {F()<transacts><decides>:int=0; G()<suspends>:void=(not F[]) or false}
+assert_valid               {F()<transacts><decides>:int=0; G()<suspends>:void=option{F[]}}
+assert_valid               {F()<transacts><decides>:int=0; G()<suspends>:void=logic{F[]}}
+assert_valid               {F()<transacts><decides>:int=0; G()<suspends>:void=for(X:=1..2; F[]){}}
+
+# Can only call a suspends function from another suspends function *outside* a failure context.
+assert_valid               {F()<suspends>:?int=false; G()<suspends>:void=F()}
+assert_semantic_error(3512){F()<suspends>:?int=false; G()<suspends>:void=if(F()?) then 0 else 1}
+assert_semantic_error(3512){F()<suspends>:?int=false; G()<suspends>:void=F()? or 1}
+assert_semantic_error(3512){F()<suspends>:?int=false; G()<suspends>:void=(not F()?) or false}
+assert_semantic_error(3512){F()<suspends>:?int=false; G()<suspends>:void=option{F()?}}
+assert_semantic_error(3512){F()<suspends>:?int=false; G()<suspends>:void=logic{F()?}}
+assert_semantic_error(3512){F()<suspends>:?int=false; G()<suspends>:void=for(X:=1..2; F()?){}}
+
+# The transacts effect set includes the computes, reads, writes, allocates effects.
+assert_valid { G()<computes>:void={}        ; F()<transacts>:void=G() }
+assert_valid { G()<reads>:void={}           ; F()<transacts>:void=G() }
+assert_valid { G()<writes>:void={}          ; F()<transacts>:void=G() }
+assert_valid { G()<allocates>:void={}       ; F()<transacts>:void=G() }
+
+# The varies effect set includes the computes effect.
+assert_semantic_error(3565){ G()<computes>:void={}; F()<varies>:void=G() }
+
+# The decides effect set includes the computes effect.
+assert_valid { G()<computes>:void={}; F()<decides>:void=G()}
+
+# The converges effect is only allowed on native functions.
+assert_valid               { F<native>         ()<converges>:void }
+assert_semantic_error(3565){ F                 ()<converges>:void={} }
+assert_semantic_error(3565){ F<native_callable>()<converges>:void={} }
+assert_semantic_error(3565){ c:=class<converges>{} }
+
+# Test declaring different combinations of effects on classes/structs.
+assert_valid      { c := class<computes>{} }
+assert_valid      { c := class<reads>{} }
+assert_valid      { c := class<allocates>{} }
+assert_valid      { c := class<writes>{} }
+assert_valid      { c := class<transacts>{} }
+
+assert_valid      { s := struct<computes>{} }
+assert_valid      { s := struct<reads>{} }
+assert_valid      { s := struct<allocates>{} }
+assert_valid      { s := struct<writes>{} }
+assert_valid      { s := struct<transacts>{} }
+
+# async and decides effects aren't allowed on classes and structs.
+assert_semantic_error(3512){ c := class<suspends>{} }
+assert_semantic_error(3512){ c := class<decides>{} }
+
+assert_semantic_error(3512){ c := struct<suspends>{} }
+assert_semantic_error(3512){ c := struct<decides>{} }
+
+# Classes must have at least the effects of their super class.
+assert_semantic_error(3512){ c1:=class{};       c2:=class<computes>(c1){}; c3:=class<computes>(c2){} }
+assert_valid               { c1:=class<computes>{}; c2:=class<computes>(c1){}; c3:=class<computes>(c2){} }
+
+# Don't allow effect attributes on the other class macro clauses.
+assert_semantic_error(3604, 3604){ c  := class()<computes>{} }
+assert_syntax_error(3100){"c  := (@computes (class()\{\}))"}
+assert_semantic_error(3604){ c  := (class(){})<computes> }
+
+# Shadow the built-in attribute classes is disallowed (for now) since we don't handle qualifiers
+# when analyzing the effect attributes.
+assert_semantic_error(3514){ m := module { (m:)suspends := class{} } }
+assert_semantic_error(3514){ m := module { (m:)decides := class{} } }
+assert_semantic_error(3514){ m := module { (m:)varies := class{} } }
+assert_semantic_error(3514){ m := module { (m:)reads := class{} } }
+assert_semantic_error(3514){ m := module { (m:)writes := class{} } }
+assert_semantic_error(3514){ m := module { (m:)allocates := class{} } }
+assert_semantic_error(3514){ m := module { (m:)computes := class{} } }
+assert_semantic_error(3514){ m := module { (m:)converges := class{} } }
+assert_semantic_error(3514){ m := module { (m:)transacts := class{} } }
+
+# Class member initializers are restricted to be converges, but allow effectful class instantiations,
+# since they are implicitly converges as well, whatever their effect declarations.
+assert_semantic_error(3582):
+    c0 := class:
+        var V:int = 0
+    Foo():int=
+        C0 := c0{}
+        set C0.V += 1
+    c1 := class{M:int = Foo()}
+
+assert_semantic_error(3582):
+    c0 := class:
+        var V:int = 0
+    Foo():int=
+        C0 := c0{}
+        set C0.V += 1
+        return C0.V
+    F():int=Foo()
+    c := class{M:int = F()}
+
+m0 := module:
+    c0<public>:=class{block{CoroUtils.LogEvent("_")}}
+    c1<public>:=class{C0:c0=c0{}}
+
+assert:
+    CoroUtils.LogEvent("a")
+    m0.c0{}
+    CoroUtils.LogEvent("b")
+    m0.c1{}
+    CoroUtils.GetEventLogString() = "a_b_"
+
+# Test that pointer operations require the appropriate effects
+assert_semantic_error(3565){ F()<varies>:void={var V:int=0} }
+assert_valid               { F()<allocates>:void={var V:int=0} }
+
+assert_valid:
+    c0 := class:
+        var V:int=0
+    F()<transacts>:int=
+        C0:c0 = c0{}
+        return C0.V
+
+assert_semantic_error(3565,3512):
+    c0 := class:
+        var V:int=0
+    Foo():int=c0{}.V
+    F()<varies>:int=Foo()
+
+assert_valid:
+    c0 := class:
+        var V:int=0
+    F()<transacts>:int=
+        C0 := c0{}
+        set C0.V=1
+
+assert_semantic_error(3512):
+    c0 := class:
+        var V:int=0
+    Foo():int=
+        C0:=c0{}
+        set C0.V = 1
+    F()<computes>:int=Foo()
+
+assert_valid:
+    c0 := class:
+        var V:float=0.0
+    F()<transacts>:float=
+        C0 := c0{}
+        set C0.V+=1.0
+
+assert_semantic_error(3565,3512):
+    c0 := class:
+        var V:float=0.0
+    Foo():float=
+        C0 := c0{}
+        set C0.V+=1.0
+    F()<varies>:float=Foo()
+
+assert_valid:
+    c0 := class:
+        var V:float=0.0
+    F()<transacts>:float=
+        C0 := c0{}
+        set C0.V-=1.0
+
+assert_semantic_error(3565,3512):
+    c0 := class:
+        var V:float=0.0
+    Foo():float=
+        C0 := c0{}
+        set C0.V-=1.0
+    F()<varies>:float=Foo()
+
+assert_valid:
+    c0 := class:
+        var V:float=0.0
+    F()<transacts>:float=
+        C0 := c0{}
+        set C0.V*=1.0
+
+assert_semantic_error(3565,3512):
+    c0 := class:
+        var V:float=0.0
+    Foo():float=
+        C0:=c0{}
+        set C0.V*=1.0
+    F()<varies>:float=Foo()
+
+assert_valid:
+    c0 := class:
+        var V:float=0.0
+    F()<transacts>:float=
+        C0 := c0{}
+        set C0.V/=1.0
+
+assert_semantic_error(3565,3512):
+    c0 := class:
+        var V:float=0.0
+    Foo():float=
+        C0:=c0{}
+        set C0.V/=1.0
+    F()<varies>:float=Foo()
+
+# Test that calling a function requires the effects declared by the function.
+assert_valid                    { F():void={}; G():void=F() }
+assert_semantic_error(3512)     { F():void={}; G()<transacts>:void=F() }
+assert_semantic_error(3565,3512){ F():void={}; G()<varies>:void=F() }
+assert_semantic_error(3512)     { F():void={}; G()<computes>:void=F() }
+assert_semantic_error(3512)     { F():void={}; G()<computes><suspends>:void=F() }
+assert_semantic_error(3512)     { F():void={}; G()<computes><decides>:void=F() }
+
+assert_valid                    { F()<transacts>:void={}; G():void=F() }
+assert_valid                    { F()<transacts>:void={}; G()<transacts>:void=F() }
+assert_semantic_error(3565)     { F()<transacts>:void={}; G()<varies>:void=F() }
+assert_semantic_error(3512)     { F()<transacts>:void={}; G()<reads><allocates>:void=F() }
+assert_semantic_error(3512)     { F()<transacts>:void={}; G()<computes>:void=F() }
+assert_semantic_error(3512)     { F()<transacts>:void={}; G()<computes><suspends>:void=F() }
+assert_semantic_error(3512)     { F()<transacts>:void={}; G()<computes><decides>:void=F() }
+
+assert_semantic_error(3565)     { F()<varies>:void={}; G():void=F() }
+assert_semantic_error(3565,3565){ F()<varies>:void={}; G()<varies>:void=F() }
+assert_semantic_error(3565)     { F()<varies>:void={}; G()<transacts>:void=F() }
+assert_semantic_error(3565,3512){ F()<varies>:void={}; G()<computes>:void=F() }
+assert_semantic_error(3565,3512){ F()<varies>:void={}; G()<computes><suspends>:void=F() }
+assert_semantic_error(3565,3512){ F()<varies>:void={}; G()<computes><decides>:void=F() }
+
+assert_valid               { F()<computes>:void={}; G():void=F() }
+assert_valid               { F()<computes>:void={}; G()<computes>:void=F() }
+assert_semantic_error(3565){ F()<computes>:void={}; G()<varies>:void=F() }
+assert_valid               { F()<computes>:void={}; G()<transacts>:void=F() }
+# Can't write non-native <converges> functions in Verse yet:
+#assert_semantic_error(3512){ F()<computes>:void={}; G()<converges>:void=F() }
+
+assert_valid               { F<native>()<converges>:void; G():void=F() }
+assert_valid               { F<native>()<converges>:void; G()<computes>:void=F() }
+assert_semantic_error(3565){ F<native>()<converges>:void; G()<varies>:void=F() }
+assert_valid               { F<native>()<converges>:void; G()<transacts>:void=F() }
+
+# Test that instantiating an archetype requires the effects declared by the class.
+assert_valid                    { c:=class<computes> {}; F()<computes>        :void=c{} }
+assert_semantic_error(3565,3512){ c:=class<varies>   {}; F()<computes>        :void=c{} }
+assert_semantic_error(3565,3565){ c:=class<varies>   {}; F()<varies>          :void=c{} }
+assert_semantic_error(3512)     { c:=class<transacts>{}; F()<computes>        :void=c{} }
+assert_semantic_error(3565)     { c:=class<transacts>{}; F()<varies>          :void=c{} }
+assert_semantic_error(3512)     { c:=class<transacts>{}; F()<reads><allocates>:void=c{} }
+
+assert_valid                    { c:=class<transacts>{}; F()<transacts>:void=c{} }
+assert_valid                    { c:=class<transacts>{}; F()           :void=c{} }
+assert_valid                    { c:=class           {}; F()<transacts>:void=c{} }
+assert_valid                    { c:=class           {}; F()           :void=c{} }
+
+# Test that effects aren't allowed in class member default initializers or do clauses unless declared on the class.
+assert_semantic_error(3512          ){                   c:=class{X:int=option{0}?    } }
+assert_semantic_error(3512,3582,3582){ F()<suspends>:int=0; c:=class{X:int=race{F(); F()}} }
+
+assert_semantic_error(3512){ F()<computes><decides> :void={}; c:=class<computes> {block{F[]}} }
+assert_semantic_error(3512){ F()<computes><suspends>:void={}; c:=class<computes> {block{F()}} }
+
+assert_semantic_error(3565, 3512){ F()<varies>            :void={}; c:=class<computes> {block{F()}} }
+assert_semantic_error(3565)      { F()<varies>            :void={}; c:=class<transacts>{block{F()}} }
+
+assert_semantic_error(3512)      { F()<transacts>:void={}; c:=class<computes>             {block{F()}} }
+assert_semantic_error(3565)      { F()<transacts>:void={}; c:=class<varies>               {block{F()}} }
+assert_semantic_error(3512)      { F()<transacts>:void={}; c:=class<reads><allocates>     {block{F()}} }
+assert_valid                     { F()<transacts>:void={}; c:=class<transacts>            {block{F()}} }
+assert_valid                     { F()<transacts>:void={}; c:=class                       {block{F()}} }
+assert_semantic_error(3512)      { F()           :void={}; c:=class                       {block{F()}} }
+assert_semantic_error(3512)      { F()           :void={}; c:=class<transacts>            {block{F()}} }
+
+# spawn requires the transacts effect in addition to the effects of the spawned async function.
+bp_vm_only {
+assert_valid                         { F()<computes><suspends> :void={}; G()                           :void=spawn{F()} }
+assert_semantic_error(3512)          { F()<computes><suspends> :void={}; G()<transacts>                :void=spawn{F()} }
+assert_semantic_error(3512)          { F()<computes><suspends> :void={}; G()<computes>                 :void=spawn{F()} }
+assert_semantic_error(3565,3512)     { F()<computes><suspends> :void={}; G()<varies>                   :void=spawn{F()} }
+assert_semantic_error(3565)          { F()<varies><suspends>   :void={}; G()                           :void=spawn{F()} }
+assert_semantic_error(3565,3512)     { F()<varies><suspends>   :void={}; G()<transacts>                :void=spawn{F()} }
+assert_semantic_error(3565,3512,3512){ F()<varies><suspends>   :void={}; G()<computes>                 :void=spawn{F()} }
+assert_semantic_error(3565,3565,3512){ F()<varies><suspends>   :void={}; G()<varies>                   :void=spawn{F()} }
+assert_valid                         { F()<transacts><suspends>:void={}; G()                           :void=spawn{F()} }
+assert_semantic_error(3512)          { F()<transacts><suspends>:void={}; G()<transacts>                :void=spawn{F()} }
+assert_semantic_error(3512,3512)     { F()<transacts><suspends>:void={}; G()<computes>                 :void=spawn{F()} }
+assert_semantic_error(3565,3512)     { F()<transacts><suspends>:void={}; G()<varies>                   :void=spawn{F()} }
+}
+
+verse_vm_only {
+assert_valid                         { F()<computes><suspends> :void={}; G()                           :void=spawn{F()} }
+assert_valid                         { F()<computes><suspends> :void={}; G()<transacts>                :void=spawn{F()} }
+assert_semantic_error(3512)          { F()<computes><suspends> :void={}; G()<computes>                 :void=spawn{F()} }
+assert_semantic_error(3565)          { F()<computes><suspends> :void={}; G()<varies>                   :void=spawn{F()} }
+assert_semantic_error(3565)          { F()<varies><suspends>   :void={}; G()                           :void=spawn{F()} }
+assert_semantic_error(3565)          { F()<varies><suspends>   :void={}; G()<transacts>                :void=spawn{F()} }
+assert_semantic_error(3565,3512,3512){ F()<varies><suspends>   :void={}; G()<computes>                 :void=spawn{F()} }
+assert_semantic_error(3565,3565)     { F()<varies><suspends>   :void={}; G()<varies>                   :void=spawn{F()} }
+assert_valid                         { F()<transacts><suspends>:void={}; G()                           :void=spawn{F()} }
+assert_valid                         { F()<transacts><suspends>:void={}; G()<transacts>                :void=spawn{F()} }
+assert_semantic_error(3512,3512)     { F()<transacts><suspends>:void={}; G()<computes>                 :void=spawn{F()} }
+assert_semantic_error(3565)          { F()<transacts><suspends>:void={}; G()<varies>                   :void=spawn{F()} }
+
+}
+
+# spawn only allows async and transacts in the function it calls.
+assert_semantic_error(3656,3512){ F()<suspends><decides>:void={}; G():void=spawn{F[]} }
+assert_semantic_error(3656,3512){ F()<suspends><decides>:void={}; G()<decides>:void=spawn{F[]} }
+
+# sync, rush, and race require the async effect in addition to the effects of the called functions.
+assert_valid                         { F()<computes><suspends>  :void={}; G()<computes><suspends>  :void=sync{F(),F()} }
+assert_valid                         { F()<computes><suspends>  :void={}; G()<computes><suspends>  :void=rush{F(),F()} }
+assert_valid                         { F()<computes><suspends>  :void={}; G()<computes><suspends>  :void=race{F(),F()} }
+assert_semantic_error(3512          ){ F()<computes><suspends>  :void={}; G()<computes>         :void=sync{F(),F()} }
+assert_semantic_error(3512          ){ F()<computes><suspends>  :void={}; G()<computes>         :void=rush{F(),F()} }
+assert_semantic_error(3512          ){ F()<computes><suspends>  :void={}; G()<computes>         :void=race{F(),F()} }
+assert_semantic_error(3565,3565     ){ F()<varies><suspends>:void={}; G()<varies><suspends>:void=sync{F(),F()} }
+assert_semantic_error(3565,3565     ){ F()<varies><suspends>:void={}; G()<varies><suspends>:void=rush{F(),F()} }
+assert_semantic_error(3565,3565     ){ F()<varies><suspends>:void={}; G()<varies><suspends>:void=race{F(),F()} }
+assert_semantic_error(3565,3565,3512){ F()<varies><suspends>:void={}; G()<varies>       :void=sync{F(),F()} }
+assert_semantic_error(3565,3565,3512){ F()<varies><suspends>:void={}; G()<varies>       :void=rush{F(),F()} }
+assert_semantic_error(3565,3565,3512){ F()<varies><suspends>:void={}; G()<varies>       :void=race{F(),F()} }
+assert_semantic_error(3565,3512,3512){ F()<varies><suspends>:void={}; G()<computes><suspends>  :void=sync{F(),F()} }
+
+# Fallible calls, postfix ?, prefix `not`, and infix `and` require the decides effect.
+assert_valid                    { F()<decides>:void={}; G()<decides>:void=F[] }
+assert_semantic_error(3512)     { F()<decides>:void={}; G()         :void=F[] }
+
+assert_valid                    { c:=class{}; d:=class(c){}; G(C:c)<transacts><decides>:void=d[C] }
+assert_semantic_error(3512)     { c:=class{}; d:=class(c){}; G(C:c)         :void=d[C] }
+
+assert_valid                    { F()<decides>:void=false? }
+assert_semantic_error(3512)     { F()         :void=false? }
+
+assert_valid                    { F()<decides>:void=not false? }
+assert_semantic_error(3512)     { F()         :void=not false? }
+
+assert_valid                    { F()<transacts><decides>:void=true? and false }
+assert_semantic_error(3512,3512){ F()         :void=true? and false }
+
+# if condition, for domain, option, logic, and logical `or` allow the decides effect.
+assert_valid { G():void=if(false?){} }
+assert_valid { G():void=for(X:=0..0; false?){} }
+assert_valid { G():void=option{false?} }
+assert_valid { G():void=logic{false?} }
+assert_valid { G():void=false? or true }
+
+# defer doesn't allow async or decides effect.
+assert_valid               { F()          :void={}; G()<suspends>:void={defer{F()}; return} }
+assert_semantic_error(3512){ F()<suspends>:void={}; G()<suspends>:void={defer{F()}; return} }
+
+assert_valid               { F()         :void={}; G()<decides>:void={defer{F()}; return} }
+assert_semantic_error(3512){ F()<decides>:void={}; G()<decides>:void={defer{F[]}; return} }
+
+# Test that effect specifiers are not (yet) allowed on the definition type.
+assert_syntax_error(3101) { "X:int<computes> = 0" }
+assert_syntax_error(3101) { "F():int<computes> = 0" }
+
+# Calling a <transacts> function from various function types
+assert_valid<depends_on_library>                     { c := class { func()<transacts>:int= 0; f2_default():void=func(); }                  }
+assert_valid<depends_on_library>                     { c := class { func()<transacts>:int= 0; f2_transacts()<transacts>:void=func(); }     }
+assert_semantic_error<depends_on_library>(3565)      { c := class { func()<transacts>:int= 0; f2_varies()<varies>:void=func(); }           }
+assert_semantic_error<depends_on_library>(3512)      { c := class { func()<transacts>:int= 0; f2_varies()<reads><allocates>:void=func(); } }
+assert_semantic_error<depends_on_library>(3512)      { c := class { func()<transacts>:int= 0; f2_reads()<reads>:void=func(); }             }
+assert_semantic_error<depends_on_library>(3512)      { c := class { func()<transacts>:int= 0; f2_writes()<writes>:void=func(); }           }
+assert_semantic_error<depends_on_library>(3512)      { c := class { func()<transacts>:int= 0; f2_allocates()<allocates>:void=func(); }     }
+assert_semantic_error<depends_on_library>(3512)      { c := class { func()<transacts>:int= 0; f2_computes()<computes>:void=func(); }       }
+
+# Calling a <varies> function from various function types. (Varies is now deprecated, so it's always at least one error)
+assert_semantic_error<depends_on_library>(3565)      { c := class { func()<varies>:int= 0; f2_default():void=func(); }              }
+assert_semantic_error<depends_on_library>(3565)      { c := class { func()<varies>:int= 0; f2_transacts()<transacts>:void=func(); } }
+assert_semantic_error<depends_on_library>(3565,3565) { c := class { func()<varies>:int= 0; f2_varies()<varies>:void=func(); }       }
+assert_semantic_error<depends_on_library>(3565,3512) { c := class { func()<varies>:int= 0; f2_reads()<reads>:void=func(); }         }
+assert_semantic_error<depends_on_library>(3565,3512) { c := class { func()<varies>:int= 0; f2_writes()<writes>:void=func(); }       }
+assert_semantic_error<depends_on_library>(3565,3512) { c := class { func()<varies>:int= 0; f2_allocates()<allocates>:void=func(); } }
+assert_semantic_error<depends_on_library>(3565,3512) { c := class { func()<varies>:int= 0; f2_computes()<computes>:void=func(); }   }
+
+# Calling a <reads> function from various function types
+assert_valid<depends_on_library>                { lerp_default(param:float):float = Lerp(0.0,1.0,param)                }
+assert_valid<depends_on_library>                { lerp_transacts(param:float)<transacts>:float = Lerp(0.0,1.0,param)   }
+assert_semantic_error<depends_on_library>(3565) { lerp_varies(param:float)<varies>:float = Lerp(0.0,1.0,param)         }
+assert_valid<depends_on_library>                { lerp_reads(param:float)<reads>:float = Lerp(0.0,1.0,param)           }
+assert_semantic_error<depends_on_library>(3512) { lerp_writes(param:float)<writes>:float = Lerp(0.0,1.0,param)         }
+assert_semantic_error<depends_on_library>(3512) { lerp_allocates(param:float)<allocates>:float = Lerp(0.0,1.0,param)   }
+assert_semantic_error<depends_on_library>(3512) { lerp_computes(param:float)<computes>:float = Lerp(0.0,1.0,param)     }
+
+# Calling a <computes> function from various function types
+assert_valid<depends_on_library>                { sgn_default(param:float):float = Sgn(param)                }
+assert_valid<depends_on_library>                { sgn_transacts(param:float)<transacts>:float = Sgn(param)   }
+assert_semantic_error<depends_on_library>(3565) { sgn_varies(param:float)<varies>:float = Sgn(param)         }
+assert_valid<depends_on_library>                { sgn_reads(param:float)<reads>:float = Sgn(param)           }
+assert_valid<depends_on_library>                { sgn_writes(param:float)<writes>:float = Sgn(param)         }
+assert_valid<depends_on_library>                { sgn_allocates(param:float)<allocates>:float = Sgn(param)   }
+assert_valid<depends_on_library>                { sgn_computes(param:float)<computes>:float = Sgn(param)     }
+
+# post-3100, decides no longer masks converges because decides no longer implies diverges
+assert_semantic_error(3565)  {func()<converges><decides>:int= 42 }
+
+# pre-3100, <converges><decides> was getting diverges through the <decides> and masking the <converges>. That should be emulated.
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3000):
+        snippet:
+            func()<converges><decides>:int= 42                              # OK pre-3100
+
+# post-3100, converges on non-native functions is enforced
+assert_semantic_error(3565) { func()<converges><reads>:int= 42 }
+
+# pre-3100, <converges><reads> was still an error because reads didn't mask converges the way decides did
+assert_semantic_error(3565):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3000):
+        snippet:
+            func()<converges><reads>:int= 42                                # 3565 always - even back in the day.

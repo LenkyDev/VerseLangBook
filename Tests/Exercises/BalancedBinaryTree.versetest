@@ -1,0 +1,86 @@
+<#
+
+Original question from: https://leetcode.com/problems/balanced-binary-tree/
+
+Given a binary tree, determine if it is height-balanced.
+
+For this problem, a height-balanced binary tree is defined as:
+
+    a binary tree in which the left and right subtrees of every node differ in height by no more than 1.
+
+Example 1:
+Input: root = [3,9,20,null,null,15,7]
+Output: true
+
+Example 2:
+Input: root = [1,2,2,3,3,null,null,4,4]
+Output: false
+
+Example 3:
+Input: root = []
+Output: true
+
+Constraints:
+
+    The number of nodes in the tree is in the range [0, 5000].
+    -104 <= Node.val <= 104
+#>
+
+VerseDataStructures<public> := module:
+    BSTNode<public>:= class:
+        var left<public>:?BSTNode = false
+        var right<public>:?BSTNode = false
+        val<public>:int = 0
+
+GetHeightOfTree(maybe_t:?VerseDataStructures.BSTNode)<transacts>:int=
+    if (t := maybe_t?):
+        lfHeight:int = GetHeightOfTree(t.left)
+        rtHeight:int = GetHeightOfTree(t.right)
+        height:int = lfHeight
+        if (lfHeight > rtHeight):
+            return height + 1
+        else:
+            return rtHeight + 1
+    return -1 # sentinel value
+
+IsBalanced(root:?VerseDataStructures.BSTNode)<transacts>:logic=
+    if (t := root?):
+        # NOTE: (sonictk) Get height of L/R subtrees. If they meet the height difference criteria, they pass.
+        # This _must_ be done for every node in the tree.
+        # Otherwise [1,2,2,3,null,null,3,4,null,null,4] would be considered balanced.
+        lfHeight:int = GetHeightOfTree(t.left)
+        rtHeight:int = GetHeightOfTree(t.right)
+        return logic{Abs(lfHeight - rtHeight) > 1 and IsBalanced(t.left)? and IsBalanced(t.right)?}
+    return true
+
+Test():void=
+    d:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=15}
+    e:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=7}
+    c:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=20, left := option{d}, right := option{e}}
+    b:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=9}
+    a:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=3, left := option{b}, right := option{c}}
+
+    IsBalanced(option{a})
+
+Test2():void=
+    f:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 4}
+    g:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 4}
+    d:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 3, left := option{f}, right := option{g}}
+    e:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 3}
+    b:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 2, left := option{d}, right := option{e}}
+    c:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 2}
+    a:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val := 1, left := option{b}, right := option{c}}
+
+    IsBalanced(option{a})
+
+Test3():void=
+    IsBalanced(false)
+
+assert:
+    Tmp := Test()
+    
+assert:
+    Tmp2 := Test2()
+    
+assert:
+    Tmp3 := Test3()

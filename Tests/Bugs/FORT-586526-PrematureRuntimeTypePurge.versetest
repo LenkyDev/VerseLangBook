@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+# This previously triggered a use-after-free if the assert is executed in between
+# marking and purging objects.
+c := class{X:any={}}
+assert{c{X:=array{1}}}
+
+# Assuming that VerseTestScriptCmd does GC marking before each assert executes,
+# and purges after each assert executes, this should resurrect a runtime type
+# that was created by the previous assert, but unreachable before executing this
+# assert. If that resurrection doesn't mark the runtime type, then this will
+# crash.
+assert{c{X:=array{1}}}

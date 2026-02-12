@@ -1,0 +1,130 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# ------------------------------
+# SOL-7778
+# Enumerators using reserved should no longer work as v34.00
+assert_semantic_error(2015, 2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ for, array }  # 2015, 2015 - only reserved words with no competing built-in symbols
+
+assert_semantic_error(3514, 3514):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3500):
+        snippet:
+            E:=enum{ for, array }  # 3514, 3514 - aliasing reserved words is an error post-34.00
+
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ (E:)for, (E:)array }
+
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3500):
+        snippet:
+            E:=enum{ (E:)for, (E:)array }
+
+# test the artificial @available attribute added to <open> and <closed>
+# They're reserved words, but unlike `for` and `array`, they're built-in definitiona and not just macros.
+assert_semantic_error(2015, 2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ open, closed }    # unqualified reserved word warning, but nothing else pre-34.00
+
+assert_semantic_error(3514, 3514, 3532, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3500):
+        snippet:
+            E:=enum{ open, closed }    # unqualified reserved word error, and also attribute symbol collision post-34.00
+
+assert_valid:
+    E:=enum{ (E:)open, (E:)closed }    # qualified identifiers don't collide with built-in systems
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ final }     # 2015 - The reserved word check is a warning, but the ambiguous definition is not enforced pre-34.00
+
+assert_semantic_error(3514, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3500):
+        snippet:
+            E:=enum{ final }     # 3514, 3532 - reserved word AND ambiguous definition
+
+E:=enum{ (E:)final }
+F:=enum{ (F:)final }
+
+assert:
+    e:E = E.final
+    e = E.final
+
+assert:
+    e:E = E.final
+    e <> F.final      # qualifiers don't cause problems with disambiguation
+
+assert_semantic_error(3509):
+    E:=enum{ (E:)final }
+    F:=enum{ (F:)final }
+
+    c := class:
+        e:E = F.final
+
+assert_semantic_error(3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ (E:)open, (E:)closed, (E:)open}  # 3532 - because open is in here twice. Does not collide with the built-in open
+        
+assert_semantic_error(3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3500):
+        snippet:
+            E:=enum{ (E:)open, (E:)closed, (E:)open}  # 3532 - because open is in here twice. Does not collide with the built-in open
+
+assert_semantic_error(2015, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ (E:)open, (E:)closed, open}  # 3532 - open is here twice.  2015 - One open collides with the built-in open as a warning
+        
+assert_semantic_error(3514, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3500):
+        snippet:
+            E:=enum{ (E:)open, (E:)closed, open}  # 3532 - open is here twice.  3514 - One open collides with the built-in open as an error
+           
+# ------------------------------
+# For full-flavor, let's use some built-in symbols in other scenarios that haven't been accidentally legal
+
+assert_semantic_error(3514, 3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3300):
+        snippet:
+            open := class {}
+
+assert_semantic_error(3514, 3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3500):
+        snippet:
+            open := class {}
+
+assert_semantic_error(3514, 3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3300):
+        snippet:
+            final := class {}
+
+assert_semantic_error(3514, 3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3500):
+        snippet:
+            final := class {}
+
+# proper collision with non-built-ins
+assert_semantic_error(3532, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            C := class {}
+            E:=enum{ C, C }  # 3532, 3532
+
+# proper collision with reserved words that are repeated
+assert_semantic_error(2015, 2015, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ for, for }  # 2015, 2015, 3532 - both are warnings against reserved words, and they conflict with each other
+
+# proper collision with built-in that's repeated
+assert_semantic_error(2015, 2015, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+        snippet:
+            E:=enum{ open, open }  # 2015, 2015, 3532 - both are warnings against reserved words, and they conflict with each other
+     

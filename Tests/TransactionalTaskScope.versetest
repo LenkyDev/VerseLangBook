@@ -1,0 +1,81 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_only {
+HelloWorld := module:
+    F<public>()<suspends>:void = {}
+
+assert:
+    if:
+        spawn:
+            HelloWorld.F()
+        false?
+
+int_ref := class:
+    var Contents:int = 0
+
+Suspend := module:
+    F<public>(X:int_ref, Y:int_ref)<suspends>:void =
+        await:
+            X.Contents
+        set Y.Contents = 2
+
+assert:
+    X := int_ref{}
+    Y := int_ref{}
+    if:
+        spawn:
+            Suspend.F(X, Y)
+        false?
+    set X.Contents = 1
+    Y.Contents = 0
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    if:
+        when(X) { set Y = 1 }
+        false?
+    set X = 2
+    Y = 0
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    if:
+        upon(X) { set Y = 1 }
+        false?
+    set X = 2
+    Y = 0
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    if:
+        set live Y = X
+        set X = 1
+        false?
+    set X = 2
+    Y = 0
+
+assert:
+    var X:int = 0
+    if:
+        var live Y:int = X
+        set X = 1
+        false?
+    set X = 2
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    if:
+        true?
+        upon(X):
+            set Y = X
+        if:
+            set X = 2
+            false?
+        set X = 3
+    set X = 4
+    Y = 3
+}

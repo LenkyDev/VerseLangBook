@@ -1,0 +1,100 @@
+# Test the different forms of definitions.
+
+assert{x     := 1; x = 1}
+assert{x:int := 2; x = 2}
+assert{x:int  = 3; x = 3}
+
+# Test that using = instead of := produces sensible errors.
+assert_semantic_error(3560){x=4}
+assert_semantic_error(3560){C := class{x=5}}
+assert_semantic_error(3560){C := class{x:int}; f()=C{x=6}}
+
+assert_semantic_error(3506, 3512){f():int={y=1}}
+assert_semantic_error(3506){f():void=if(y=option{1}?){}else{}}
+
+# Test that attributes are allowed on definitions, but not assignments.
+assert_valid{x:int=1}
+
+assert_semantic_error(3604):
+    c0 := class:
+        var x:int=1
+
+    f():void=
+        C0:c0 = c0{}
+        @public set C0.x =2
+
+assert_semantic_error(3604):
+    c0 := class:
+        var x:int=1
+
+    f():void=
+        C0:c0 = c0{}
+        set C0.x<public> = 2
+
+# Test that the result of a definition is its value.
+assert{X:int = Y:int = 4; X=4; Y=4}
+
+# The result of a var definition is its contents.
+Foo():int = var X:int = 3
+assert{Foo() = 3}
+
+F(X:int):int=X
+assert{F(X:int = 4) = 4}
+
+
+
+Data:int = 42
+DataE:an_enum = an_enum.A
+DataE2:an_enum = an_enum.B
+
+
+
+DataA:int = 666
+DataB:int = DataA
+
+an_enum := enum:
+    A,
+    B
+
+DataS:string = "foo"
+DataTrue:logic = true
+DataFalse:logic = false
+DataFloat:float = 1.0
+DataInf:float = Inf
+DataNaN:float = NaN
+
+assert:
+    Data = 42
+
+    DataA = 666
+    DataB = 666
+
+    DataE = an_enum.A
+    DataE2 = an_enum.B
+
+    DataS = "foo"
+    DataTrue = true
+    DataFalse = false
+    DataFloat = 1.0
+    DataInf = Inf
+    DataNaN = NaN
+
+
+verse_vm_only
+{
+M2 := module:
+    D<public>:int = M1.D
+    E<public>:int = 666
+
+M1 := module:
+    D<public>:int = 42
+    E<public>:int = M2.E
+
+assert:
+    M1.D = 42
+    M2.D = 42
+
+    M1.E = 666
+    M2.E = 666
+
+}

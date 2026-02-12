@@ -1,0 +1,195 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+CauseErr()<transacts> : int =
+    CoroUtils.LogEvent("C")
+    Err()
+    CoroUtils.LogEvent("D")
+    return 1
+
+NestedCauseErr() : int =
+    CoroUtils.LogEvent("B")
+    R := CauseErr()
+    CoroUtils.LogEvent("E")
+    return R
+
+CauseErrAsync()<suspends> : int =
+    CoroUtils.LogEvent("C")
+    CoroUtils.WaitTicks(1)
+    CoroUtils.LogEvent("W")
+    R := CauseErr()
+    CoroUtils.LogEvent("D")
+    CoroUtils.WaitTicks(1)
+    return R
+
+CauseRuntimeErrorAsync()<suspends> : int =
+    CoroUtils.LogEvent("B")
+    CoroUtils.WaitTicks(1)
+    R := rush:
+        CauseErrAsync()
+        CauseErrAsync()
+    CoroUtils.WaitTicks(1)
+    CoroUtils.LogEvent("E")
+    R
+
+# verify that a runtime error in a function unwinds the execution stack
+assert_runtime_error:
+    CoroUtils.ResetThenLogEvent("A")
+    CoroUtils.SuppressNextReset()
+    NestedCauseErr()
+    CoroUtils.LogEvent("F")
+
+assert:
+    # If we run the assert twice (EG. if the retry-transactions mode was enabled
+    # in AutoRTFM), we could purge the event log on the second invocation unless
+    # we explicitly suppress that here!
+    CoroUtils.SuppressNextReset()
+
+    # this verifies the execution of the previous assert
+    CoroUtils.GetEventLogString() = "ABC"
+
+assert:
+    # This assert exists solely to consume any stray `SuppressNextReset`'s that
+    # could have happened above.
+
+# verify that a runtime error propagates out of an async task
+assert_runtime_error:
+    CoroUtils.ResetThenLogEvent("A")
+    CoroUtils.SuppressNextReset()
+    spawn { CauseRuntimeErrorAsync() }
+    CoroUtils.Tick(5)
+    CoroUtils.LogEvent("F")
+
+assert:
+    # If we run the assert twice (EG. if the retry-transactions mode was enabled
+    # in AutoRTFM), we could purge the event log on the second invocation unless
+    # we explicitly suppress that here!
+    CoroUtils.SuppressNextReset()
+
+    # this verifies the execution of the previous assert
+    # TODO: The above test relies on the implementation behaving in a certain
+    #       way, which differs between AutoRTFM being enabled or disabled
+    #       currently. In future once we converge on a single implementation
+    #       again, we should update this test to not require the slice.
+    CoroUtils.GetEventLogString().Slice[0, 7] = "AB,CC,W"
+
+assert:
+    # This assert exists solely to consume any stray `SuppressNextReset`'s that
+    # could have happened above.
+
+# Test an infinite loop called from a nested EnterVM's (and a VerseVM originating runtime error)
+NoopSuspend()<suspends>:void={}
+CausesInfiniteLoop()<suspends>:void={loop{NoopSuspend()}}
+ErrorFromVerseVM()<suspends>:int =
+    CoroUtils.WaitTicks(1)
+    CausesInfiniteLoop()
+    return 1
+Foo()<suspends>:void={CausesInfiniteLoop()}
+Bar()<suspends>:void={Foo()}
+
+assert_runtime_error("LoopIterationLimit", "HangTimeLimit"):
+    spawn{Bar()}
+    CoroUtils.Tick(1)
+
+CausesRuntimeError():void={Err()}
+assert_runtime_error:
+    CausesRuntimeError()
+
+assert_runtime_error:
+    if:
+        Err("Testing rollback within a failure context for SOL-7560")
+        true = true
+
+# Test runtime error occurring in a constructor block to do the right thing
+c := class:
+    X:?int = false
+d := class:
+    var Y:c = c{}
+    block:
+        set Y = c{ X := option{CauseErr()} }
+
+assert_runtime_error:
+    CoroUtils.ResetThenLogEvent("A")
+    CoroUtils.SuppressNextReset()
+    D:d = d{}
+    CoroUtils.LogEvent("B")
+
+assert:
+    # If we run the assert twice (EG. if the retry-transactions mode was enabled
+    # in AutoRTFM), we could purge the event log on the second invocation unless
+    # we explicitly suppress that here!
+    CoroUtils.SuppressNextReset()
+
+    CoroUtils.GetEventLogString() = "AC"
+
+assert:
+    # This assert exists solely to consume any stray `SuppressNextReset`'s that
+    # could have happened above.
+
+# TODO(SOL-6810): Tests for detecting arrays-too-large disabled as they consume
+# excessive amounts of memory which can cause OOM issues on the testing bots.
+# Re-enable when the VM and AutoRTFM can handle arrays containing billions of
+# items.
+#
+# Under BPVM, creating an array with 2^31 elements or greater is a runtime error
+# BPVMMaxArrayCount : int := 2147483647 # (2^31)-1
+#
+# # Returns an []char array of length BPVMMaxArrayCount
+# CreateLargestCharArray(Element : char) : []char =
+#     var A : []char = array{}
+#     var B : []char = array{Element}
+#     for(I := 0..29):
+#         set A = A + B
+#         set B = B + B
+#     return A + B
+#
+# assert:
+#     Array := CreateLargestCharArray('X')
+#     Array.Length = BPVMMaxArrayCount
+#
+# assert_runtime_error:
+#     Array := CreateLargestCharArray('X') + array{'Z'} # One too many
+#     Err("Unreachable: should have runtime errored")
+#
+# assert_runtime_error:
+#     var Array : []char = CreateLargestCharArray('X')
+#     set Array += array{'Z'} # One too many
+#     Err("Unreachable: should have runtime errored")
+#
+# # Returns an []logic array of length BPVMMaxArrayCount
+# CreateLargestLogicArray(Element : logic) : []logic =
+#     var A : []logic = array{}
+#     var B : []logic = array{Element}
+#     for(I := 0..29):
+#         set A = A + B
+#         set B = B + B
+#     return A + B
+#
+# assert:
+#     Array := CreateLargestLogicArray(true)
+#     Array.Length = BPVMMaxArrayCount
+#
+# assert_runtime_error:
+#     Array := CreateLargestLogicArray(true) + array{true} # One too many
+#     Err("Unreachable: should have runtime errored")
+#
+# assert_runtime_error:
+#     var Array : []logic = CreateLargestLogicArray(true)
+#     set Array += array{true} # One too many
+#     Err("Unreachable: should have runtime errored")
+#
+# assert_runtime_error: # SOL-4218
+#     CoroUtils.LogEvent("START_")
+#     var biggerarray : []int = {1,1}
+#     var minint : int = -64
+#     var maxint : int = 64
+#     for(Index:= minint..maxint):
+#         CoroUtils.LogEvent("+")
+#         set biggerarray = biggerarray+biggerarray
+#     CoroUtils.LogEvent("_END")
+#     # We never get here because we hit a runtime error
+#     # DebugPrint(CoroUtils.GetEventLogString())
+#     CoroUtils.GetEventLogString() = "START_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_END"
+
+# TODO: Test calling into native from Verse, triggering a runtime error.
+
+# TODO: Test calling into native from Verse, then back from native to Verse, triggering a runtime error.

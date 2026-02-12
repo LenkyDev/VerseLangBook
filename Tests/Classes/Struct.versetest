@@ -1,0 +1,237 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Some basic valid ways of defining a struct
+assert_valid { S := struct {} }
+assert_valid { S := struct { x:int } }
+assert_valid { S := struct { x:int, y:string } }
+assert_valid { T := struct { a:int, b:float }; S := struct { x:int, y:T } }
+assert_valid { T := struct { c:C }; C := class { t:T } }
+
+# Ensure same type can be embedded as member multiple times
+assert_valid:
+    s1 := struct { Num:int }
+    s2 := struct:
+        Member1:s1 := s1{Num:=1}
+        Member2:s1 := s1{Num:=2}
+
+# Expressions in the struct body must be a definition
+assert_semantic_error(3560){ S := struct { 1 } }
+assert_semantic_error(3560){ S := struct { 1+2 } }
+assert_semantic_error(3560){ S := struct { int } }
+assert_semantic_error(3560){ S := struct { []int } }
+assert_semantic_error(3560){ S := struct { :int } }
+assert_semantic_error(3585){ S := struct { f() } }
+
+# Special rules for structs vs classes
+assert_semantic_error(3595){ S := struct(Object) {} } # Structs cannot inherit from anything
+assert_semantic_error(3595){ S := struct {}; T := struct(S) {} } # Structs cannot inherit from anything
+assert_semantic_error(3595){ C := class {}; S := struct(C) {} } # Structs cannot inherit from anything
+assert_semantic_error(3595){ T := interface {}; S := struct(T) {} } # Structs cannot have interfaces
+assert_semantic_error(3603){ S := struct { f():int } } # Structs cannot contain functions
+assert_semantic_error(3607){ S := struct { var x:int } } # Structs cannot contain pointers
+
+# Circular member tests
+assert_semantic_error(3583){ S := struct { x:S } } # Structs cannot contain themselves
+assert_semantic_error(3583){ S := struct { x:[]S } } # Structs cannot contain themselves
+assert_semantic_error(3583){ S := struct { x:??S } } # Structs cannot contain themselves
+assert_semantic_error(3583,3583){ S := struct { x:T }; T := struct { y:S } } # Structs cannot contain each other
+assert_semantic_error(3583,3583,3583){ S := struct { x:T }; T := struct { y:U }; U := struct { y:S } } # Structs cannot contain each other
+assert_semantic_error(3583,3583){ S := struct { x:?T }; T := struct { y:?S } } # Structs cannot contain each other
+assert_semantic_error(3583,3583){ S := struct { x:[]T }; T := struct { y:[]S } } # Structs cannot contain each other
+assert_semantic_error(3583,3583){ S := struct { x:?[]T }; T := struct { y:??S } } # Structs cannot contain each other
+
+# Structs containing tuples that don't reference the structs should not get caught by the cycle checks
+assert_valid:
+    S := struct:
+        t: tuple(int, int, int)
+        u: tuple(int, int, int)
+
+# Structs containing tuples that do reference the struct creates a cycle.
+assert_semantic_error(3583):
+    S := struct:
+        t: tuple(S)
+    
+assert_semantic_error(3583):
+    S := struct:
+        t: tuple(tuple(S))
+    
+assert_semantic_error(3583, 3583, 3583): # i.e. `S -> T -> U -> S`
+    U := struct { a:tuple(S) }
+    T := struct:
+        b: tuple(tuple(U))
+    S := struct:
+        c: tuple(T)
+
+# Structs containing tuples that do not reference the struct should not create a cycle.
+assert_valid:
+    A := struct {}
+    S := struct:
+        T: tuple(A)
+
+# Classes are exempt from the cycle checks since they are references.
+assert_valid:
+    C := class:
+        t:tuple(C)
+
+assert_valid: # S -> C -> S
+    C := class:
+        t:tuple(S)
+        
+    S := struct:
+        t:tuple(C)
+
+# Structs may not contain themselves - examine member chain `.MemberS2.MemberS3.MemberS1`.
+# Structs may not contain themselves - examine member chain `.MemberS3.MemberS1.MemberS2`.
+# Structs may not contain themselves - examine member chain `.MemberS1.MemberS2.MemberS3`.
+assert_semantic_error(3583,3583,3583):
+    s  := struct { Circle:s1 }
+    s1 := struct { MemberS2:s2 }
+    s2 := struct { MemberS3:s3 }
+    s3 := struct { MemberS1:s1 }
+
+# Rules for structs wrt native attributes
+assert_valid { S<native> := struct {} } # Ok for arbitrary structs to be declared native
+assert_semantic_error(3591){ S := struct { x:int }; C<native> := class { f(x:S):void } } # Ok for non-native function in native class to use non-native struct
+assert_semantic_error(3591){ S := struct { x:int }; C<native> := class { f():S } } # Ok for non-native function in native class to use non-native struct
+assert_valid { S := struct { x:int }; C<native> := class { f(x:S):void = {} } } # Ok for non-native function in native class to use non-native struct
+assert_valid { S := struct { x:int }; C<native> := class { f():S = { S{x:=42} } } } # Ok for non-native function in native class to use non-native struct
+assert_valid { S<native> := struct { x<native>:int }; } # Structs may have native data members
+assert_semantic_error(3563){ S := struct { x:int }; T<native> := struct { y:S } } # Native structs must not contain non-native structs
+assert_semantic_error(3563){ S := struct { x:int }; C<native> := class { y:S } } # Native classes must not contain non-native structs
+assert_semantic_error(3564){ S := struct { x:int }; C<native> := class { f<native>(x:S):void } } # Native functions must not use non-native structs in their signature
+assert_semantic_error(3564){ S := struct { x:int }; C<native> := class { f<native>():S } } # Native functions must not use non-native structs in their signature
+
+# Test struct instantiation
+S := struct:
+    x:int=42
+    y:float=3.25
+
+T := struct:
+    a:int=66
+    b1:S=S{y:=-1.0}
+    b2:S=S{y:=-2.0}
+    
+assert{ s := S{}; s.x = 42 and s.y = 3.25 }
+assert{ s := S{y:=0.0}; s.x = 42 and s.y = 0.0 }
+assert{ s := S{y:=1.25, x:=4711}; s.x = 4711 and s.y = 1.25 }
+assert{ t := T{}; t.a = 66 and t.b1.x = 42 and t.b1.y = -1.0 and t.b2.x = 42 and t.b2.y = -2.0 }
+assert{ t := T{a:=1138, b1:=S{x:=99}, b2:=S{x:=13} }; t.a = 1138 and t.b1.x = 99 and t.b1.y = 3.25 and t.b2.x = 13 and t.b2.y = 3.25 }
+
+# Test assignment of structs
+assert{ var s:S = S{}; var t:S = s; set s = S{x:=88}; s.x = 88 and s.y = 3.25 and t.x = 42 and t.y = 3.25 }
+
+# Test structs in classes
+C := class:
+    c:int=1961
+    d:S=S{}
+
+D := class(C):
+    e:int=2001
+    f:T=T{a:=1492, b1:=S{y:=-273.15}}
+
+assert{ c := C{}; c.c = 1961 and c.d.x = 42 and c.d.y = 3.25 }
+assert{ d := D{}; d.c = 1961 and d.d.x = 42 and d.d.y = 3.25 and d.e = 2001 and d.f.a = 1492 and d.f.b1.x = 42 and d.f.b1.y = -273.15 and d.f.b2.x = 42 and d.f.b2.y = -2.0 }
+assert{ d := D{c:=17, f:=T{a:=1849}}; d.c = 17 and d.d.x = 42 and d.d.y = 3.25 and d.e = 2001 and d.f.a = 1849 and d.f.b1.x = 42 and d.f.b1.y = -1.0 and d.f.b2.x = 42 and d.f.b2.y = -2.0 }
+
+# Test structs in classes - same but with classes/structs defined in reverse order
+D2 := class(C2):
+    e:int=2001
+    f:T2=T2{a:=1492, b1:=S2{y:=-273.15}}
+
+C2 := class:
+    c:int=1961
+    d:S2=S2{}
+
+T2 := struct:
+    a:int=66
+    b1:S2=S2{y:=-1.0}
+    b2:S2=S2{y:=-2.0}
+    
+S2 := struct:
+    x:int=42
+    y:float=3.25
+    
+assert{ c := C2{}; c.c = 1961 and c.d.x = 42 and c.d.y = 3.25 }
+assert{ d := D2{}; d.c = 1961 and d.d.x = 42 and d.d.y = 3.25 and d.e = 2001 and d.f.a = 1492 and d.f.b1.x = 42 and d.f.b1.y = -273.15 and d.f.b2.x = 42 and d.f.b2.y = -2.0 }
+assert{ d := D2{c:=17, f:=T2{a:=1849}}; d.c = 17 and d.d.x = 42 and d.d.y = 3.25 and d.e = 2001 and d.f.a = 1849 and d.f.b1.x = 42 and d.f.b1.y = -1.0 and d.f.b2.x = 42 and d.f.b2.y = -2.0 }  
+
+# Test classes in structs
+E := struct:
+    q:D=D{e:=-40}
+    r:T=T{a:=13}
+
+assert{ e := E{}; e.q.c = 1961 and e.q.d.x = 42 and e.q.d.y = 3.25 and e.q.e = -40 and e.q.f.a = 1492 and e.q.f.b1.x = 42 and e.q.f.b1.y = -273.15 and e.q.f.b2.x = 42 and e.q.f.b2.y = -2.0 and e.r.a = 13 and e.r.b1.x = 42 and e.r.b1.y = -1.0 and e.r.b2.x = 42 and e.r.b2.y = -2.0 }
+assert{ e := E{q:=D{c:=33, f:=T{a:=497}}}; e.q.c = 33 and e.q.d.x = 42 and e.q.d.y = 3.25 and e.q.e = 2001 and e.q.f.a = 497 and e.q.f.b1.x = 42 and e.q.f.b1.y = -1.0 and e.q.f.b2.x = 42 and e.q.f.b2.y = -2.0 and e.r.a = 13 and e.r.b1.x = 42 and e.r.b1.y = -1.0 and e.r.b2.x = 42 and e.r.b2.y = -2.0 }
+
+# Test classes in structs in classes
+Z := class:
+    g:int=1138
+    h:E=E{}
+
+assert{ z := Z{}; z.g = 1138 and z.h.q.d.x = 42 and z.h.q.d.y = 3.25 and z.h.q.e = -40 and z.h.q.f.a = 1492 and z.h.q.f.b1.x = 42 and z.h.q.f.b1.y = -273.15 and z.h.q.f.b2.x = 42 and z.h.q.f.b2.y = -2.0 and z.h.r.a = 13 and z.h.r.b1.x = 42 and z.h.r.b1.y = -1.0 and z.h.r.b2.x = 42 and z.h.r.b2.y = -2.0 }
+
+# Test a function taking and returning a struct
+K := class:
+    f(s:S):S = { return S{x:=s.x+1, y:=s.y+1.0} }
+
+assert{ k := K{}; s := S{}; t := k.f(s); t.x = 43 and t.y = 4.25 }
+
+# Test empty structs.
+empty_struct := struct{}
+UseEmptyStruct(X:empty_struct):empty_struct=X
+assert{UseEmptyStruct(empty_struct{})}
+
+
+# Since Math isn't included, define vector2 here
+
+vector2<public> := class<final>:
+    
+    X<public>:float = 0.0
+
+    
+    Y<public>:float = 0.0
+
+sv := struct:
+    V:vector2 := vector2{}
+
+assert:
+    SS:sv = sv{}
+    2 > 1
+
+struct_80_bytes := struct:
+    A:int = 0
+    B:int = 4
+    # Can't use C,D,E because it's ambiguous with a global C,D,E...
+    C1:int = 19
+    D1:int = 100
+    E1:int = 9
+    F:int = 1
+    G:int = 9012
+    H:int = 9324
+    I:int = 199
+    J:int = 134
+
+
+Foo():struct_80_bytes =
+    struct_80_bytes{}
+
+assert:
+    Foo()
+
+assert:
+    Bar := Foo()
+    Bar.J = 134
+
+# Struct definitions must occur at module scope.
+assert_semantic_error(3502){c         := class    {d         := struct{}}}
+assert_semantic_error(3502){c(t:type) := class    {d         := struct{}}}
+assert_semantic_error(3502){c         := class    {d(u:type) := struct{}}}
+assert_semantic_error(3502){c(t:type) := class    {d(u:type) := struct{}}}
+assert_semantic_error(3502){s         := struct   {d         := struct{}}}
+assert_semantic_error(3502){s(t:type) := struct   {d         := struct{}}}
+assert_semantic_error(3502){i         := interface{d         := struct{}}}
+assert_semantic_error(3502){i(t:type) := interface{d         := struct{}}}
+assert_semantic_error(3502){i         := interface{d(u:type) := struct{}}}
+assert_semantic_error(3502){i(t:type) := interface{d(u:type) := struct{}}}
+assert_semantic_error(3502){F():void            = {d         := struct{}}}
+assert_semantic_error(3502){F():void            = {d(u:type) := struct{}}}

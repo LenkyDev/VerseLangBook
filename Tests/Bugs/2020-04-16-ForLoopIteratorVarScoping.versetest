@@ -1,0 +1,48 @@
+assert:
+    arr := array{0,1,2}
+
+    var lastI:int = -1
+    for (i : arr):
+        set lastI = i
+
+    var success:logic = true
+    var index:int = 0
+    for (i : arr):
+        if (i <> index) { set success = false }
+        set index += 1
+
+    lastI = 2 and index > 0 and success?
+
+# Test that we can reuse the same iterator identifier with different types 
+assert:
+    arrI := array{0,1,2}
+    arrB := array{true, false, true}
+    
+    var success:logic = true
+    
+    var index:int = 0
+    for (i : arrI):
+        if (i <> index) { set success = false }
+        set index += 1
+
+    var bVal:logic = true
+    for (i : arrB):
+        if (bVal <> i) { set success = false }
+        set bVal = if (bVal?) { false } else { true }
+
+    index > 0 and not bVal? and success?
+
+# Test ranged-for works with this as well
+assert:
+    arr := array{0,1,2}
+
+    var index:int = 0
+    for (i : arr):
+        set index += 1
+
+    var success:logic = true
+    for (i:=0..(index - 1)):
+        set success = if (arr[i] = i) { success } else { false }
+
+    index > 0 and success?
+

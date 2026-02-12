@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+device := class<unique>{}
+button_device := class(device){}
+trigger_device := class(device){}
+assert:
+    ButtonA := button_device{}
+    TriggerA := trigger_device{}
+    TriggerB := trigger_device{}
+    Devices:[]device = array{ButtonA, TriggerA, TriggerB}
+
+    var Buttons:[]button_device = array{}
+    var Triggers:[]trigger_device = array{}
+    for(Index -> Device : Devices):
+        if(Button := button_device[Device]):
+            set Buttons += array{Button}
+        else if(Trigger := trigger_device[Device]):
+            set Triggers += array{Trigger}
+
+    Buttons = array{ButtonA}
+    Triggers = array{TriggerA, TriggerB}

@@ -1,0 +1,2065 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Identical definitions are ok.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+
+# Removing a public definition is not ok.
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet {                   } }
+
+# Test that some basic things work if the compatibility constraint and ?Role:=source are in reverse order.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet {                   } }
+
+# Compatibility breaking changes are ok on non-public definitions.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<internal>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<internal>:any = 0 } }
+
+# Test that the basic compatibility checking works inside a submodule.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { M<public> := module { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { M<public> := module { A<public>:int = 0 } } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { M<public> := module { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { M<public> := module {                   } } }
+
+# Test that the basic compatibility checking works inside a class.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class {                   } } }
+
+# Test that the basic compatibility checking works inside an interface.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface { F<public>():int } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface { F<public>():int } } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface { F<public>():int } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface {                 } } }
+
+# Adding or removing enumerators is not ok (this should be relaxed by making case require a wildcard pattern even when all enumerators are handled).
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum { A } } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum {   } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum {   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum { A } } }
+
+# Adding or removing the <open> and <closed> attribute on enums
+# From default (aka closed)
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum       { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum         { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A } } }
+
+# From <open>
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum       { A } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open>   { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A } } }
+
+# From <closed>
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open>   { A } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum         { A } } }
+
+# Reordering enumerators
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum { A, B } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum { B, A } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A, B } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> { B, A } } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A, B } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { B, A } } }
+
+# Renaming enumerators is never allowed
+assert_semantic_error(3643, 3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum { A, B } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum { A, C } } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A, B } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A, C } } }
+
+assert_semantic_error(3643, 3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A, B } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<closed> { A, C } } }
+
+# Adding enumerators to an open enumerator is ok
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> {   } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := enum<open> {   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := enum<open> { A } } }
+
+# Changing the kind of a definition is not ok.
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public> := module{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public> := class{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public> := class{}     } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>   := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>() := class{} } }
+
+# Changing a final class with no inheritance to a struct is ok, but any other class<->struct change is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<final>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := struct      {} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := struct{} } }
+    
+assert_semantic_error(3648,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<final>(d){}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := struct         {}; d<public> := interface{} } }
+
+assert_semantic_error(3648,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<final>(d){}; d<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := struct         {}; d<public> := class{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := struct      {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<final>{} } }
+
+# Changing an abstract class that doesn't inherit from any class to an interface is ok, but any other class<->interface change is not.
+# TODO: we don't currently allow any changes between class and interface.
+assert_semantic_error(3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface      {} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class    {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface      {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>{} } }
+
+# TODO: we don't currently allow any changes between class and interface.
+assert_semantic_error(3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface      (d){}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface         {}; d<public> := class{} } }
+
+# Making a final class non-final is ok, but not vice versa.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<final>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class       {} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class       {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<final>{} } }
+
+# Making a non-unique class unique is ok, but not vice versa.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class        {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<unique>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<unique>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class        {} } }
+
+# Final classes can be changed from non-concrete to concrete, but no other concreteness changes are allowed.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<final>          {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<final><concrete>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<final><concrete>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<final>          {} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<concrete>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<concrete>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          {} } }
+
+# Adding new fields with a default value is allowed.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class {                   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+    
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class {                     } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():int = 0 } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface{                     } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface{ F<public>():int = 0 } } }
+
+# Adding new fields without a default value is not allowed.
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class {               } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int } } }
+    
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>{                 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>{ F<public>():int } } }
+    
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface{                 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface{ F<public>():int } } }
+
+# Adding new fields to a struct is not allowed at all.
+assert_semantic_error(3647):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { s<public> := struct {                   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { s<public> := struct { A<public>:int = 0 } } }
+
+assert_semantic_error(3647):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { s<public> := struct {                   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { s<public> := struct { A<public>:int = 0 } } }
+
+# Making an abstract class non-abstract is ok, but not vice-versa.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          {} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>{} } }
+
+# Adding inheritance from a class or interface to an non-abstract class is ok, but not removing or changing inheritance.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class             {}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class             {}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := interface{}; e<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          (e){}; d<public> := interface{}; e<public> := interface{} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class             {}; d<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := class{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class             {}; d<public> := class{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := class{}; e<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          (e){}; d<public> := class{}; e<public> := class{} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class          (d){}; d<public> := class{}; e<public> := class(d){} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class          (e){}; d<public> := class{}; e<public> := class(d){} } }
+
+# Any change to inheritance of an abstract class is not ok.
+# TODO: we don't yet error on adding inheritance.
+assert_valid:#assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>   {}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>   {}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := interface{}; e<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(e){}; d<public> := interface{}; e<public> := interface{} } }
+
+# TODO: we don't yet error on adding inheritance.
+assert_valid:#assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>   {}; d<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := class{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>   {}; d<public> := class{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := class{}; e<public> := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(e){}; d<public> := class{}; e<public> := class{} } }
+
+# TODO: we don't yet error on adding inheritance.
+assert_valid:#assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(d){}; d<public> := class{}; e<public> := class(d){} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<abstract>(e){}; d<public> := class{}; e<public> := class(d){} } }
+
+# Any change to inheritance of an interface is not ok.
+# TODO: we don't yet error on adding inheritance.
+assert_valid:#assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface   {}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface(d){}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface(d){}; d<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface   {}; d<public> := interface{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := interface(d){}; d<public> := interface{}; e<public> := interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := interface(e){}; d<public> := interface{}; e<public> := interface{} } }
+
+# Changing a final instance field to be non-final is ok, but not vice-versa.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{X<public><final>:void={}} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{X<public>       :void={}} } }
+
+assert_semantic_error(3649):
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{X<public>       :void={}} } }
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{X<public><final>:void={}} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{F<public><final>():void={}} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{F<public>       ():void={}} } }
+
+assert_semantic_error(3649):
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{F<public>       ():void={}} } }
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{F<public><final>():void={}} } }
+
+# Adding an override is ok.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){                    } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){F<override>():c=Self} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){                    } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){F<override>():d=Self} } }
+    
+# Removing an override is ok as long as the override didn't narrow the type of the overridden definition.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){F<override>():c=Self} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){                    } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){F<override>():d=Self} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{F<public>():c=Self}; d<public> := class(c){                    } } }
+
+# Narrowing the type of a final or non-instance data definition is ok, but widening it is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:any = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>:any = 0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int   = 0   } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>:float = 0.0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public><final>:any = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public><final>:int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public><final>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public><final>:any = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public><final>:int   = 0   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public><final>:float = 0.0 } } }
+
+# The type of non-final instance data must not be narrowed or widened.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:any = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:any = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int   = 0   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:float = 0.0 } } }
+
+# Overloaded functions are matched up between the compatibility constraint module and the ?Role:=source module by signature.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(:int       ):void = {}; F<public>(:int->int):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(:comparable):void = {}; F<public>(:int->int):void = {} } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(:comparable):void = {}; F<public>(:int->int):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(:int       ):void = {}; F<public>(:int->int):void = {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<unique>{}; F<public>(:c):void = {}; F<public>(:c->c):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<unique>{}; F<public>(:c):void = {}; F<public>(:c->c):void = {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class{}; sub_class<public> := class(super_class){}; F<public>(:sub_class  ):void = {}; F<public>(:super_class->super_class):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class{}; sub_class<public> := class(super_class){}; F<public>(:super_class):void = {}; F<public>(:super_class->super_class):void = {} } }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class{}; sub_class<public> := class(super_class){}; F<public>(:super_class):void = {}; F<public>(:super_class->super_class):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class{}; sub_class<public> := class(super_class){}; F<public>(:sub_class  ):void = {}; F<public>(:super_class->super_class):void = {} } }
+
+# Narrowing the range of a non-instance or final function is ok, but widening it is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>():any = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>():int = 0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>():int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>():any = 0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>():int   = 0   } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>():float = 0.0 } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>():any = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>():int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>():int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>():any = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>():int   = 0   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>():float = 0.0 } } }
+
+# The range of non-final instance functions must not be narrowed or widened.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():any = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():any = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():int   = 0   } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>():float = 0.0 } } }
+
+# Widening the domain of a non-instance or final function is ok, but narrowing it is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(:int):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(:any):void = {} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(:any):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(:int):void = {} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(:float):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(:int  ):void = {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(X:t where t:subtype(comparable)):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(X:t where t:type               ):void = {} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(X:t where t:subtype(float)):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(X:t where t:subtype(int)  ):void = {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(:int):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(:any):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(:any):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(:int):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(:float):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(:int  ):void = {} } } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(X:t where t:subtype(comparable)):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(X:t where t:type               ):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(X:t where t:subtype(float)):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>(X:t where t:subtype(int)  ):void = {} } } }
+
+# The domain of non-final instance functions must not be narrowed or widened.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:int):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:int):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:int):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:any):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:any):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:int):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:float):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(:int  ):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(X:t where t:subtype(comparable)):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(X:t where t:type               ):void = {} } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(X:t where t:subtype(float)):void = {} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>(X:t where t:subtype(int)  ):void = {} } } }
+
+# Adding optional named arguments to a function is ok.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(X:int, ?Y:int=0):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(X:int, ?Y:int=0):void = {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(X:int, ?Y:int=0          ):void = {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(X:int, ?Y:int=0, ?Z:int=1):void = {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<computes>{}; F<public>(X:int, ?C:c = c{}):void={} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<computes>{}; F<public>(X:int, ?C:c = c{}):void={} } }
+
+# Narrowing the effect of a non-instance or final function is ok, but widening it is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>()<transacts>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>()<computes> :int = 0 } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>()<computes> :int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>()<transacts>:int = 0 } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>()<transacts>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>()<computes> :int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>()<computes> :int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public><final>()<transacts>:int = 0 } } }
+
+# The effect of non-final class methods must not be widened or narrowed.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>()<computes>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>()<computes> :int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>()<transacts>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>()<computes> :int = 0 } } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { F<public>()<computes> :int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { F<public>()<transacts>:int = 0 } } }
+
+# Adding a default initializer to a public class field is ok, but removing it is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int     } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int = 0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class { A<public>:int     } } }
+
+# Making a definition more accessible is ok, but making it less accessible is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<internal>     :int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<epic_internal>:int = 0 } }
+
+assert_semantic_error(3646):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<epic_internal>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<internal>     :int = 0 } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<internal>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<public>  :int = 0 } }
+
+assert_semantic_error(3646):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>  :int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { A<internal>:int = 0 } }
+
+# Making a class's constructor more accessible is ok, but making it less accessible is not.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<epic_internal>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<public>       {} } }
+
+assert_semantic_error(3646):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<public>       {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<epic_internal>{} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<internal>     {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<epic_internal>{} } }
+
+assert_semantic_error(3646):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class<epic_internal>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class<internal>     {} } }
+
+# Module aliases need to reference the module with the same path.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { M0<public> := module{}; M1<public> := module{}; M2<public> := import(/Verse.org/VerseTests/Module/M0) } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { M0<public> := module{}; M1<public> := module{}; M2<public> := import(/Verse.org/VerseTests/Module/M0) } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { M0<public> := module{}; M1<public> := module{}; M2<public> := import(/Verse.org/VerseTests/Module/M0) } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { M0<public> := module{}; M1<public> := module{}; M2<public> := import(/Verse.org/VerseTests/Module/M1) } }
+
+# Type aliases need to be the same type.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; t<public> := type{_():sub_class} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; t<public> := type{_():sub_class} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; t<public> := type{_():super_class} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; t<public> := type{_():sub_class  } } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; t<public> := type{_():sub_class  } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; t<public> := type{_():super_class} } }
+
+# Test subtyping of classes defined in compatibility constraint modules.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:sub_class=sub_class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:sub_class=sub_class{} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:super_class=super_class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:sub_class  =sub_class  {} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{};                                                      X<public>:super_class=super_class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:sub_class  =sub_class  {} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:sub_class  =sub_class  {} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { super_class<public> := class<computes>{}; sub_class<public> := class<computes>(super_class){}; X<public>:super_class=super_class{} } }
+
+# Test checking references to compatibility constraint nominal types for subtyping.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface(i0){}; F<public>(G():void):?i0=false } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface(i0){}; F<public>(G():void):?i0=false } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface(i0){}; F<public>(G():void):?i0=false } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface(i0){}; F<public>(G():void):?i1=false } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface(i0){}; F<public>(G():void):?i1=false } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface(i0){}; F<public>(G():void):?i0=false } }
+
+# Test checking references to compatibility constraint nominal types for equivalence.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface{F<public>(G():void):i0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet {i0<public> := interface{}; i1<public> := interface{F<public>(G():void):i0 } } }
+
+# Test that the basic compatibility checking works inside a parametric type.
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3645,3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:type,u:subtype(t)) := class { A<public>:t } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:type,u:subtype(t)) := class { A<public>:t } } }
+
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3643,3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { A<public>:t0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { A<public>:t1 } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { A<public>:t0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { A<public>:u1 } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { A<public>:u0 } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { A<public>:t1 } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public>(:t0):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public>(:u1):void={} } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public>(:u0):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public>(:t1):void={} } } }
+
+# Checking parametric functions in parametric types treat the type parameters as rigid.
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3643,3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public>(:v0 where v0:type):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public>(:v1 where v1:type):void={} } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public>(:v0 where v0:subtype(t0)):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public>(:v1 where v1:subtype(u1)):void={} } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public>(:v0 where v0:subtype(u0)):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public>(:v1 where v1:subtype(t1)):void={} } } }
+
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3643,3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public><final>(:v0 where v0:subtype(u0)):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public><final>(:v1 where v1:subtype(t1)):void={} } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t0:type,u0:subtype(t0)) := class { F<public><final>(:v0 where v0:subtype(t0)):void={} } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t1:type,u1:subtype(t1)) := class { F<public><final>(:v1 where v1:subtype(u1)):void={} } } }
+
+# Widening a parametric type domain is ok, narrowing it is not.
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3645,3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:subtype(comparable)) := class { A<public>:t } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:type               ) := class { A<public>:t } } }
+
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3645,3645):#assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:type               ) := class { A<public>:t } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:subtype(comparable)) := class { A<public>:t } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(      ) := class { A<public>:int } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:type) := class { A<public>:int } } }
+
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:type) := class { A<public>:int } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(      ) := class { A<public>:int } } }
+
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3643,3645):#assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:type       ) := class { A<public>:int } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:type,u:type) := class { A<public>:int } } }
+
+# TODO: We don't correctly handle parametric types yet.
+assert_semantic_error(3643,3645):#assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:type,u:type) := class { A<public>:int } } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:type       ) := class { A<public>:int } } }
+
+# Converting between function and parametric type is not ok.
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(t:type):?t=false   } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(t:type) := class{} } }
+    
+assert_semantic_error(3643,3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { F<public>(t:type) := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { F<public>(t:type):?t=false   } }
+
+# Converting between a parametric type and a type is not ok.
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>         := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>(t:type) := class{} } }
+    
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public>(t:type) := class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public>         := class{} } }
+
+# Converting between normal functions and constructors is not ok.
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{}; F<public><constructor>()  := c{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{}; F<public>             ():c = c{} } }
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { c<public> := class{}; F<public>             ():c = c{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { c<public> := class{}; F<public><constructor>()  := c{} } }
+
+# Test dependencies from compatibility constraint packages on non-compatibility constraint packages.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser,?Dependencies:=(P2)) { snippet { using{/Verse.org/VerseTests/Dependency}; F<public>(O:sub_class  ):super_class=O } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser,?Dependencies:=(P2)) { snippet { using{/Verse.org/VerseTests/Dependency}; F<public>(O:super_class):sub_class  =sub_class{} } }
+
+    vpackage(P2,/Verse.org/VerseTests/Dependency,?Role:=Source,?Scope:=InternalAPI):
+        snippet:
+            super_class<public> := class{}
+            sub_class<public> := class(super_class){}
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser,?Dependencies:=(P2)) { snippet { using{/Verse.org/VerseTests/Dependency}; F<public>(O:super_class):sub_class  =sub_class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser,?Dependencies:=(P2)) { snippet { using{/Verse.org/VerseTests/Dependency}; F<public>(O:sub_class  ):super_class=O } }
+
+    vpackage(P2,/Verse.org/VerseTests/Dependency,?Role:=Source,?Scope:=InternalAPI):
+        snippet:
+            super_class<public> := class{}
+            sub_class<public> := class(super_class){}
+
+# Test compatibility constraint package with module in the package's root path that doesn't correspond to a module in a ?Role:=source package.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/A,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/B,?Role:=Source                 ,?Scope:=InternalUser) { snippet {} }
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/A,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { A<public>:int = 0 } }
+    vpackage(P1,/Verse.org/VerseTests/B,?Role:=Source                 ,?Scope:=InternalUser) { snippet {} }
+
+# Test adding `persistable` to a `class`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1<public> := class<final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1<public> := class<final><persistable> {}
+
+# Test removing `persistable` from a `class`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1<public> := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1<public> := class<final> {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1<public> := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1<public> := class<final> {}
+
+# Test adding `persistable` to a `struct`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1<public> := struct {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1<public> := struct<persistable> {}
+
+# Test removing `persistable` from a `struct`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1<public> := struct<persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1<public> := struct {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1<public> := struct<persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1<public> := struct {}
+
+# Test adding a field to a `persistable` `class`
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int
+
+assert_semantic_error(2008):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int
+
+# Test adding a field with initializer to a `persistable` `class`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int = 0
+
+# Test removing a field from a `persistable` `class`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+
+# Test removing a field with initializer from a `persistable` `class`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int = 0
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int = 0
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final> {}
+
+# Test adding a field to a `persistable` `struct`
+assert_semantic_error(3647):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int
+
+assert_semantic_error(2019):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int
+
+# Test adding a field with initializer to a `persistable` `struct`
+assert_semantic_error(3647):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int = 0
+
+assert_semantic_error(2019):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int = 0
+
+# Test removing a field from a `persistable` `struct`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+
+# Test removing a field with initializer from a `persistable` `struct`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int = 0
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int = 0
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable> {}
+
+# Test adding a field to a `persistable` `class` internal to a `module`
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final>:
+                    Property1:int
+
+assert_semantic_error(2008):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final>:
+                    Property1:int
+
+# Test adding a field with initializer to a `persistable` `class` internal to a `module`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final>:
+                    Property1:int = 0
+
+# Test adding a field to a `class` and making it `persistable`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int
+
+# Test adding a field to a `struct` and making it `persistable`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int
+
+# Test removing a field from a `persistable` `class` no longer `persistable`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<persistable><final>:
+                Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            class1 := class<final> {}
+
+# Test removing a field from a `persistable` `struct` no longer `persistable`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct<persistable>:
+                Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            struct1 := struct {}
+
+# Test exposing a module with a `persistable` `class`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistable><final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                class1 := class<persistable><final> {}
+
+# Test adding an enumerator to a `persistable` `enum`
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<persistable>:
+                A
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<persistable>:
+                A, B
+
+# Test removing an enumerator to a `persistable` `enum`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<persistable>:
+                A, B
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<persistable>:
+                A
+
+# Test adding an enumerator to an `open` `persistable` `enum`
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<open><persistable>:
+                A
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<open><persistable>:
+                A, B
+
+# Test removing an enumerator to an 'open` `persistable` `enum`
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<open><persistable>:
+                A, B
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            enum1 := enum<open><persistable>:
+                A
+
+# Test persistence changes that are not generally backwards compatible
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1<internal> := module {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := class {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class2 := class {}
+
+# The kind of the name must be maintained if it contains a `persistable`
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := class {}
+
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := module {}
+
+assert_semantic_error(2007):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := class {}
+
+assert_semantic_error(2007):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := module {}
+
+# Type aliases to `persistable` types may be added
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class1s := []class1
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class1s := []class1
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class1s := class {}
+
+# Type aliases to `persistable` types may be removed
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class1s := []class1
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class1s := []class1
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+                class1s := class {}
+
+# Non-`peristable` types can be freely removed
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module {}
+
+# Module aliases to modules containing `persistable` types may be added
+assert_semantic_error(3502, 3547):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+            # Not yet supported
+            Module2 := Module1
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+            Module2 := import(/Verse.org/VerseTests/Module/Module1)
+
+# Module aliases to modules containing `persistable` types may be removed
+assert_semantic_error(3502, 3547):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+            # Not yet supported
+            Module2 := Module1
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+            Module2 := import(/Verse.org/VerseTests/Module/Module1)
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+
+# `persistable` types may be added
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+
+# `persistable` types may not be removed
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module {}
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module {}
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable> {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+
+# `persistable` types may not be changed
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable>:
+                    Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable>:
+                    Property1:logic
+
+
+assert_semantic_error(2007):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable>:
+                    Property1:int
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<final><persistable>:
+                    Property1:logic
+
+# Persistent `var`s may not be changed
+assert_semantic_error(3645):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                class3 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                class3 := class<final><persistable> {}
+                var Global:weak_map(class1, class3) = map{}
+
+assert_semantic_error(2007):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                class3 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                class3 := class<final><persistable> {}
+                var Global:weak_map(class1, class3) = map{}
+
+# Non-persistent `var`s may be changed
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                class3 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                class3 := class<final><persistable> {}
+                var Global:weak_map(class1, class3) = map{}
+
+# Persistent `var`s may be added
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+
+# Persistent `var`s may not be removed
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+
+assert_semantic_error(2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+
+# Test multiple constraint packages
+assert_semantic_error(3643, 2005):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+
+# Something similar to what may checked from UEFN
+assert_semantic_error(2007):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                    Property2:int = 0
+                var Global:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                    Property2:logic = false
+                var Global:weak_map(class1, class2) = map{}
+
+# Test access of a library package from compatibility constraint
+assert_valid:
+    vpackage(P0,/Verse.org/A, ?Role:=Source, ?Scope:=InternalAPI):
+        snippet:
+            weak_map_key<public> := class<persistent><module_scoped_var_weak_map_key><unique>{}
+    vpackage(P1,/B, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser, ?Dependencies:=(P0)):
+        snippet:
+            using{/Verse.org/A}
+            var Global:weak_map(weak_map_key, int) = map{}
+    vpackage(P2,/B, ?Role:=Source, ?Scope:=InternalUser, ?Dependencies:=(P0)):
+        snippet:
+            using{/Verse.org/A}
+            var Global:weak_map(weak_map_key, int) = map{}
+
+# Test internal access of another package from a compatibility constraint
+assert_valid:
+    vpackage(P0,/A, ?Role:=Source, ?Scope:=InternalAPI):
+        snippet:
+            a := class{}
+    vpackage(P1,/A/B, ?Role:=GeneralCompatConstraint, ?Scope:=InternalUser, ?Dependencies:=(P0)):
+        snippet:
+            b := class(a){}
+    vpackage(P2,/A/B, ?Role:=Source, ?Scope:=InternalUser, ?Dependencies:=(P0)):
+        snippet:
+            b := class(a){}
+
+# Test scoped access of another package from a compatibility constraint
+assert_valid:
+    vpackage(P0,/A, ?Role:=Source, ?Scope:=InternalAPI):
+    vpackage(P1,/B, ?Role:=Source, ?Scope:=InternalAPI, ?Dependencies:=(P0)):
+        snippet:
+            a<scoped{A}> := class{}
+    vpackage(P2,/A/C, ?Role:=GeneralCompatConstraint, ?Scope:=InternalUser, ?Dependencies:=(P0, P1)):
+        snippet:
+            b := class(B.a){}
+    vpackage(P3,/A/C, ?Role:=Source, ?Scope:=InternalUser, ?Dependencies:=(P0, P1)):
+        snippet:
+            b := class(B.a){}
+
+# Test overriding method of another package's class from a compatibility constraint
+assert_valid:
+    vpackage(P0,/A, ?Role:=Source, ?Scope:=InternalAPI):
+        snippet:
+            a<public> := class:
+                F():void = {}
+    vpackage(P1,/A/B, ?Role:=GeneralCompatConstraint, ?Scope:=InternalUser, ?Dependencies:=(P0)):
+        snippet:
+            b := class(a):
+                F<override>():void = {}
+    vpackage(P2,/A/B, ?Role:=Source, ?Scope:=InternalUser, ?Dependencies:=(P0)):
+        snippet:
+            b := class(a):
+                F<override>():void = {}
+
+# Ensure compat constraints can generate coercion methods
+vpackage(P0, /Library1, ?Role := Source, ?Scope := InternalAPI):
+    snippet:
+        class1<public>(t:type) := class:
+            F<public>(X(:t):t, Y:t):t = X(Y)
+vpackage(P1, /Application1, ?Role := Source, ?Scope := InternalUser, ?Dependencies := (P0)):
+    snippet:
+        using {/Library1}
+        class2 := class(class1(int)):
+            G(X:int):int = X + 1
+            H():int = F(G, 1)
+vpackage(P2, /Application1, ?Role := PersistenceCompatConstraint, ?Scope := InternalUser, ?Dependencies := (P0)):
+    snippet:
+        using {/Library1}
+        class2 := class(class1(int)):
+            G(X:int):int = X + 1
+            H():int = F(G, 1)
+
+# Overloads unrelated to a `persistable` type.
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                var Global:weak_map(class1, class2) = map{}
+                F<public>(:tuple(int, int)):void = {}
+                F<public>(:float):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                    Property2:logic = false
+                var Global:weak_map(class1, class2) = map{}
+                F<public>(:[]int):void = {}
+                F<public>(:int):void = {}
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                var Global:weak_map(class1, class2) = map{}
+                F<public>(:tuple(int, int)):void = {}
+                F<public>(:float):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                    Property2:logic = false
+                F<public>(:[]int):void = {}
+                F<public>(:int):void = {}
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                var Global:weak_map(class1, class2) = map{}
+                F<public>(:tuple(int, int)):void = {}
+                F<public>(:float):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable>:
+                    Property1:int
+                    Property2:logic = false
+                    Property3:int
+                var Global:weak_map(class1, class2) = map{}
+                F<public>(:[]int):void = {}
+                F<public>(:int):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=GeneralCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                F<public>(:tuple(int, int)):void = {}
+                F<public>(:float):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                F<public>(:[]int):void = {}
+                F<public>(:float):void = {}
+
+assert_semantic_error(3643):
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=GeneralCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                F<public>(:tuple(int, int)):void = {}
+                F<public>(:float):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                F<public>(:[]int):void = {}
+                F<public>(:int):void = {}
+
+# Ensure compat constraint does not impact restrictions on number of persistent `var`s
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global1:weak_map(class1, class2) = map{}
+                var Global2:weak_map(class1, class2) = map{}
+                var Global3:weak_map(class1, class2) = map{}
+                var Global4:weak_map(class1, class2) = map{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1 := module:
+                class1 := class<persistent><module_scoped_var_weak_map_key><unique> {}
+                class2 := class<final><persistable> {}
+                var Global1:weak_map(class1, class2) = map{}
+                var Global2:weak_map(class1, class2) = map{}
+                var Global3:weak_map(class1, class2) = map{}
+                var Global4:weak_map(class1, class2) = map{}
+
+# Ensure constructor function compat constraint linking occurs after the
+# constructor function body has been analyzed in case the constructor function
+# has been overloaded (and require instantiation to disambiguate)
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=PersistenceSoftCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            MakeClass1<constructor>() := class1{}
+            MakeClass1<constructor>(:int) := class1{}
+            class1 := class{}
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            MakeClass1<constructor>() := class1{}
+            MakeClass1<constructor>(:int) := class1{}
+            class1 := class{}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module, ?Role:=GeneralCompatConstraint, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                class1<public> := class{}
+                F<public>()<decides>:?generator(class1) = false
+    vpackage(P1,/Verse.org/VerseTests/Module, ?Role:=Source, ?Scope:=InternalUser):
+        snippet:
+            Module1<public> := module:
+                class1<public> := class{}
+                F<public>()<decides>:?generator(class1) = false
+
+# Allow duplicate module definitions in compat constraints, as they may contain
+# asset-reflected Verse code, which also allows for duplicate module
+# definitions.
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := GeneralCompatConstraint, ?Scope := InternalUser):
+        snippet:
+            Module1 := module {}
+            Module1 := module {}
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := PersistenceCompatConstraint, ?Scope := InternalUser):
+        snippet:
+            Module1 := module {}
+            Module1 := module {}
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := PersistenceSoftCompatConstraint, ?Scope := InternalUser):
+        snippet:
+            Module1 := module {}
+            Module1 := module {}
+
+########################
+# <final_super>
+
+# Removing <final_super> is not allowed
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class{}; Child<public>:= class<final_super>(Base){} } }
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class{}; Child<public>:= class<final_super>(Base){} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class{}; Child<public>:= class(Base){} } }
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class{}; Child<public>:= class<final_super>(Base){} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class{}; Child<public>:= class<final_super>(Base){} } }
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class{}; Child<public>:= class(Base){} } }
+    
+# A derived type with <final_super> must remain derived directly from the same parent type
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= class{}
+            Child<public>:= class<final_super>(Base){}
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= class{}
+            Child<public>:= class<final_super>(Base){}
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= class{}
+            Child<public>:= class<final_super>(Base){}
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= class{}
+            Shim<public>:= class(Base){}
+            Child<public>:= class<final_super>(Shim){}
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= interface{}
+            Child<public>:= class<final_super>(Base){}
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= interface{}
+            Shim<public>:= class(Base){}
+            Child<public>:= class<final_super>(Shim){}
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= interface{}
+            Child<public>:= class<final_super>(Base){}
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= interface{}
+            Shim<public>:= interface(Base){}
+            Child<public>:= class<final_super>(Shim){}
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= interface{}
+            Child<public>:= class<final_super>(Base){}
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= interface{}
+            Shim<public>:= interface(Base){}
+            Child<public>:= class<final_super>(Shim){}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= class{}
+            IFace2<public>:= interface{}
+            IFace1<public>:= interface{}
+            IFace3<public>:= interface{}
+            Child<public>:= class(Base, IFace1, IFace2, IFace3){}
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            Base<public>:= class{}
+            IFace1<public>:= interface{}
+            IFace2<public>:= interface{}
+            IFace3<public>:= interface{}
+            Child<public>:= class<final_super>(Base, IFace1, IFace2, IFace3){}
+
+
+########################
+# <castable>
+
+# Adding or removing <castable> is not allowed
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class<castable>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class<castable>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class<castable>{} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class<final>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class<castable><final>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= class<castable>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= class{} } }
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= interface<castable>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= interface<castable>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= interface{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= interface<castable>{} } }
+
+assert_semantic_error(3648):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser) { snippet { Base<public>:= interface<castable>{} } }
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source                 ,?Scope:=InternalUser) { snippet { Base<public>:= interface{} } }
+
+# Qualified definition constraints should be looked up in constrained's scope terms of the constrained qualifier
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=GeneralCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                B<public> := module:
+                    F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=PersistenceCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=PersistenceCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=PersistenceCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=PersistenceCompatConstraint,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                (A:)B<public> := module:
+                    (B:)F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+    vpackage(P1,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            A<public> := module:
+                B<public> := module:
+                    F<public>():void = {}
+                    G<public>():void = Use(F)
+                    Use<public>(:any):void = {}
+
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            F<public>(t:castable_subtype(any)):void = {}
+    vpackage(P1,/A,?Dependencies:=(P0),?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            G(t:castable_subtype(any)):void = F(t)
+            
+assert_semantic_error(3509):
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            F<public>(t:castable_subtype(any)):void = {}
+    vpackage(P1,/A,?Dependencies:=(P0),?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            G(t:type):void = F(t)
+            
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/Module,?Role:=Source,?Scope:=InternalUser):
+        snippet:
+            F<public>(t:castable_subtype(any)):void = {}
+    vpackage(P1,/A,?Dependencies:=(P0),?Role:=Source,?Scope:=InternalUser,?UploadedAtFNVersion:=3300):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            G(t:castable_subtype(any)):void = F(t)  # this used to fail prior to fix
+            GG(t:type):void = F(t)

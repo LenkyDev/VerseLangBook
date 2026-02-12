@@ -1,0 +1,20 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Using assert_semantic_error is not good enough since this warning/error is detected in SolarisBpVmAssembler.
+
+verse_vm_todo{
+
+assert_link_error(2306):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+        snippet:
+            test_class := class:
+                fun():int = 1
+                FUN():int = 2
+
+assert_link_error(9200):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+    snippet:
+      test_class := class:
+        fun():int = 1
+        FUN():int = 2
+}

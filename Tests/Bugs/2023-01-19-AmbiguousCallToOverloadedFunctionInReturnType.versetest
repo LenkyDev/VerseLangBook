@@ -1,0 +1,5 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3502, 3502, 3509, 3502, 3511, 3512, 3532):
+    a():a[]={}
+    a():a[]={}

@@ -1,0 +1,58 @@
+
+assert_valid:
+    mod := module:
+        basebase := class<concrete>:
+            value:int = 42
+
+assert_semantic_error(3519):
+    mod := module:
+        base := class<concrete>:
+            valueBase:int = 42
+        child := class(base):
+            valueChild:int                  # 3519 - needs an initializer because base is concrete
+
+assert_semantic_error(3519):
+    mod := module:
+        basebase := class<concrete>:
+            valueBaseBase:int = 42
+        base := class(basebase):
+            valueBase:int = 53
+        child := class(base):               # 3519 - needs an initializer because basebase is concrete
+            valueChild:int
+            
+assert_semantic_error(3519):
+    mod := module:
+        basebase := class<concrete>:
+            valueBaseBase:int = 42
+        base := class(basebase):            # 3519 valueBase needs an initializer because basebase is concrete
+            valueBase:int
+        child := class(base):
+            valueChild:int = 53
+
+assert_semantic_error(3519):
+    mod := module:
+        basebase := class:
+            valueBaseBase:int
+        base := class<concrete>(basebase):  # 3519 valueBaseBase needs an initializer because base is concrete
+            valueBase:int = 64
+        child := class(base):
+            valueChild:int = 53
+            valueBaseBase<override>:int = 76
+
+assert_valid:
+    mod := module:
+        basebase := class:
+            valueBaseBase:int
+        base := class<concrete>(basebase):
+            valueBase:int = 64
+            valueBaseBase<override>:int = 76
+        child := class(base):
+            valueChild:int = 53
+
+assert_valid:
+    mod := module:
+        base := class<concrete>:
+            value:int = 42
+        child := class(base):
+            value<override>:int
+            

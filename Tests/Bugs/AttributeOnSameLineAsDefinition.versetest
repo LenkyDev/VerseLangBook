@@ -1,0 +1,5 @@
+C := module:
+    method<public>():int= {return(1)}
+
+
+assert{ C.method() = 1 }

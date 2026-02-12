@@ -1,0 +1,135 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+ErrorIfAutoRTFMIsNotEnabled()<transacts>:void=
+    IsAutoRTFMEnabled[] or Err("AutoRTFM is not enabled")
+
+CascadingAbortImmediate()<transacts><decides>:void=
+    TestUtils.CauseAutoRTFMCascadingAbort()
+
+CascadingAbortViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[CascadingAbortImmediate]
+
+CascadingAbortInNestedTransaction()<transacts><decides>:void=
+    if:
+        TestUtils.CauseAutoRTFMCascadingAbort()
+        false?
+
+CascadingAbortInNestedTransactionViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[CascadingAbortInNestedTransaction]
+
+# Test that triggering an AbortedByCascadingAbort AutoRTFM error outside of a 
+# transaction is treated as a runtime error.
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.CauseAutoRTFMCascadingAbort()
+
+# Test that triggering an AbortedByCascadingAbort AutoRTFM error inside a
+# transaction is treated as a runtime error.
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.CauseAutoRTFMCascadingAbort()
+        false?
+
+# Test that triggering an AbortedByCascadingAbort AutoRTFM error inside a nested
+# transaction is treated as a runtime error.
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        CascadingAbortInNestedTransaction[]
+
+# Various tests for triggering an AbortedByCascadingAbort AutoRTFM error inside
+# native callback functions (Verse -> C++ -> Verse -> ...).
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.InvokeTransacts[CascadingAbortImmediate]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.InvokeTransacts[CascadingAbortViaNativeCallback]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.InvokeTransacts[CascadingAbortViaNativeCallback]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.InvokeTransacts[CascadingAbortInNestedTransaction]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.InvokeTransacts[CascadingAbortInNestedTransaction]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.InvokeTransacts[CascadingAbortInNestedTransactionViaNativeCallback]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.InvokeTransacts[CascadingAbortInNestedTransactionViaNativeCallback]
+
+c1 := class:
+    block:
+        TestUtils.CauseAutoRTFMCascadingAbort()
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+    c1{}
+
+c2 := class:
+    block:
+        if:
+            TestUtils.CauseAutoRTFMCascadingAbort()
+            false?
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+    c2{}
+
+c3 := class:
+    var Thing:?TestUtils.autortfm_some_class=false
+    block:
+        if:
+            set Thing = option{TestUtils.MakeAutoRTFMObject()}
+            false?
+
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+    then:
+        C:=c3{}
+        not C.Thing?
+
+c4 := class:
+    var Thing:int=0
+    block:
+        TestUtils.GetAndSetNativeStatic(42)
+        set Thing = TestUtils.GetAndSetNativeStatic(13)
+
+        if:
+            set Thing = TestUtils.GetAndSetNativeStatic(-53)
+
+            # `Thing` will be 13 (the previous value passed to `GetAndSetNativeStatic`, so this will cause a fail.
+            Thing <> 13
+        then:
+            Err("Unreachable!")
+
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+    then:
+        C:=c4{}
+        C.Thing = 42

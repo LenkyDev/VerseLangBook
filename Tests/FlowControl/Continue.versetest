@@ -1,0 +1,9 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Validate various forms of Continue produces errors in various forms 
+assert_syntax_error(3101){"f():void=\{ loop \{continue       \} \}"}
+assert_syntax_error(3101){"f():void=\{ loop \{continue 1     \} \}"}
+assert_syntax_error(3101){"f():void=\{ loop \{continue(1)    \} \}"}
+assert_syntax_error(3101){"f():void=\{ loop \{continue(1)\{\}\} \}"}
+
+# No round trip tests as Continue is not supported yet 

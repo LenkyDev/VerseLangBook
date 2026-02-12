@@ -1,0 +1,469 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+#using {/Verse.org/Tests/VerseTestScriptCmd/FloatConstants}
+
+# Types that can be used as keys:
+#   true
+#   void
+#   logic
+#   int
+#   float
+#   char
+#   string
+#   enumerations
+#   comparable classes
+#   ?t where t is comparable
+#   []t where t is comparable
+#   [t]u where t and u are comparable
+#   tuple(t0,..tn) where t0..n are all comparable
+#
+# 
+# Types that can't be used as keys:
+#   false
+#   type
+#   t->u
+#   subtype(t)
+#   ^t
+#   interfaces
+
+# Test declaring maps with comparable key types.
+e:=enum{}
+c0:=class<unique>{}
+
+#V0 :[void]          void = map{}
+#V1 :[true]          void = map{}
+V2 :[logic]         void = map{}
+V3 :[int]           void = map{}
+V5 :[char]          void = map{}
+V6 :[string]        void = map{}
+V7 :[e]             void = map{}
+V8 :[c0]            void = map{}
+V9 :[?int]          void = map{}
+V10:[false]         void = map{}
+V11:[tuple(int,int)]void = map{}
+# These tests are dependent on SOL-2126:
+assert_semantic_error(3502){V12:[[]int]         void = map{}} #V12:[[]int]         void = map{}
+assert_semantic_error(3502){V13:[[int]int]      void = map{}} #V13:[[int]int]      void = map{}
+
+
+# Test declaring maps with incomparable key types.
+assert_semantic_error(3509){            V14:[type]             void = map{}}
+assert_semantic_error(3509){            V15:[type{_():void}]void = map{}}
+assert_semantic_error(3509){c:=class{}; V16:[c]                void = map{}}
+assert_semantic_error(3509){c:=class{}; V17:[subtype(c)]       void = map{}}
+assert_semantic_error(3509){            V18:[?type]            void = map{}}
+assert_semantic_error(3509){            V19:[[]type]           void = map{}}
+assert_semantic_error(3509){            V20:[[int]type]        void = map{}}
+assert_semantic_error(3509){            V21:[tuple(type,int)]  void = map{}}
+assert_semantic_error(3509){t:=interface{}; V22:[t]                void = map{}}
+
+assert_semantic_error(3552){            V23:[^int]             void = map{}}
+
+assert_semantic_error(3509){c:=class{};     F():void=map{c=>0}}
+assert_semantic_error(3509){G():void={};    F():void=map{G=>0}}
+assert_semantic_error(3509){c:=class{};     F():void=map{c{}=>0}}
+assert_semantic_error(3509){c:=class{};     F():void=map{option{c}=>0}}
+assert_semantic_error(3509){c:=class{};     F():void=map{array{c}=>0}}
+assert_semantic_error(3509){c:=class{};     F():void=map{map{0=>c}=>0}}
+assert_semantic_error(3509){c:=class{};     F():void=map{(c,0)=>0}}
+assert_semantic_error(3509){t:=interface{}; F(T:t):void=map{T=>0}}
+
+# Test declaring maps with different value types.
+V32:[int]int            = map{}
+V33:[int]?int           = map{}
+V34:[int][]int          = map{}
+V35:[int][int]int       = map{}
+V36:[int]tuple(int,int) = map{}
+
+# Test declaring variables of a map type and passing them around.
+c1:=class:
+    M0:[string]int
+
+F0(X:[string]int):c1=
+    Y:[string]int=X
+    c1{M0:=Y}
+
+# Basic map literal tests.
+V37:[int]string=map{1=>"b", 0=>"a"}
+assert{V37[0]="a"}
+assert{V37[1]="b"}
+assert{not V37[2]}
+assert:
+    KeyValuePairs := for(Key->Value : V37) do (Key,Value)
+    KeyValuePairs=array{(1,"b"),(0,"a")}
+V38:[string]int=map{"a"=>0, "b"=>1}
+V39:[string]int=map{}
+
+# Map literals should not accept keys or values of the wrong type.
+assert_semantic_error(3509){V40:[int]string=map{"0"=>"0"}}
+assert_semantic_error(3509){V41:[int]string=map{0=>0}}
+
+# Functors (e.g. void) work as both keys and values.
+#V42:[void]string=map{0=>"0"}
+#assert{V42[0]="0"}
+#assert{V42[0.0]="0"}
+#assert{V42["0"]="0"}
+#assert{V42[true]="0"}
+
+#V43:[void]string=map{0.0=>"0"}
+#assert{V43[0]="0"}
+#assert{V43[0.0]="0"}
+#assert{V43["0"]="0"}
+#assert{V43[true]="0"}
+
+V44:[string]void=map{"0"=>0, "1.2"=>1.2, "\{\}"=>{}}
+
+# Map literals should accept multiple pairs with the same key, but discard all
+# but the last pair.
+V45:[int]string = map{0=>"0", 1=>"1", 0=>"00", 0=>"000"}
+assert{V45=map{1=>"1", 0=>"000"}}
+assert{V45<>map{0=>"000", 1=>"1"}} # the order should be as if the overridden pairs are discarded instead of replaced.
+assert:
+    KeyValuePairs := for(Key->Value : V45) do (Key,Value)
+    KeyValuePairs=array{(1,"1"),(0,"000")}
+assert{V45[0]="000"}
+
+#V46:[void]string = map{0=>"0", 1=>"1", 2=>"2"}
+#V47:[void]string = map{false=>"2"}
+#assert{V46=V47}
+#assert{V47[0]="2"}
+#assert{V47[1]="2"}
+#assert{V47[2]="2"}
+#assert{V47["anything"]="2"}
+<#>assert:
+    KeyValuePairs := for(Key->Value : V47) do (Key,Value)
+    KeyValuePairs.Length=1 and KeyValuePairs[0](1)="1"
+
+# Map literals should infer common key and value types that are joins of the key
+# and value types of each pair.
+super_class := class<computes><unique><allocates>{}
+child_class_a := class<computes><allocates>(super_class){}
+child_class_b := class<computes><allocates>(super_class){}
+
+assert:
+    SuperClassInstance:super_class = super_class{}
+    ChildClassAInstance:child_class_a = child_class_a{}
+    ChildClassBInstance:child_class_b = child_class_b{}
+    V48 := map{ChildClassAInstance=>0, ChildClassBInstance=>1, SuperClassInstance=>2}
+    V48[ChildClassAInstance]=0
+    V48[ChildClassBInstance]=1
+    V48[SuperClassInstance]=2
+assert:
+    SuperClassInstance:super_class = super_class{}
+    ChildClassAInstance:child_class_a = child_class_a{}
+    ChildClassBInstance:child_class_b = child_class_b{}
+    V49 := map{0=>ChildClassAInstance, 1=>ChildClassBInstance, 2=>SuperClassInstance}
+    V49[0]=ChildClassAInstance
+    V49[1]=ChildClassBInstance
+    V49[2]=SuperClassInstance
+
+# Disjoint value types are allowed.
+F1():[string]any=
+    M:=map{"0"=>0, "0.0"=>0.0}
+    return M
+assert{F1().Length=2}
+
+# Disjoint comparable key types are allowed as they are comparable.
+assert_valid {V51:[comparable]string = map{0=>"0", 0.0=>"0.0"}}
+
+# Test that maps are covariant in both key and value type.
+# join([child_class_a]super_class, [super_class]child_class_a) = [super_class]super_class
+v52_class := class:
+    var V52:[super_class]super_class=map{}
+
+assert:
+    SuperClassInstance:super_class = super_class{}
+    ChildClassAInstance:child_class_a = child_class_a{}
+    ChildClassBInstance:child_class_b = child_class_b{}
+
+    V:v52_class = v52_class{}
+    set V.V52 =
+        if(true?) { map{SuperClassInstance=>ChildClassAInstance} }
+        else      { map{ChildClassAInstance=>SuperClassInstance} }
+
+# Test that you can't insert keys into a mutable map unless they are a subtype of the key type.
+assert_semantic_error(3509):
+    super_class := class<computes><unique><allocates>{}
+    child_class_a := class<computes><allocates>(super_class){}
+    child_class_b := class<computes><allocates>(super_class){}
+    c := class:
+        var Map:[child_class_a]child_class_b = map{child_class_b{}=>child_class_b{}}
+
+bp_vm_only {
+assert_semantic_error(3509, 3509):
+    super_class := class<computes><unique><allocates>{}
+    child_class_a := class<computes><allocates>(super_class){}
+    child_class_b := class<computes><allocates>(super_class){}
+    c := class:
+        var Map:[child_class_a]child_class_b = map{}
+        Foo(Key:child_class_b, Value:child_class_b)<decides>:void=
+            set Map[Key] = Value
+}
+
+verse_vm_only {
+assert_semantic_error(3509):
+    super_class := class<computes><unique><allocates>{}
+    child_class_a := class<computes><allocates>(super_class){}
+    child_class_b := class<computes><allocates>(super_class){}
+    c := class:
+        var Map:[child_class_a]child_class_b = map{}
+        Foo(Key:child_class_b, Value:child_class_b)<decides>:void=
+            set Map[Key] = Value
+}
+
+assert_semantic_error(3509):
+    super_class := class<computes><unique><allocates>{}
+    child_class_a := class<computes><allocates>(super_class){}
+    child_class_b := class<computes><allocates>(super_class){}
+    c := class:
+        var Map:[child_class_a]child_class_b = map{}
+        Foo(Key:child_class_b, Value:child_class_b):void=
+            set Map = ConcatenateMaps(Map, map{Key=>Value})
+
+# Map pair literals can be some arbitrary expression.
+V53:[int]string = map{1+2=>"a"+"b"}
+assert{V53=map{3=>"ab"}}
+
+assert:
+    X := 1
+    var Y:int=20
+    L := map{X=>Y}
+    L=map{1=>20}
+
+# Map literals may be nested as either keys or values.
+# This test is dependent on SOL-2126:
+assert_semantic_error(3502){F(M:[[int]int]string):void={}}
+assert_semantic_error(3502){F():void={M:=map{map{0=>0}=>"0,0", map{0=>1}=>"0,1"}}}
+#V54:[[int]int]string = map{map{0=>0}=>"0,0", map{0=>1}=>"0,1"}
+#assert{V54[map{0=>0}]="0,0"}
+#assert{V54[map{0=>1}]="0,1"}
+#assert{not V54[map{}]}
+#assert{not V54[map{1=>0}]}
+
+V55:[int][int]string = map{0=>map{0=>"0,0", 1=>"0,1"}, 1=>map{0=>"1,0", 1=>"1,1"}}
+assert{V55[0]=map{0=>"0,0", 1=>"0,1"}}
+assert{V55[1]=map{0=>"1,0", 1=>"1,1"}}
+
+# Test empty maps in contexts without an inferred type.
+assert:
+    Map:=map{}
+    Map=map{}
+
+assert:
+    M1 := map{}
+    M2 := ConcatenateMaps(M1, map{0=>"0"})
+    M2=map{0=>"0"}
+
+# Failure in a key of a map literal is currently unimplemented, but when implemented, will cause omission of that key from the map literal.
+
+#assert{map{(0=1)=>1}=map{}}
+#assert{map{(0=0)=>1}=map{0=>1}}
+assert_semantic_error(3502){F()<decides>:[int]int = map{(0=1)=>1}}
+
+# Failure in a value of a map literal is propagated through the map literal.
+assert{not map{0=>(0=1)}}
+assert{    map{0=>(1=1)} = map{0=>1}}
+
+assert_semantic_error(3512){F()         :void = map{0=>(0=1)}}
+assert_valid               {F()<decides>:void = map{0=>(0=1)}}
+
+# Test a large-ish map.
+HexitMap:[char]int = map
+{
+    '0'=> 0, '1'=> 1, '2'=> 2, '3'=> 3, '4'=> 4, '5'=> 5, '6'=>6, '7'=>7, '8'=>8, '9'=>9,
+    'a'=>10, 'b'=>11, 'c'=>12, 'd'=>13, 'e'=>14, 'f'=>15,
+    'A'=>10, 'B'=>11, 'C'=>12, 'D'=>13, 'E'=>14, 'F'=>15
+}
+assert{not HexitMap[' ']}
+assert{not HexitMap[',']}
+assert{HexitMap['0']=0}
+assert{HexitMap['1']=1}
+assert{HexitMap['2']=2}
+assert{HexitMap['3']=3}
+assert{HexitMap['4']=4}
+assert{HexitMap['5']=5}
+assert{HexitMap['6']=6}
+assert{HexitMap['7']=7}
+assert{HexitMap['8']=8}
+assert{HexitMap['9']=9}
+assert{HexitMap['a']=HexitMap['A']=10}
+assert{HexitMap['b']=HexitMap['B']=11}
+assert{HexitMap['c']=HexitMap['C']=12}
+assert{HexitMap['d']=HexitMap['D']=13}
+assert{HexitMap['e']=HexitMap['E']=14}
+assert{HexitMap['f']=HexitMap['F']=15}
+assert{not HexitMap['g']}
+assert{not HexitMap['G']}
+
+assert:
+    # Test a large-ish map.
+    HexitMap2:[string]int = map
+    {
+        "0"=> 0, "1"=> 1, "2"=> 2, "3"=> 3, "4"=> 4, "5"=> 5, "6"=>6, "7"=>7, "8"=>8, "9"=>9,
+        "a"=>10, "b"=>11, "c"=>12, "d"=>13, "e"=>14, "f"=>15,
+        "A"=>10, "B"=>11, "C"=>12, "D"=>13, "E"=>14, "F"=>15
+    }
+    not HexitMap2[" "]
+    not HexitMap2[","]
+    HexitMap2["0"]=0
+    HexitMap2["1"]=1
+    HexitMap2["2"]=2
+    HexitMap2["3"]=3
+    HexitMap2["4"]=4
+    HexitMap2["5"]=5
+    HexitMap2["6"]=6
+    HexitMap2["7"]=7
+    HexitMap2["8"]=8
+    HexitMap2["9"]=9
+    HexitMap2["a"]=HexitMap2["A"]=10
+    HexitMap2["b"]=HexitMap2["B"]=11
+    HexitMap2["c"]=HexitMap2["C"]=12
+    HexitMap2["d"]=HexitMap2["D"]=13
+    HexitMap2["e"]=HexitMap2["E"]=14
+    HexitMap2["f"]=HexitMap2["F"]=15
+    not HexitMap2["g"]
+    not HexitMap2["G"]
+
+
+assert:
+    if (NaN = NaN):
+        map{0=>NaN} = map{0=>NaN}
+    else:
+        map{0=>NaN} <> map{0=>NaN}
+
+# Test maps of unique classes.
+unique_class<public> := class<unique>{}
+assert{A:=unique_class{}; B:=unique_class{}; Map:=map{A=>"A", B=>"B"}; Map[A]="A"}
+assert{A:=unique_class{}; B:=unique_class{}; Map:=map{A=>"A", B=>"B"}; Map[B]="B"}
+assert{A:=unique_class{}; B:=unique_class{}; Map:=map{A=>"A", B=>"B"}; not Map[unique_class{}]}
+
+assert{A:=unique_class{}; B:=unique_class{}; Map:=map{A=>"A", B=>"B"}; for(Key->Value:Map){Key  } = array{A  ,B  }}
+assert{A:=unique_class{}; B:=unique_class{}; Map:=map{A=>"A", B=>"B"}; for(Key->Value:Map){Value} = array{"A","B"}}
+
+# Float-keyed maps should respect Verse's FP equality.
+assert{map{0.0       =>"a", -1.0 * 0.0=>"b", 1.0=>"c"} = map{0.0=>"b", 1.0=>"c"} = map{-1.0 * 0.0=>"b", 1.0=>"c"}}
+assert{map{-1.0 * 0.0=>"a",        0.0=>"b", 1.0=>"c"} = map{0.0=>"b", 1.0=>"c"} = map{-1.0 * 0.0=>"b", 1.0=>"c"}}
+assert{map{0.0       =>"a", -1.0 * 0.0=>"b", 1.0=>"c"}[       0.0]="b"}
+assert{map{-1.0 * 0.0=>"a",        0.0=>"b", 1.0=>"c"}[       0.0]="b"}
+assert{map{0.0       =>"a", -1.0 * 0.0=>"b", 1.0=>"c"}[-1.0 * 0.0]="b"}
+assert{map{-1.0 * 0.0=>"a",        0.0=>"b", 1.0=>"c"}[-1.0 * 0.0]="b"}
+
+assert{map{NaN=>"a", NaN=>"b", 1.0=>"c"} = map{NaN=>"b", 1.0=>"c"}}
+assert{map{NaN=>"a", NaN=>"b", 1.0=>"c"}[NaN]="b"}
+
+# Test `false` assignment and query throw expected errors
+assert_semantic_error(3509){ C:=class {var IntMap:[string]int = false }}
+assert_semantic_error(3509){ f():void= { IntMap:[string]int = map{}; if(IntMap?){} }}
+
+MapOtherKeyLookup := module:
+    class1<public> := class<unique> {}
+    class2<public> := class(class1) {}
+    class3<public> := class(class1) {}
+    class4<public> := class<unique>:
+        var Data<public>:int = 0
+
+verse_vm_only {
+assert:
+    var X:[MapOtherKeyLookup.class2]int = map{}
+    Key := MapOtherKeyLookup.class2{}
+    set X[Key] = 1
+    X[Key] = 1
+    not X[MapOtherKeyLookup.class3{}]
+}
+
+verse_vm_only {
+assert:
+    var X:[MapOtherKeyLookup.class2]MapOtherKeyLookup.class4 = map{}
+    Key := MapOtherKeyLookup.class2{}
+    Value := MapOtherKeyLookup.class4{}
+    set X[Key] = Value
+    X[Key] = Value
+    not (set X[MapOtherKeyLookup.class3{}].Data = 1)
+}
+
+assert_semantic_error(3509):
+    MapOtherKeyLookup := module:
+        class1<public> := class<unique> {}
+        class2<public> := class(class1) {}
+        class3<public> := class(class1) {}
+    Main()<decides>:void =
+        var X:[MapOtherKeyLookup.class2]int = map{}
+        set X[MapOtherKeyLookup.class3{}] = 1
+
+assert:
+    var X:weak_map(MapOtherKeyLookup.class2, int) = map{}
+    Key := MapOtherKeyLookup.class2{}
+    set X[Key] = 1
+    X[Key] = 1
+    not X[MapOtherKeyLookup.class3{}]
+
+assert:
+    Key := MapOtherKeyLookup.class2{}
+    OtherKey:MapOtherKeyLookup.class1 = Key
+    var X:weak_map(MapOtherKeyLookup.class2, weak_map(int, int)) = map{Key => map{0 => 1, 1 => 2, 2 => 3}}
+    X[OtherKey][1] = 2
+
+assert:
+    Key := MapOtherKeyLookup.class2{}
+    OtherKey:MapOtherKeyLookup.class1 = Key
+    var X:[MapOtherKeyLookup.class2][int]int = map{Key => map{0 => 1, 1 => 2, 2 => 3}}
+    X[OtherKey][1] = 2
+
+verse_vm_only {
+assert:
+    var X:weak_map(MapOtherKeyLookup.class2, MapOtherKeyLookup.class4) = map{}
+    Key := MapOtherKeyLookup.class2{}
+    Value := MapOtherKeyLookup.class4{}
+    set X[Key] = Value
+    X[Key] = Value
+    not (set X[MapOtherKeyLookup.class3{}].Data = 1)
+}
+
+assert_semantic_error(3509):
+    MapOtherKeyLookup := module:
+        class1<public> := class<unique> {}
+        class2<public> := class(class1) {}
+        class3<public> := class(class1) {}
+    Main()<decides>:void =
+        var X:weak_map(MapOtherKeyLookup.class2, int) = map{}
+        set X[MapOtherKeyLookup.class3{}] = 1
+
+agent := class<unique>:
+
+player := class(agent):
+
+data := struct<computes>:
+    X:int
+
+assert:
+    Player := player{}
+    Data := data{X := 3}
+    var Map0:[player]data = map{Player => Data}
+    set Map0[Player].X = 5
+    Map0[Player].X = 5
+
+assert_semantic_error(3509):
+    agent := class<unique>:
+    player := class(agent):
+    data := struct<computes>:
+        X:int
+    Main()<decides>:void =
+        Player := player{}
+        Agent:agent = Player
+        Data := data{X := 3}
+        var Map:[player]data = map{Player => Data}
+        set Map[Agent] = data{X := 5}
+        Map[Agent].X = 5
+
+assert_semantic_error(3509):
+    agent := class<unique>:
+    player := class(agent):
+    data := struct<computes>:
+        X:int
+    Main()<decides>:void =
+        Player := player{}
+        Agent:agent = Player
+        Data := data{X := 3}
+        var Map:[player]data = map{Player => Data}
+        set Map[Agent].X = 5
+        Map[Agent].X = 5

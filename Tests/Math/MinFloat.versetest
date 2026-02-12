@@ -1,0 +1,37 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Negative
+assert { Min(-2.0, -1.0) = -2.0 }
+assert { Min(-1.0, -2.0) = -2.0 }
+assert { Min(-1.0, -1.0) = -1.0 }
+
+# Negative/positive mix
+assert { Min(-1.0, 1.0) = -1.0 }
+assert { Min(1.0, -1.0) = -1.0 }
+
+# Positive
+assert { Min(1.0, 2.0) = 1.0 }
+assert { Min(2.0, 1.0) = 1.0 }
+assert { Min(2.0, 2.0) = 2.0 }
+
+# Zero
+assert { Min(-1.0, 0.0) = -1.0 }
+assert { Min(0.0, -1.0) = -1.0 }
+assert { Min(1.0, 0.0)  =  0.0 }
+assert { Min(0.0, 1.0)  =  0.0 }
+assert { Min(0.0, 0.0)  =  0.0 }
+
+# NaN
+assert { Min(NaN, 1.0) = NaN }
+assert { Min(1.0, NaN) = NaN }
+assert { Min(NaN, NaN) = NaN }
+
+# Negative Infinity
+assert { Min(-Inf, 1.0) = -Inf }
+assert { Min(1.0, -Inf) = -Inf }
+assert { Min(-Inf, -Inf) = -Inf }
+
+# Infinity
+assert { Min(Inf, 1.0) = 1.0 }
+assert { Min(1.0, Inf) = 1.0 }
+assert { Min(Inf, Inf) = Inf }

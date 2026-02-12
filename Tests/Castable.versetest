@@ -1,0 +1,575 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# ################
+# <castable> attribute can only be used on class macros and interface macros
+assert_valid:
+    class1 := class<castable>{}
+
+assert_valid:
+    iface1 := interface<castable>{}
+
+# make sure <castable> doesn't work in other places
+assert_semantic_error(3596):
+    C1<castable> := class {}
+
+assert_semantic_error(3596):
+    value<castable>:int = 0
+
+assert_semantic_error(3596):
+    func<castable>():int = 42
+
+assert_semantic_error(3596):
+    func()<castable>:int = 42
+
+assert_semantic_error(3596):
+    M<castable> := module:
+        func():int = 42
+
+assert_semantic_error(3604):
+    M := module<castable>:
+        func():int = 42
+
+assert_semantic_error(3596):
+    S := struct<castable> {}
+
+assert_semantic_error(3596):
+    S<castable> := struct {}
+
+# ################
+# Castable classes
+assert_valid:
+    class1 := class<castable>{}
+    class2(t:type) := class:
+        C1:class1 = class1{}                    # castable inside a parametric is allowed
+
+assert_valid:
+    class1(t:type) := class {foo:?t = false}
+    class2 := class<castable>:
+        C2:class1(string) := class1(string){}   # parametric inside a castable is allowed
+
+assert_valid:
+    class1(t:type) := class {}
+    class2 := class<castable>(class1(int)) {}  # castable inheriting a parametric allowed
+
+assert_semantic_error(3678):
+    class1(t:type) := class<castable> {}       # Parametrics are not themselves castable
+
+assert_semantic_error(3678):
+    class1 := class<castable>{}
+    class2(t:type) := class(class1) {}        # because parametrics cannot be castable, inheriting a castable is also not allowed
+
+assert_semantic_error(3678):
+    class1 := class<castable>{}
+    class2 := class(class1) {}
+    class3(t:type) := class(class2) {}        # the castable attribute is heritable
+
+# ################
+# Castable Interfaces
+assert_valid:
+    iface1(t:type) := interface {}
+    iface2 := interface<castable>(iface1(int)) {}   # inheriting a parametric is <castable>
+
+assert_semantic_error(3678):
+    iface1(t:type) := interface<castable> {}        # parametric interfaces cannot be castable
+
+assert_semantic_error(3678):
+    iface1 := interface<castable>{}
+    iface2(t:type) := interface(iface1) {}          # because parametrics cannot be castable, inheriting a castable is also not allowed
+
+assert_semantic_error(3678):
+    iface1 := interface<castable>{}
+    iface2 := interface(iface1) {}
+    iface3(t:type) := interface(iface2) {}          # the castable attribute is heritable
+
+assert_semantic_error(3678):
+    iface1 := interface<castable>{}
+    class1(t:type) := class(iface1) {}             # class1 cannot be castable and so can't inherit iface1
+
+# ################
+# castable_subtype
+
+assert_valid:
+    class1 := class<castable>{}
+    Value: castable_subtype(class1) = class1
+
+assert_semantic_error(3509):
+    class1 := class{}
+    Value: castable_subtype(class1) = class1       # class1 is not castable, so cannot be assigned. The arg to castable_subtype is ok.
+
+assert_valid:
+    class1 := class<castable> {}
+    Func() : castable_subtype(class1) = class1      # class1 inherits castable from iface1
+
+assert_valid:
+    class1 := class<castable>{}
+    class2 := class(class1) {}
+    Func() : castable_subtype(class1) = class2      # class1 inherits castable from iface1
+
+assert_valid:
+    iface1 := interface<castable>{}
+    class1 := class(iface1) {}
+    Func() : castable_subtype(class1) = class1      # class1 inherits castable from iface1
+
+assert_valid:
+    iface1 := interface<castable>{}
+    Func() : castable_subtype(iface1) = iface1      # class1 inherits castable from iface1
+
+assert_valid:
+    iface1 := interface<castable>{}
+    iface2 := interface(iface1){}
+    Func() : castable_subtype(iface1) = iface2      # class1 inherits castable from iface1
+
+assert_valid:
+    class1 := class{}
+    class2 := class<castable>(class1){}
+    Value: castable_subtype(class1) = class2
+
+assert_valid:
+    class1 := class<castable>{}
+    Func(Arg:castable_subtype(class1)):int = 42     # Func arg
+
+assert_valid:
+    class1 := class<castable>{}
+    Func():castable_subtype(class1) = class1        # Func return
+
+assert_valid:
+    class1 := class<castable>{}
+    class2 := class:
+        Type:castable_subtype(class1) = class1      # class member
+
+assert_valid:
+    class1 := class{}
+    class2 := class<castable>(class1){}
+    Value:[]castable_subtype(class1) = array{class2, class2, class2}     # array-type is []{false, class2} which is castable
+
+assert_semantic_error(3509):
+    class1 := class{}
+    class2 := class<castable>(class1){}
+    class3 := class<castable>(class1){}
+    Value:[]castable_subtype(class1) = array{class2, class3, class2}    # array-type is []{false, class1} which is NOT castable
+
+assert_valid:
+    class1 := class<castable>{}
+    Value:?castable_subtype(class1) = option{class1}
+
+assert_semantic_error(3509,3509):
+    class1 := class<castable>{}
+    class2 := class(class1){}
+    class3 := class(class1){}
+    Value:[castable_subtype(class1)]int = map{class2 => 42, class3 => 666}          # castable_subtype and subtype are not usable as map-keys
+
+assert_valid:
+    class1 := class<castable>{}
+    class2 := class(class1){}
+    class3 := class(class1){}
+    class4 := class(class1){}
+    Value:[int]castable_subtype(class1) = map{42=>class2, 666=>class3, 31337=>class4}  # map-values work
+
+assert_semantic_error(3509):
+    class1 := class{}
+    class2 := class<castable>(class1){}
+    class3 := class<castable>(class1){}
+    class4 := class<castable>(class1){}
+    Value:[int]castable_subtype(class1) = map{42=>class2, 666=>class3, 31337=>class4}  # as above, the collective subtype is {false, class1} which is not castable
+
+assert_semantic_error(3678):
+    class1 := class<castable>{}
+    class2(t:type) := class(class1) { Value:t }
+    class3 := class(class2(float)) {}
+
+    class4 := class:
+        Func(Arg:castable_subtype(class1)):int= 42
+        Caller():void=
+            Func(class3)
+
+assert_semantic_error(3678):
+    class1 := class<castable>{}
+    class2(t:type) := class(class1) { Value:t }
+    class3 := class(class1) {}
+
+    class4 := class:
+        Func(Arg:castable_subtype(class1)):int= 42
+        Caller():void=
+            Func(class3)
+
+# tuples of tuples of tuples
+assert_valid:
+    class1 := class<castable>{}
+    class2 := class<castable>{}
+
+    Func( Arg:tuple(castable_subtype(class1), castable_subtype(class2)) ):int= 42
+    Caller():void=
+        Func((class1, class2))
+
+# Nested tuples of mixed types
+assert_valid:
+    class1 := class<castable>{}
+    class2 := class<castable>{}
+    class3 := class<castable>{}
+    class4 := class<castable>(class3){}
+
+    Func( Arg:tuple(castable_subtype(class1), tuple(castable_subtype(class2), float, castable_subtype(class3)), int) ):int= 42
+    Caller():void=
+        Func((class1,(class2, 123.456, class4), 42))
+
+# Very nested tuples of castable_types
+assert_valid:
+    class1 := class<castable>{}
+    class2 := class<castable>{}
+    class3 := class(class1){}
+    class4 := class(class2){}
+    class5 := class(class3){}
+    class6 := class(class4){}
+
+    Func( Arg:tuple(tuple(tuple(tuple(tuple(?castable_subtype(class1), []castable_subtype(class2)), castable_subtype(class1)), castable_subtype(class2)), castable_subtype(class1)), castable_subtype(class2)) ):int= 42
+    Caller():void=
+        Func( (((((option{class1}, array{class2, class2}), class3), class4), class5), class6) )
+
+# tuple to array
+assert_valid:
+    class1 := class{}
+    class2 := class<castable>(class1){}
+
+    Func( Arg:[]castable_subtype(class1)):int= 42
+    Caller():void=
+        T:tuple(castable_subtype(class1), castable_subtype(class1), castable_subtype(class1)) = (class2, class2, class2)
+        Func(T)
+
+assert_semantic_error(3509):
+    class1 := class{}
+    class2 := class<castable>(class1){}
+
+    Func( Arg:[]castable_subtype(class1)):int= 42
+    Caller():void=
+        T:tuple(castable_subtype(class1), castable_subtype(class1), castable_subtype(class1)) = (class2, class1, class2)
+        Func(T)
+
+#####################
+#Testing interactions with parametrics and how castability bleeds through the type system
+assert_valid:
+    class1 := class{}
+    class2(t:type) := class(class1) { Value:t }
+    class3 := class(class2(float)) {}
+    class4 := class<castable>(class3) {}
+
+    class5(t:type) := class:
+        Func(st:castable_subtype(class3)):int= 42
+
+    Caller():void=
+        C5:class5(float) = class5(float){}
+        C5.Func(class4)
+
+assert_valid:
+    class1 := class{}
+    class2(t:type) := class(class1) { Value:t }
+    class3 := class<castable>(class2(float)) {}
+
+    class4(t:type) := class:
+        Func(cst:castable_subtype(class2(float))):int= 42
+
+    Caller():void=
+        C4:class4(float) = class4(float){}
+        C4.Func(class3)
+
+# class3 is a class2(int), but class4.Func is instantiated such that it wants class2(float)
+assert_semantic_error(3509):
+    class1 := class{}
+    class2(t:type) := class(class1) { Value:t }
+    class3 := class<castable>(class2(int)) {}
+
+    class4(t:type) := class:
+        Func(cst:castable_subtype(class2(t))):int= 42
+
+    Caller():void=
+        C4:class4(float) = class4(float){}
+        C4.Func(class3)
+
+# class4 simply doesn't have <castable>, but we're going to put this through a parametric or two
+assert_semantic_error(3509):
+    class1 := class{}
+    class2(t:type) := class(class1) { Value:t }
+    class3 := class(class2(int)) {}
+
+    class4(t:type) := class:
+        Func(st:t):int= 42
+
+    Caller():void=
+        C4:class4(castable_subtype(class1)) = class4(castable_subtype(class1)){}
+        C4.Func(class3)
+
+#####################
+# Example from scene graph people - technically fails in the dynamic cast, but that's not new
+assert_valid:
+    component<public> := class {}
+
+    single_component<public> := interface:
+        SingleComponentType()<transacts>:castable_subtype(component)
+
+    transform_component<public> := class<castable>(component, single_component):
+        SingleComponentType<override><final>()<transacts>:castable_subtype(component) = transform_component
+
+    entity<public> := class:
+        Components<public>:[]component = array{}
+    
+        AddComponent<public>(C:component):void =
+            if (CastableType:castable_subtype(component) := single_component[C].SingleComponentType()):
+                for (OtherComp : Components; CastableType[OtherComp]) {}
+
+assert_semantic_error(3510):
+    component<public> := class{}
+
+    single_component<public> := interface:
+        SingleComponentType()<transacts>:castable_subtype(component)
+
+    wacky_component<public>(t:type) := class(component, single_component):                                      # 3510 - parametric type cannot inherit <castable> component
+        SingleComponentType<override><final>()<transacts>:castable_subtype(component) = wacky_component(t)
+        Value<public>:t
+
+    entity<public> := class:
+        Components<public>:[]component = array{}
+    
+        AddComponent<public>(C:component):void =
+            if (CastableType:castable_subtype(component) := single_component[C].SingleComponentType()):
+                for (OtherComp : Components; CastableType[OtherComp]) {}
+                    
+
+assert_semantic_error(3509):
+    class1 := class{}
+    class2 := class(class1){}
+    TestType := class:
+        T:castable_subtype(class1) = class2                         # 3509 - class2 is not castable
+
+assert_semantic_error(3510):
+    class1 := class{}
+    class2 := class(class1){}
+    Func():castable_subtype(class1) = class2                        # 3510 - class2 is not castable
+
+assert_semantic_error(3510):
+    class1 := class{}
+    class2 := class(class1){}
+    Func():tuple(castable_subtype(class1), int) = (class2, 42)     # 3510 - class2 is not castable
+
+assert_semantic_error(3509):
+    class1 := class{}
+    class2 := class(class1){}
+    Func(A:tuple(?castable_subtype(class1), int)):int = 42
+    Func2():void =
+        Func((option{class2}, 42))                                  # 3509 - class2 is not castable
+
+assert_semantic_error(3509):
+    class1 := class{}
+    class2 := class(class1){}
+    Func(A:tuple(?castable_subtype(class1), int)):int = 42
+    Func2():void =
+        Result := (option{class2}, 42)
+        Func(Result)                                                # 3509 - class2 is not castable
+
+
+# Some casting 
+classA := class{ValueA:int=666}
+classB := class<castable>(classA){}
+classP(t:type) := class(classA){}
+classC := class<castable>(classP(int)){ValueC:int = 42}
+
+assert:
+    TA:castable_subtype(classA) = classB
+    Value1:classA = classA{}
+
+#####################
+# <castable> and castable_subtype are only visible at  FNv32.00 and later
+assert_semantic_error(3506):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3000, ?Scope:=PublicAPI):
+        snippet:
+            CT<public> := class{}
+            F<public>(T:castable_subtype(CT)):int= 42
+
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3200, ?Scope:=PublicAPI):
+        snippet:
+            CT<public> := class{}
+            F<public>(T:castable_subtype(CT)):int= 42
+
+<#> TODO: Need to address that we can't use versions to hide intrinsic attribute class-types
+    assert_semantic_error(2015):
+        vpackage(P0, /A, ?UploadedAtFNVersion:=3000, ?Scope:=PublicAPI):
+            snippet:
+                CT<public> := class:
+                    castable:int = 42
+
+assert_semantic_error(3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3200, ?Scope:=PublicAPI):
+        snippet:
+            CT<public> := class:
+                castable:int = 42    # 3552 - collides with <castable>
+
+
+#####################
+# usage of X:t where t:castable_subtype(foo)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    F(X:t where t:castable_subtype(class1)):void = {}
+    MainFunc(P:logic):void =
+        c1:class1 = class1{}
+        F(c1)
+
+assert_valid:
+    class1 := class {}
+    class2 := class<castable>(class1) {}
+    F(X:t where t:castable_subtype(class1)):void = {}
+    MainFunc(P:logic):void =
+        c2:class2 = class2{}
+        F(c2)
+
+assert_valid:
+    class1 := class<castable> {}
+    class2 := class(class1) {}
+    class3 := class(class2) {}
+    F(X:t where t:castable_subtype(class1)):void = {}
+    MainFunc(P:logic):void =
+        c3:class3 = class3{}
+        F(c3)
+
+assert_valid:
+    class1(t:type) := class {}
+    class2(t:type) := class(class1(t)) {}
+    class3 := class<castable>(class2(int)) {}
+    F(X:t where t:castable_subtype(class1(int))):void = {}
+    MainFunc(P:logic):void =
+        c3:class3 = class3{}
+        F(c3)
+
+castable_class1 := class<castable> { Value:int = 42 }
+function_class1 := class<castable>:
+    F(X:t where t:castable_subtype(castable_class1)):int = X.Value * 2
+    G(X:castable_class1):int = X.Value
+    MainFunc(P:logic, cc1:castable_class1):int =
+        H := if (P?) then F else G
+        H(cc1)
+
+assert:
+    cc1:castable_class1 = castable_class1{}
+    fc1:function_class1 = function_class1{}
+    fc1.MainFunc(true, cc1) = 84
+
+assert:
+    cc1:castable_class1 = castable_class1{}
+    fc1:function_class1 = function_class1{}
+    fc1.MainFunc(false, cc1) = 42
+
+assert_valid:
+    class1(t:type) := class { Value:int = 42 }
+    class2 := class<castable>(class1(int)) {}
+    F(X:t where t:castable_subtype(class1(int))):void = {}
+    G(X:class1(int)):void = {}
+    MainFunc(P:logic):void =
+        H := if (P?) then F else G  # cannot be coerced together
+        c2 := class2{}
+        H(c2)
+
+assert_semantic_error(3509):
+    class1(t:type) := class { Value:int = 42 }
+    class2 := class(class1(int)) {}
+    F(X:t where t:castable_subtype(class1(int))):void = {}
+    G(X:class1(int)):void = {}
+    MainFunc(P:logic):void =
+        H := if (P?) then G else F  # cannot be coerced together
+        c2 := class2{}
+        H(c2)
+
+assert_semantic_error(3509):
+    class1(t:type) := class { Value:int = 42 }
+    class2 := class(class1(int)) {}
+    F(X:t where t:castable_subtype(class1(int))):void = {}
+    MainFunc(P:logic):void =
+        c2 := class2{}
+        F(c2)                   # c2 is not castable
+
+bp_vm_only {
+assert_ir_error(3502):
+    class1 := class { Value:int = 42 }
+    F(X:t where t:castable_subtype(class1)):void = {}
+    G(X:class1):void = {}
+    MainFunc(P:logic):void =
+        H := if (P?) then F else G
+}
+
+verse_vm_only {
+assert_valid:
+    class1 := class { Value:int = 42 }
+    F(X:t where t:castable_subtype(class1)):void = {}
+    G(X:class1):void = {}
+    MainFunc(P:logic):void =
+        H := if (P?) then F else G
+}
+
+assert_valid:
+    X:[]castable_subtype(any) = array{}
+
+assert_valid:
+    class1 := class {}
+    class2 := class<castable> {}
+    F(P:logic, X:castable_subtype(class1), Y:subtype(class2)):void =
+        Z:castable_subtype(any) = if (P?) then X else Y
+
+assert_valid:
+    class1 := class {}
+    class2 := class<castable> {}
+    F(P:logic, X:castable_subtype(class1), Y:subtype(class2)):void =
+        Z:castable_subtype(any) = if (P?) then Y else X
+
+assert_semantic_error(3509):
+    class1(t:castable_subtype(any)) := class:
+        Data:t
+    F(Obj:class1(t) where t:type):void = {}
+
+assert_semantic_error(3509):
+    class1(t:castable_subtype(u) where u:type) := class:
+        Data:t
+    F(Obj:class1(t) where t:type):void = {}
+
+assert_valid:
+    F(:t where t:castable_subtype(u), u:type):void = {}
+
+# Treat `castable_subtype` like `subtype` before 37.00.
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3600, ?Scope:=PublicAPI):
+        snippet:
+            interface1 := interface {}
+            class1 := class(interface1) {}
+            F(:castable_subtype(interface1)):void = {}
+            G():void = F(class1)
+
+assert_semantic_error(3509):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3700, ?Scope:=PublicAPI):
+        snippet:
+            interface1 := interface {}
+            class1 := class(interface1) {}
+            F(:castable_subtype(interface1)):void = {}
+            G():void = F(class1)
+
+assert_valid:
+    class1 := class {}
+    F(t:castable_subtype(class1)):void =
+        X:castable_subtype(t) = t
+
+assert_valid:
+    class1 := class<castable><final_super_base> {}
+    class2 := class<final_super>(class1) {}
+    F(:castable_subtype(class1)):void = {}
+    G(X:castable_subtype(class1)):void = F(X)
+    H():void = G(class2)
+
+Canonicalize := module:
+    class1<public> := class<castable>:
+        Data<public>:int = 0
+    F<public>(X:t, H(:t):t where t:type):t = H(X)
+    G<public>(X:t, H(:t):t where t:castable_subtype(any)):t =
+        # This will fail to compiler in the BPVM if the IR generator
+        # incorrectly requires a coerced version of H that does boxing.
+        F(X, H) 
+    I<public>(X:class1):class1 = class1:
+        Data := X.Data + 1
+
+assert:
+    Canonicalize.G(Canonicalize.class1{}, Canonicalize.I).Data = 1

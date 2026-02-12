@@ -1,0 +1,154 @@
+assert_valid:
+    super_class:=class:
+        Variable:super_class
+        Method():int= 41
+
+    sub_class:=class(super_class):
+        Variable<override>:sub_class 
+        Method<override>():int= 42
+
+assert_semantic_error(3523):
+    super_class:=class:
+        Method():int= { return 41 }
+
+    sub_class_missing_override:=class(super_class):
+        Method():int= { return 42} 
+
+assert_semantic_error(3523):
+    super_class:=class:
+        Method():int= { return 41 }
+
+    sub_class_extra_override:=class(super_class):
+        AnotherMethod<override>():int= { return 42} 
+
+
+# overriding data member without specifying initializers
+c0:= class:
+    A: int
+c1:= class(c0):
+    
+    A<override>: int
+assert:
+    X1:= c1{ A:= 4 }
+    X1.A = 4
+
+# overriding data member with base specifying an initializer
+assert_semantic_error(3600):
+    c2:= class:
+        A: int = 2
+    c3:= class(c2):
+        
+        A<override>: int
+
+    Foo(): int =
+        # Object archetype must initialize data member `a`
+        X3:= c3{}
+        return X3.A
+
+# overriding data member with derived specifying an initializer
+c4:= class:
+    A: int
+c5:= class(c4):
+    
+    A<override>: int = 4
+assert:
+    X5:= c5{}
+    X5.A = 4
+    
+# overriding data member with base and derived specifying an initializer
+c6:= class:
+    A: int = 2
+c7:= class(c6):
+    
+    A<override>: int = 4
+assert:
+    X7:= c7{}
+    X7.A = 4
+
+# test missing @override attribute
+assert_semantic_error(3532):
+    c8:= class:
+       A: int = 2
+    c9:= class(c8):
+        # Instance data member `C9.a` is already defined in `C8`, did you mean to add the @override attribute?
+        A: int = 4
+
+# test @override attribute on base class
+assert_semantic_error(3523):
+    c10:= class:
+        # Instance data member `C10.a` is marked with @override attribute, but it doesn't override anything
+        
+        A<override>: int = 2
+    c11:= class(c10):
+        
+        A<override>: int = 4
+        
+# test overriding something that was a function
+assert_semantic_error(3602,3532):
+    c12:= class:
+        A() : int = 2
+    c13:= class(c12):
+        # This data definition overrides non-data definition: InvalidModule.C12.a
+        
+        A<override>: int = 4
+
+# test overriding with something that isn't a subtype
+assert_semantic_error(3602,3532):
+    c14:= class:
+        A: int = 2
+    c15:= class(c14):
+        # This overriding data definition must be a subtype of the definition it tried to override: InvalidModule.C14.a
+        
+        A<override>: float = 4.0
+
+# test overriding subclasses
+c16:= class:
+    A: int = 2
+    B() : int = 3
+c17:= class(c16):
+    
+    A<override>: int = 4
+    
+    B<override>() : int = 5
+
+c18:= class:
+    C: c16
+c19:= class(c18):
+    # this override constrains the type to a subtype
+    
+    C<override>: c17
+
+assert:
+    X18:= c18{ C:= c16{} }
+    X18.C.A = 2
+    X18.C.B() = 3
+
+assert:
+    X18:= c18{ C:= c17{} }
+    X18.C.A = 4
+    X18.C.B() = 5
+
+assert:
+    X19:= c19{ C:= c17{} }
+    X19.C.A = 4
+    X19.C.B() = 5
+
+assert_semantic_error(3509):
+    c16:= class:
+        A: int = 2
+        B() : int = 3
+    c17:= class(c16):
+        
+        A<override>: int = 4
+        
+        B<override>() : int = 5
+    
+    c18:= class:
+        C: c16
+    c19:= class(c18):
+        # this override constraints the type to a subtype
+        
+        C<override>: c17
+
+    # This function expects to initialize (c19:)C with a value of type c17, but this initializer is an incompatible value of type c16.
+    F():c19 = c19{ C:= c16{} }

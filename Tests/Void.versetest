@@ -1,0 +1,192 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Anything can be returned from a function with a return type of void.
+F0():void=1
+assert{F0()}
+
+# Anything can be passed to a function with a void parameter.
+F1(X:void):int=2
+assert{F1(0)=2}
+assert{F1(1.0)=2}
+assert{F1("2")=2}
+
+F2(X:void, Y:void):int=3
+assert{F2(0,1.0)=3}
+assert{F2(1.0,"2")=3}
+
+# A void-typed local can be initialized with any value.
+assert:
+    X:void=2
+    Y:void=3.0
+    Z:void="4"
+    W:void=array{1,2}
+
+# Ensure required local writes occur even when the corresponding expression is
+# the discarded output of a `void` function.
+VoidStringPair(X:string, Y:string):void = (X, Y)
+
+assert:
+    VoidStringPair("hello", "world") <> ("hello", "world")
+
+# A void-typed class member can be default initialized with any value.
+c:=class{X:void=array{1, 2}}
+assert{c{}}
+
+# A void-typed class member can be initialized with any value in an archetype.
+assert{c{X:=array{"3", "4"}}}
+
+assert:
+    X:?int = false
+    Y:?void = X
+    not X?
+    not Y?
+
+assert:
+    X:?int = option{0}
+    Y:?void = X
+    X?
+    Y?
+
+# This should work, but doesn't
+# assert:
+#     X:?void = false
+#     Y:?true = X
+#     not X?
+#     not Y?
+
+# This should work, but doesn't
+# assert:
+#     X:?void = option{0}
+#     Y:?true = X
+#     X?
+#     Y?
+
+assert:
+    X:[]int = array{1, 2, 3}
+    Y:[]void = X
+    X.Length = 3
+    Y.Length = 3
+
+# This should work, but doesn't
+# assert:
+#     X:[]void = array{1, 2, 3}
+#     Y:[]true = X
+#     X.Length = 3
+#     Y.Length = 3
+
+assert:
+    X:[int]int = map{0=>1, 2=>3}
+    Y:[int]void = X
+    X.Length = 2
+    Y.Length = 2
+
+# This should work, but doesn't
+# assert:
+#     X:[int]void = map{0=>1, 2=>3}
+#     Y:[int]true = X
+#     X.Length = 2
+#     Y.Length = 2
+
+VoidOutput(:int):void = {}
+
+VoidInput(:void):int = 19
+
+IntIdentity(X:int):int = X
+
+assert:
+    F:int->void = IntIdentity
+    F(0)
+
+assert_semantic_error(3509):
+    IntIdentity(X:int):int = X
+    F:void->int = IntIdentity
+
+assert:
+    F:int->true = VoidOutput
+    F(0) = false
+
+assert:
+    F:int->int = VoidInput
+    F(0) = 19
+
+bp_vm_only {
+assert_ir_error(3502):
+    VoidInput(:void):int = 19
+    IntIdentity(X:int):int = X
+    Main()<decides>:void =
+        F := if (false?) { VoidInput } else { IntIdentity }
+        F(1) = 1
+
+assert_ir_error(3502):
+    VoidInput(:void):int = 19
+    IntIdentity(X:int):int = X
+    Main()<decides>:void =
+        F := if (true?) { VoidInput } else { IntIdentity }
+        F(2) = 19
+
+assert_ir_error(3502, 3502):
+    VoidOutput(:int):void = {}
+    IntIdentity(X:int):int = X
+    Main()<decides>:void =
+        F := if (false?) { VoidOutput } else { IntIdentity }
+        F(0)
+
+assert_ir_error(3502, 3502):
+    VoidOutput(:int):void = {}
+    IntIdentity(X:int):int = X
+    Main()<decides>:void =
+        F := if (true?) { VoidOutput } else { IntIdentity }
+        F(0)
+}
+
+verse_vm_only
+{
+assert:
+    F := if (false?) { VoidInput } else { IntIdentity }
+    F(1) = 1
+
+assert:
+    F := if (true?) { VoidInput } else { IntIdentity }
+    F(2) = 19
+
+assert:
+    F := if (false?) { VoidOutput } else { IntIdentity }
+    F(0)
+
+assert:
+    F := if (true?) { VoidOutput } else { IntIdentity }
+    F(0)
+}
+
+
+TrueOutput(:int):true = {}
+
+TrueInput(:true):int = 42
+
+assert:
+    F := if (false?) { TrueOutput } else { VoidOutput }
+    F(0) = false
+
+assert:
+    F := if (true?) { TrueOutput } else { VoidOutput }
+    F(0) = false
+
+# This should work, but doesn't.  `false` literal is not currently of type `true`.
+# assert:
+#     F := if (false?) { TrueInput } else { VoidInput }
+#     F(false) = 19
+
+# This should work, but doesn't.  `true` is not currently a subtype of `logic`
+# assert:
+#     F:logic->int := if (false?) { TrueInput } else { VoidInput }
+#     F(false) = 19
+
+# This should work, but doesn't.  `false` literal is not currently of type `true`.
+# assert:
+#     F := if (true?) { TrueInput } else { VoidInput }
+#     F(false) = 42
+
+# This should work, but doesn't.  `true` is not currently a subtype of `logic`
+# assert:
+#     F:logic->int := if (true?) { TrueInput } else { VoidInput }
+#     F(false) = 42

@@ -1,0 +1,27 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+F0()<decides><transacts>:void=
+    var X:string = "abc"
+    set X += "def"
+assert{if{F0[]; false?}}
+
+F1()<decides><transacts>:void=
+    var X:int = 1
+    set X += 2
+assert{if{F1[]; false?}}
+
+F2()<decides><transacts>:void=
+    var X:float = 1.0
+    set X += 2.0
+assert{if{F2[]; false?}}
+
+F3()<decides><transacts>:void=
+    var X:[]int = array{1}
+    set X += array{2}
+assert{if{F3[]; false?}}
+
+c0 := class:
+    var X:string = "abc"
+F4()<decides><transacts>:void=
+    set c0{}.X += "def"
+assert{if{F4[]; false?}}

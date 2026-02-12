@@ -1,0 +1,195 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Test that empty character literals produce a syntax error.
+assert_syntax_error(3100){"\'\'"}
+
+# Multi-character character literals produce a syntax error.
+assert_syntax_error(3100){"\'ab\'"}
+assert_syntax_error(3100){"\'01\'"}
+assert_syntax_error(3100){"\'\{0o00\}\{0o01\}\'"}
+assert_syntax_error(3100){"\'abcdefghijklmnopqrstuvwxyz\'"}
+
+# Non-hexadecimal characters in hex character literals should be a syntax error.
+assert_valid_syntax      {"0off"}
+assert_valid_syntax      {"0oFF"}
+assert_syntax_error(3100){"0ofg"}
+assert_syntax_error(3100){"0ufg"}
+
+# Overlong hex character literals should be a syntax error.
+assert_syntax_error(3100){"0o000"}
+assert_syntax_error(3100){"0offf"}
+assert_syntax_error(3100){"0o000000"}
+assert_syntax_error(3100){"0offffff"}
+
+assert_syntax_error(3100){"0uffffff"}
+assert_syntax_error(3100){"0u000000000"}
+assert_syntax_error(3100){"0ufffffffff"}
+
+# Test the mapping between codepoints and source code characters.
+RequireChar8Equal(Lhs:char, Rhs:char)<computes><decides>:void=
+    if (Lhs <> Rhs):
+        DebugPrint("RequireChar8Equal: {Lhs} \<\> {Rhs}")
+        false?
+
+TestChar8Literal(Utf8CodeUnit:int, HexLiteral:char, PrintableLiteral:?char, EscapedLiteral:?char)<computes><decides>:void=
+    RequireChar8Equal[HexLiteral, ToChar(Utf8CodeUnit)]
+    if (PrintableLiteralChar := PrintableLiteral?):
+        RequireChar8Equal[HexLiteral, PrintableLiteralChar]
+    if (EscapedLiteralChar := EscapedLiteral?):
+        RequireChar8Equal[HexLiteral, EscapedLiteralChar]
+
+assert{TestChar8Literal[0x00, 0o00, false, false]}
+assert{TestChar8Literal[0x01, 0o01, false, false]}
+assert{TestChar8Literal[0x02, 0o02, false, false]}
+assert{TestChar8Literal[0x03, 0o03, false, false]}
+assert{TestChar8Literal[0x04, 0o04, false, false]}
+assert{TestChar8Literal[0x05, 0o05, false, false]}
+assert{TestChar8Literal[0x06, 0o06, false, false]}
+assert{TestChar8Literal[0x07, 0o07, false, false]}
+assert{TestChar8Literal[0x08, 0o08, false, false]}
+assert{TestChar8Literal[0x09, 0o09, option{'	'}, option{'\t'}]} # Be careful that PrintableLiteral contains an ASCII tab character
+assert{TestChar8Literal[0x0a, 0o0a, false, option{'\n'}]}
+assert{TestChar8Literal[0x0b, 0o0b, false, false]}
+assert{TestChar8Literal[0x0c, 0o0c, false, false]}
+assert{TestChar8Literal[0x0d, 0o0d, false, option{'\r'}]}
+assert{TestChar8Literal[0x0e, 0o0e, false, false]}
+assert{TestChar8Literal[0x0f, 0o0f, false, false]}
+assert{TestChar8Literal[0x10, 0o10, false, false]}
+assert{TestChar8Literal[0x11, 0o11, false, false]}
+assert{TestChar8Literal[0x12, 0o12, false, false]}
+assert{TestChar8Literal[0x13, 0o13, false, false]}
+assert{TestChar8Literal[0x14, 0o14, false, false]}
+assert{TestChar8Literal[0x15, 0o15, false, false]}
+assert{TestChar8Literal[0x16, 0o16, false, false]}
+assert{TestChar8Literal[0x17, 0o17, false, false]}
+assert{TestChar8Literal[0x18, 0o18, false, false]}
+assert{TestChar8Literal[0x19, 0o19, false, false]}
+assert{TestChar8Literal[0x1a, 0o1a, false, false]}
+assert{TestChar8Literal[0x1b, 0o1b, false, false]}
+assert{TestChar8Literal[0x1c, 0o1c, false, false]}
+assert{TestChar8Literal[0x1d, 0o1d, false, false]}
+assert{TestChar8Literal[0x1e, 0o1e, false, false]}
+assert{TestChar8Literal[0x1f, 0o1f, false, false]}
+assert{TestChar8Literal[0x20, 0o20, option{' '}, false]}
+assert{TestChar8Literal[0x21, 0o21, option{'!'}, false]}
+assert{TestChar8Literal[0x22, 0o22, option{'"'},   option{'\"'}]}
+assert{TestChar8Literal[0x23, 0o23, option{'#'}, false]}
+assert{TestChar8Literal[0x24, 0o24, option{'$'}, false]}
+assert{TestChar8Literal[0x25, 0o25, option{'%'}, false]}
+assert{TestChar8Literal[0x26, 0o26, option{'&'}, option{'\&'}]}
+assert{TestChar8Literal[0x27, 0o27, false, option{'\''}]}
+assert{TestChar8Literal[0x28, 0o28, option{'('}, false]}
+assert{TestChar8Literal[0x29, 0o29, option{')'}, false]}
+assert{TestChar8Literal[0x2a, 0o2a, option{'*'}, false]}
+assert{TestChar8Literal[0x2b, 0o2b, option{'+'}, false]}
+assert{TestChar8Literal[0x2c, 0o2c, option{','}, false]}
+assert{TestChar8Literal[0x2d, 0o2d, option{'-'}, false]}
+assert{TestChar8Literal[0x2e, 0o2e, option{'.'}, false]}
+assert{TestChar8Literal[0x2f, 0o2f, option{'/'}, false]}
+assert{TestChar8Literal[0x30, 0o30, option{'0'}, false]}
+assert{TestChar8Literal[0x31, 0o31, option{'1'}, false]}
+assert{TestChar8Literal[0x32, 0o32, option{'2'}, false]}
+assert{TestChar8Literal[0x33, 0o33, option{'3'}, false]}
+assert{TestChar8Literal[0x34, 0o34, option{'4'}, false]}
+assert{TestChar8Literal[0x35, 0o35, option{'5'}, false]}
+assert{TestChar8Literal[0x36, 0o36, option{'6'}, false]}
+assert{TestChar8Literal[0x37, 0o37, option{'7'}, false]}
+assert{TestChar8Literal[0x38, 0o38, option{'8'}, false]}
+assert{TestChar8Literal[0x39, 0o39, option{'9'}, false]}
+assert{TestChar8Literal[0x3a, 0o3a, option{':'}, false]}
+assert{TestChar8Literal[0x3b, 0o3b, option{';'}, false]}
+assert{TestChar8Literal[0x3c, 0o3c, option{'<'}, option{'\<'}]}
+assert{TestChar8Literal[0x3d, 0o3d, option{'='}, false]}
+assert{TestChar8Literal[0x3e, 0o3e, option{'>'}, option{'\>'}]}
+assert{TestChar8Literal[0x3f, 0o3f, option{'?'}, false]}
+assert{TestChar8Literal[0x40, 0o40, option{'@'}, false]}
+assert{TestChar8Literal[0x41, 0o41, option{'A'}, false]}
+assert{TestChar8Literal[0x42, 0o42, option{'B'}, false]}
+assert{TestChar8Literal[0x43, 0o43, option{'C'}, false]}
+assert{TestChar8Literal[0x44, 0o44, option{'D'}, false]}
+assert{TestChar8Literal[0x45, 0o45, option{'E'}, false]}
+assert{TestChar8Literal[0x46, 0o46, option{'F'}, false]}
+assert{TestChar8Literal[0x47, 0o47, option{'G'}, false]}
+assert{TestChar8Literal[0x48, 0o48, option{'H'}, false]}
+assert{TestChar8Literal[0x49, 0o49, option{'I'}, false]}
+assert{TestChar8Literal[0x4a, 0o4a, option{'J'}, false]}
+assert{TestChar8Literal[0x4b, 0o4b, option{'K'}, false]}
+assert{TestChar8Literal[0x4c, 0o4c, option{'L'}, false]}
+assert{TestChar8Literal[0x4d, 0o4d, option{'M'}, false]}
+assert{TestChar8Literal[0x4e, 0o4e, option{'N'}, false]}
+assert{TestChar8Literal[0x4f, 0o4f, option{'O'}, false]}
+assert{TestChar8Literal[0x50, 0o50, option{'P'}, false]}
+assert{TestChar8Literal[0x51, 0o51, option{'Q'}, false]}
+assert{TestChar8Literal[0x52, 0o52, option{'R'}, false]}
+assert{TestChar8Literal[0x53, 0o53, option{'S'}, false]}
+assert{TestChar8Literal[0x54, 0o54, option{'T'}, false]}
+assert{TestChar8Literal[0x55, 0o55, option{'U'}, false]}
+assert{TestChar8Literal[0x56, 0o56, option{'V'}, false]}
+assert{TestChar8Literal[0x57, 0o57, option{'W'}, false]}
+assert{TestChar8Literal[0x58, 0o58, option{'X'}, false]}
+assert{TestChar8Literal[0x59, 0o59, option{'Y'}, false]}
+assert{TestChar8Literal[0x5a, 0o5a, option{'Z'}, false]}
+assert{TestChar8Literal[0x5b, 0o5b, option{'['}, false]}
+assert{TestChar8Literal[0x5c, 0o5c, false, option{'\\'}]}
+assert{TestChar8Literal[0x5d, 0o5d, option{']'}, false]}
+assert{TestChar8Literal[0x5e, 0o5e, option{'^'}, false]}
+assert{TestChar8Literal[0x5f, 0o5f, option{'_'}, false]}
+assert{TestChar8Literal[0x60, 0o60, option{'`'}, false]}
+assert{TestChar8Literal[0x61, 0o61, option{'a'}, false]}
+assert{TestChar8Literal[0x62, 0o62, option{'b'}, false]}
+assert{TestChar8Literal[0x63, 0o63, option{'c'}, false]}
+assert{TestChar8Literal[0x64, 0o64, option{'d'}, false]}
+assert{TestChar8Literal[0x65, 0o65, option{'e'}, false]}
+assert{TestChar8Literal[0x66, 0o66, option{'f'}, false]}
+assert{TestChar8Literal[0x67, 0o67, option{'g'}, false]}
+assert{TestChar8Literal[0x68, 0o68, option{'h'}, false]}
+assert{TestChar8Literal[0x69, 0o69, option{'i'}, false]}
+assert{TestChar8Literal[0x6a, 0o6a, option{'j'}, false]}
+assert{TestChar8Literal[0x6b, 0o6b, option{'k'}, false]}
+assert{TestChar8Literal[0x6c, 0o6c, option{'l'}, false]}
+assert{TestChar8Literal[0x6d, 0o6d, option{'m'}, false]}
+assert{TestChar8Literal[0x6e, 0o6e, option{'n'}, false]}
+assert{TestChar8Literal[0x6f, 0o6f, option{'o'}, false]}
+assert{TestChar8Literal[0x70, 0o70, option{'p'}, false]}
+assert{TestChar8Literal[0x71, 0o71, option{'q'}, false]}
+assert{TestChar8Literal[0x72, 0o72, option{'r'}, false]}
+assert{TestChar8Literal[0x73, 0o73, option{'s'}, false]}
+assert{TestChar8Literal[0x74, 0o74, option{'t'}, false]}
+assert{TestChar8Literal[0x75, 0o75, option{'u'}, false]}
+assert{TestChar8Literal[0x76, 0o76, option{'v'}, false]}
+assert{TestChar8Literal[0x77, 0o77, option{'w'}, false]}
+assert{TestChar8Literal[0x78, 0o78, option{'x'}, false]}
+assert{TestChar8Literal[0x79, 0o79, option{'y'}, false]}
+assert{TestChar8Literal[0x7a, 0o7a, option{'z'}, false]}
+assert{TestChar8Literal[0x7b, 0o7b, option{'{'}, option{'\{'}]}
+assert{TestChar8Literal[0x7c, 0o7c, option{'|'}, false]}
+assert{TestChar8Literal[0x7d, 0o7d, option{'}'}, option{'\}'}]}
+assert{TestChar8Literal[0x7e, 0o7e, option{'~'}, option{'\~'}]}
+assert{TestChar8Literal[0x7f, 0o7f, false, false]}
+assert{TestChar8Literal[0x80, 0o80, false, false]}
+assert{TestChar8Literal[0x81, 0o81, false, false]}
+assert{TestChar8Literal[0xff, 0off, false, false]}
+
+RequireChar32Equal(Lhs:char32, Rhs:char32)<computes><decides>:void=
+    if (Lhs <> Rhs):
+        DebugPrint("RequireChar32Equal: {Lhs} \<\> {Rhs}")
+        false?
+TestChar32Literal(UnicodeCodePoint:int, HexLiteral:char32, PrintableLiteral:?char32)<computes><decides>:void=
+    RequireChar32Equal[HexLiteral, ToChar32(UnicodeCodePoint)]
+    if (PrintableLiteralChar := PrintableLiteral?):
+        RequireChar32Equal[HexLiteral, PrintableLiteralChar]
+
+assert{TestChar32Literal[0x00000, 0u00000, false]}
+assert{TestChar32Literal[0x000a0, 0u000a0, false]}
+assert{TestChar32Literal[0x0007f, 0u0007f, false]}
+assert{TestChar32Literal[0x00080, 0u00080, false]}
+assert{TestChar32Literal[0x00081, 0u00081, false]}
+assert{TestChar32Literal[0x000ff, 0u000ff, false]}
+assert{TestChar32Literal[0x00800, 0u00800, option{'ࠀ'}]}
+assert{TestChar32Literal[0x0597d, 0u0597d, option{'好'}]}
+assert{TestChar32Literal[0x10000, 0u10000, option{'𐀀'}]}
+assert{TestChar32Literal[0x1f600, 0u1f600, option{'😀'}]}
+assert{TestChar32Literal[0x1f680, 0u1f680, option{'🚀'}]}
+assert{TestChar32Literal[0x10ffff, 0u10ffff, false]}

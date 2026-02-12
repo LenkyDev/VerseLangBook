@@ -1,0 +1,4 @@
+
+assert_valid_syntax{"@a.bb c"}
+assert_valid_syntax{"@aa.b c"}
+assert_valid_syntax{"@aa.bb c"}

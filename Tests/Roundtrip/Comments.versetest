@@ -1,0 +1,360 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+# basics
+assert_roundtrip{<#C0#>X<#C1#>}
+assert_roundtrip{(<#C0#>)}
+assert_roundtrip{<#C0#>(<#C1#>)<#C2#>}
+assert_roundtrip{<#C0#>5<#C1#>}
+assert_roundtrip{<#C0#>15.0<#C1#>}
+assert_roundtrip{<#C0#>"literal"<#C1#>}
+assert_roundtrip{<#C0#>'l'<#C1#>}
+assert_roundtrip{<#C0#>true<#C1#>}
+assert_roundtrip{<#C0#>false<#C1#>}
+
+# Definitions.versetest
+assert_roundtrip{<#C0#>x<#C1#> := <#C2#>1<#C3#>}
+assert_roundtrip{<#C0#>x<#C1#>:<#C2#>int<#C3#> = <#C4#>2<#C5#>}
+assert_roundtrip{<#C0#>f<#C1#>(<#C2#>)<#C3#>:<#C4#>void<#C5#> = <#C6#>3<#C7#>}
+assert_roundtrip{f():void = <#C1#><#C2#>{<#C3#><#C4#>}<#C5#><#C6#>}
+assert_roundtrip{f():void = {<#C1#>}}
+assert_roundtrip{f(x:int<#C0#>) := {}}
+assert_roundtrip{<#C0#>f<#C1#>(<#C2#>)<#C3#>:<#C4#>void<#C5#> = <#C6#>{<#C7#>}<#C8#>}
+assert_roundtrip{<#C0#>f<#C1#>(<#C2#>)<#C3#>:<#C4#>void<#C5#> = <#C6#>x<#C7#>}
+assert_roundtrip{<#C0#>f<#C1#>(<#C2#>)<#C3#>:<#C4#>void<#C5#> = <#C6#>{<#C7#>x<#C8#>}<#C9#>}
+
+assert_roundtrip(
+f():void = 
+    <#C1#>
+    <#C2#>
+    false
+    <#C3#>
+    <#C4#>
+){
+f():void = 
+    <#C1#>
+    <#C2#>
+    false<#C3#>
+    <#C4#>
+
+}
+
+
+
+# Semicolons between block comments are purposely not preserved through pretty-printing at the moment; we don't capture
+# enough information here in the VST to make this yet part of the pretty-printer.
+# assert_roundtrip{<#C0#>f<#C1#>(<#C2#>)<#C3#>:<#C4#>void<#C5#> = <#C6#>{<#C7#>x<#C8#>;<#C9#>}<#C10#>}
+# assert_roundtrip{<#C0#>f<#C1#>(<#C2#>)<#C3#>:<#C4#>void<#C5#> = <#C6#>{<#C7#>x<#C8#>; <#C9#>y<#C10#>;<#C11#>}<#C12#>}
+
+assert_roundtrip{<#C0#>f<#C1#>(<#C2#>x<#C3#>:<#C4#>int<#C5#>)<#C6#>:<#C7#>void<#C8#> = <#C9#>x<#C10#> * <#C11#>x<#C12#>}
+
+# For.versetest
+assert_roundtrip{for(x:xs)<#C0#> {}}
+assert_roundtrip{<#C0#>for<#C1#>(<#C2#>x<#C3#>:<#C4#>xs<#C5#>)<#C6#> {<#C7#>print<#C8#>(<#C9#>x<#C10#>)<#C11#>}<#C12#>}
+assert_roundtrip{<#C0#>for<#C1#>(<#C2#>a<#C3#>, <#C4#>b<#C5#>, <#C6#>c<#C7#>)<#C8#> {<#C9#>d<#C10#>, <#C11#>e<#C12#>, <#C13#>f<#C14#>, <#C15#>g<#C16#>}<#C17#>}
+assert_roundtrip{<#C0#>for<#C1#>(<#C2#>key<#C3#>-><#C4#>value<#C5#>:<#C6#>xs<#C7#>)<#C8#> {<#C9#>key<#C10#>}<#C11#>}
+
+# IfElse.versetest
+# TODO: This needs to be re-visited; we need to re-think `FlowIf` VST node structure in general because
+# the flattened VST hierarchy makes it impossible to support both having block comments before and after the `else` token itself.
+# assert_roundtrip{<#C0#>if<#C1#> (<#C2#>)<#C3#> then <#C4#>{<#C5#>}<#C6#> else <#C7#>{<#C8#>}<#C9#>}
+
+assert_roundtrip{<#C0#>if<#C1#> (<#C2#>)<#C3#> then <#C4#>{<#C5#>}<#C6#><#C7#> else {<#C8#>}<#C9#>}
+assert_roundtrip{<#C0#>if<#C1#> (<#C2#>a<#C3#>)<#C4#> then <#C5#>b<#C6#><#C7#>}
+assert_roundtrip{<#C0#>if<#C1#> (<#C2#>a<#C3#> < <#C4#>b<#C5#>)<#C6#> then <#C7#>c<#C8#> else <#C9#>d<#C10#>}
+
+# Again, semicolons between block comments are purposely not preserved through pretty-printing at the moment.
+# assert_roundtrip{<#C0#>if<#C1#> (<#C2#>a<#C3#> > <#C4#>b<#C5#>)<#C6#> then <#C7#>{<#C8#>d<#C9#>; <#C10#>e<#C11#>}<#C12#> else if<#C13#>(<#C14#>f<#C15#>[<#C16#>]<#C17#>)<#C18#> then <#C19#>{<#C20#>h<#C21#>; <#C22#>i<#C23#>}<#C24#> else <#C25#>j<#C26#>}
+
+assert_roundtrip{<#C0#>if<#C1#> (<#C2#>a<#C3#>)<#C4#> then <#C5#>if<#C6#> (<#C7#>b<#C8#>)<#C9#> then <#C10#>c<#C11#>}
+assert_roundtrip{<#C0#>if<#C1#> (<#C2#>a<#C3#>)<#C4#> then <#C5#>b<#C6#> else if<#C7#> (<#C8#>c<#C9#>)<#C10#> then <#C11#>d<#C12#>}
+assert_roundtrip{<#C0#>if<#C1#> (<#C2#>a<#C3#>)<#C4#> then <#C5#>if<#C6#> (<#C7#>b<#C8#>)<#C9#> then <#C10#>c<#C11#> else <#C12#>d<#C13#>}
+
+# Operators.versetest
+assert_roundtrip{<#C0#>a<#C1#> + <#C2#>b<#C3#>}
+assert_roundtrip{<#C0#>a<#C1#> - <#C2#>b<#C3#>}
+assert_roundtrip{<#C0#>a<#C1#> * <#C2#>b<#C3#>}
+assert_roundtrip{<#C0#>a<#C1#> / <#C2#>b<#C3#>}
+
+assert_roundtrip{<#C0#>a<#C1#>^<#C2#>}
+assert_roundtrip{<#C0#>a<#C1#>?<#C2#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> + <#C3#>b<#C4#>)<#C5#>^<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> - <#C3#>b<#C4#>)<#C5#>^<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> * <#C3#>b<#C4#>)<#C5#>^<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> / <#C3#>b<#C4#>)<#C5#>^<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> + <#C3#>b<#C4#>)<#C5#>?<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> - <#C3#>b<#C4#>)<#C5#>?<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> * <#C3#>b<#C4#>)<#C5#>?<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> / <#C3#>b<#C4#>)<#C5#>?<#C6#>}
+
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> + <#C3#>b<#C4#>)<#C5#> + <#C6#>c<#C7#>}
+assert_roundtrip{<#C0#>a<#C1#> + <#C2#>(<#C3#>b<#C4#> + <#C5#>c<#C6#>)<#C7#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> - <#C3#>b<#C4#>)<#C5#> - <#C6#>c<#C7#>}
+assert_roundtrip{<#C0#>a<#C1#> - <#C2#>(<#C3#>b<#C4#> - <#C5#>c<#C6#>)<#C7#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> * <#C3#>b<#C4#>)<#C5#> * <#C6#>c<#C7#>}
+assert_roundtrip{<#C0#>a<#C1#> * <#C2#>(<#C3#>b<#C4#> * <#C5#>c<#C6#>)<#C7#>}
+assert_roundtrip{<#C0#>(<#C1#>a<#C2#> / <#C3#>b<#C4#>)<#C5#> / <#C6#>c<#C7#>}
+assert_roundtrip{<#C0#>a<#C1#> / <#C2#>(<#C3#>b<#C4#> / <#C5#>c<#C6#>)<#C7#>}
+
+assert_roundtrip{<#C0#>-<#C1#>a<#C2#>}
+assert_roundtrip{<#C0#>+<#C1#>a<#C2#>}
+assert_roundtrip{<#C0#>+<#C1#>-<#C2#>a<#C3#>}
+assert_roundtrip{<#C0#>-<#C1#>-<#C2#>a<#C3#>}
+assert_roundtrip{<#C0#>-<#C1#>-<#C2#>-<#C4#>a<#C5#>}
+assert_roundtrip{<#C0#>-<#C1#>-<#C2#>-<#C3#>a<#C4#> - <#C5#>b<#C6#>}
+assert_roundtrip{<#C0#>a<#C1#> - <#C2#>(<#C3#>-<#C4#>b<#C5#>)<#C6#>}
+assert_roundtrip{<#C0#>(<#C1#>-<#C2#>a<#C3#>)<#C4#> * <#C5#>d<#C6#> - <#C7#>(<#C8#>-<#C9#>b<#C10#>)<#C11#> * <#C12#>c<#C13#>}
+
+assert_roundtrip{<#C0#>foo<#C1#> and <#C2#>bar<#C3#>}
+assert_roundtrip{<#C0#>foo<#C1#> or <#C2#>bar<#C3#>}
+assert_roundtrip{<#C0#>(<#C1#>foo<#C2#> and <#C3#>bar<#C4#>)<#C5#> and <#C6#>baz<#C7#>}
+assert_roundtrip{<#C0#>foo<#C1#> and <#C2#>(<#C3#>bar<#C4#> and <#C5#>baz<#C6#>)<#C7#>}
+assert_roundtrip{<#C0#>(<#C1#>foo<#C2#> or <#C3#>bar<#C4#>)<#C5#> or <#C6#>baz<#C7#>}
+assert_roundtrip{<#C0#>foo<#C1#> or <#C2#>(<#C3#>bar<#C4#> or <#C5#>baz<#C6#>)<#C7#>}
+assert_roundtrip{<#C0#>(<#C1#>(<#C2#>foo<#C3#> and <#C4#>bar<#C5#>)<#C6#> and <#C7#>baz<#C8#>)<#C9#> and <#C10#>foobar<#C11#>}
+assert_roundtrip{<#C0#>(<#C1#>(<#C2#>foo<#C3#> or <#C4#>bar<#C5#>)<#C6#> or <#C7#>baz<#C8#>)<#C9#> or <#C10#>foobar<#C11#>}
+assert_roundtrip{<#C0#>(<#C1#>foo<#C2#> and <#C3#>bar<#C4#>)<#C5#> or <#C6#>baz<#C7#>}
+
+assert_roundtrip{<#C0#>(<#C1#>foo<#C2#> or <#C3#>bar<#C4#>)<#C5#> and <#C6#>baz<#C7#>}
+assert_roundtrip{<#C0#>(<#C1#>false<#C2#> or <#C3#>true<#C4#>)<#C5#> and <#C6#>(<#C7#>true<#C8#> or <#C9#>true<#C10#>)<#C11#>}
+assert_roundtrip{<#C0#>(<#C1#>(<#C2#>foo<#C3#> and <#C4#>bar<#C5#>)<#C6#> and <#C7#>baz<#C8#>)<#C9#> and <#C10#>foobar<#C11#>}
+
+# Attributes
+assert_roundtrip{
+<#C0#>@<#C1#>attrib1<#C2#> @<#C3#>attrib2<#C4#>(<#C5#>"hey"<#C6#>)<#C7#> @<#C8#>attrib3<#C9#>
+c := class {}
+}
+
+assert_roundtrip{
+<#C0#>@attr1
+Ident:int = 1<#C1#>
+}
+
+assert_roundtrip{
+<#C0#>@attr1<#C1#>
+<#C2#>Ident:int = 1<#C3#>
+}
+
+assert_roundtrip{
+<#C0#>@attr1
+IdentA:int = 1<#C1#>
+<#D0#>@attr2
+IdentB:int = 2<#D1#>
+<#E0#>X:int = 1
+}
+
+assert_roundtrip{
+<#C0#>@attr1
+IdentA:int = 1<#C1#>
+<#D0#>@attr2
+IdentB:logic = false<#D1#>
+<#E0#>X:int = 1
+}
+
+assert_roundtrip{
+<#C0#>ClassA<#C1#> := <#C2#>class<#C3#>:
+    <#D5#>dataA<#D6#>^<#D7#>:<#D8#>int<#D9#>
+
+<#E0#>ClassB<#E1#> := <#E2#>class<#E3#>(<#E4#>ClassA<#E5#>)<#E6#>:
+    <#F0#>dataB<#F1#>^<#F2#>:<#F3#>int<#F4#>
+    <#G0#>onCreate<#G1#>(<#G2#>)<#G3#>:<#G4#>void<#G5#> = 
+        set <#H0#>dataA<#H1#>^<#H2#> = <#H3#>1<#H4#>
+        set <#I0#>dataB<#I1#>^<#I2#> = <#I3#>2<#I4#>
+}
+
+assert_roundtrip{
+<#A0#>V12<#A1#>^<#A2#>:<#A3#>int<#A4#> = <#A5#>4<#A6#>
+<#B0#>F5<#B1#>(<#B2#>)<#B3#>:<#B4#>int<#B5#> = 
+    <#B6#>L0<#B7#> := <#B8#>(set <#B9#>V12<#B10#>^<#B11#> += <#B12#>1<#B13#>)<#B14#>
+    <#C0#>return <#C1#>L0<#C2#>
+}
+
+assert_roundtrip{
+<#A0#>Result<#A1#> := <#A2#>for<#A3#>(<#A4#>X<#A5#>:<#A6#>map<#A7#> {<#A8#>0<#A9#> => <#A10#>1<#A11#>, <#A12#>1<#A13#> => <#A14#>2<#A15#>}<#A16#>)<#A17#> {<#A18#>X<#A19#>}<#A20#>
+<#B0#>Result<#B1#> = <#B2#>array<#B3#> {<#B4#>2<#B5#>, <#B6#>4<#B7#>, <#B8#>5<#B9#>}<#B10#>
+}
+
+
+# TODO: If there are newlines after `<#B1#>`, those don't get roundtripped correctly.
+# there are some places in an 'if' where we don't have a place in the VST to store the comments
+assert_roundtrip{
+<#A0#>if<#A1#> (<#A2#>1<#A3#> > <#A4#>2<#A5#>)<#A6#>:
+    <#B0#>4<#B1#>
+<#C0#>else if<#C1#> (<#C2#>2<#C3#> > <#C4#>3<#C5#>)<#C6#>:
+    <#D0#>6<#D1#>
+else:
+    <#F0#>7<#F1#>
+}
+
+# TODO: Captures have an extra newline when a comment ends the script.
+# assert_roundtrip{
+# <#A0#>C0Module<#A1#> := <#A2#>module<#A3#>:
+#     <#B0#>@<#B1#>public<#B2#>
+#     <#C0#>f1<#C1#>(<#C2#>)<#C3#>:<#C4#>int<#C5#> = 
+#         <#D0#>c<#D1#> := <#D2#>C0<#D3#> {<#D4#>a<#D5#> := <#D6#>0<#D7#>}<#D8#>
+#         <#E0#>c<#E1#>.f0<#E2#>(<#E3#>1<#E4#>)<#E5#>..<#E6#>2<#E7#>
+#         <#F0#>return <#F1#>(<#F2#>c<#F3#>.a<#F4#>^<#F5#>)<#F6#>
+
+#     <#G0#>@<#G1#>public<#G2#>
+#     <#H0#>f2<#H1#>(<#H2#>)<#H3#>:<#H4#>int<#H5#> = 
+#         <#I0#>c<#I1#> := <#I2#>C0<#I3#> {<#I4#>a<#I5#> := <#I6#>0<#I7#>}<#I8#>
+#         <#J0#>1<#J1#>..<#J2#>c<#J3#>.f0<#J4#>(<#J5#>2<#J6#>)<#J7#>
+#         <#K0#>return <#K1#>(<#K2#>c<#K3#>.a<#K4#>^<#K5#>)<#K6#>
+
+#     <#L0#>@<#L1#>public<#L2#>
+#     <#M0#>f3<#M1#>(<#M2#>)<#M3#>:<#M4#>int<#M5#> = 
+#         <#N0#>c<#N1#> := <#N2#>C0<#N3#> {<#N4#>a<#N5#> := <#N6#>0<#N7#>}<#N8#>
+#         <#O0#>c<#O1#>.f0<#O2#>(<#O3#>1<#O4#>)<#O5#>..<#O6#>c<#O7#>.f0<#O8#>(<#O9#>2<#O10#>)<#O11#>
+#         <#P0#>return <#P1#>c<#P2#>.a<#P3#>^<#P4#>
+# }
+
+# TODO: Captures have an extra newline when a comment ends the script.
+# qualified identifiers
+# note there is one spot where comments are not currently allowed by the parser, between the ':)' and 'x' after comment E16
+assert_roundtrip{
+<#A0#>d4<#A1#> := <#A2#>class<#A3#> {<#A4#>F<#A5#>(<#A6#>)<#A7#>:<#A8#>int<#A9#> = <#A10#>1<#A11#>}<#A12#>
+<#B0#>d5<#B1#> := <#B2#>class<#B3#>(<#B4#>d4<#B5#>)<#B6#> {<#B7#>}<#B8#>
+<#C0#>d6<#C1#> := <#C2#>class<#C3#>(<#C4#>d5<#C5#>)<#C6#>:
+    <#D0#>@<#D1#>override<#D2#>
+    <#E0#>(<#E1#>(<#E2#>AX<#E3#>:)<#E4#>d4<#E5#>:)<#E6#>F<#E7#>(<#E8#>)<#E9#>:<#E10#>int<#E11#> = <#E12#>A<#E13#>.(<#E15#>Q<#E16#>:)x<#E17#>(<#E18#>)<#E19#> + <#E20#>2<#E21#>
+
+}
+
+# TODO: Captures have an extra newline when a comment ends the script.
+# line / ind comments
+assert_roundtrip{
+f():void = 
+    # line comment 1
+    # line comment 2
+    <#>hey
+        indcmt 1
+        #liney
+        ind
+        <#blocky#>cmt 2
+    <#C6#>3<#C7#>
+
+}
+
+assert_roundtrip{
+# comment
+stub{}
+}
+
+assert_roundtrip{
+#     comment
+stub{}
+}
+
+assert_roundtrip{
+<# blockcmt #>
+stub{}
+}
+
+assert_roundtrip{
+<#blockcmt#>stub{}
+}
+
+assert_roundtrip{
+<#>indcmt
+    indcmt_frag
+stub{}
+}
+
+assert_roundtrip{
+<#>indcmt
+    indcmt_frag
+    trailing newline later
+
+stub{}
+}
+
+assert_roundtrip{
+# line comment
+a:int = 5
+}
+
+assert_roundtrip{
+<# blockcmt #>
+a:int = 5
+}
+
+assert_roundtrip{
+<#> indcmt
+    fragcmt
+a:int = 5
+}
+
+assert_roundtrip{
+test := module:
+    # A line comment.
+    test_class := class:
+        # This line comment would previously be wrongly associated with the clause for the `test_class` definition.
+        test_interface := interface:
+            a:int = 5
+}
+
+# Make sure that enums with comments on each of the enumerations roundtrips as expected.
+assert_roundtrip{
+# Comment A
+TheEnum := enum:
+    # Comment B
+    EnumA
+    # Multiline Comment C
+    # Multiline Comment C line 2
+    EnumB
+    # Comment D
+    EnumC
+}    
+
+# Test that indented indcmts are still roundtripped correctly.
+assert_roundtrip{
+a<#>
+    b<#>
+        c<#>
+            d<#>
+                e<#>
+                    f<#>
+                        g<#>
+                            h<#>
+                                i<#>
+                                    j<#>
+                                        k<#>
+                                            l<#>
+                                                m<#>
+                                                    n<#>
+                                                        o<#>
+                                                            p<#>
+                                                                q<#>
+                                                                    r<#>
+                                                                        s<#>
+                                                                            t<#>
+                                                                                u<#>
+                                                                                    v<#>
+                                                                                        w<#>
+                                                                                            x<#>
+                                                                                                y<#>
+                                                                                                    z<#>
+terminate_here_explicitly_due_to_comment_extra_newline_roundtripping
+}
+
+# SOL-3839: This would previously trigger exponential parsing behaviour (i.e. takes a _very_ long amount of time to parse.)
+assert:
+    a:int = 5
+                       <#>
+                    <#>
+                <#>
+            <#>
+        <#>
+    <# #>
+           <# #>
+          <# #>
+        <# #>
+       <# #>
+      <# #>
+     <# #>
+    
+         #
+        #
+       #
+      #
+     #
+    #
+    a = 5

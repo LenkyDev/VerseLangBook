@@ -1,0 +1,77 @@
+using{/Verse.org/Tests/VerseTestScriptCmd/FloatConstants};
+
+# Negative and positive zero should compare as equal.
+assert{not -0.0 <  +0.0}
+assert{    -0.0 <= +0.0}
+assert{not -0.0 >  +0.0}
+assert{    -0.0 >= +0.0}
+assert{    -0.0 =  +0.0}
+assert{not -0.0 <> +0.0}
+assert{not +0.0 <  -0.0}
+assert{    +0.0 <= -0.0}
+assert{not +0.0 >  -0.0}
+assert{    +0.0 >= -0.0}
+assert{    +0.0 =  -0.0}
+assert{not +0.0 <> -0.0}
+assert{not  1.0 <   1.0}
+assert{     1.0 <=  1.0}
+assert{not  1.0 >   1.0}
+assert{     1.0 >=  1.0}
+assert{     1.0 =   1.0}
+assert{not  1.0 <>  1.0}
+assert{     1.0 <   2.0}
+assert{     1.0 <=  2.0}
+assert{not  1.0 >   2.0}
+assert{not  1.0 >=  2.0}
+assert{not  1.0 =   2.0}
+assert{     1.0 <>  2.0}
+assert{not  2.0 <   1.0}
+assert{not  2.0 <=  1.0}
+assert{     2.0 >   1.0}
+assert{     2.0 >=  1.0}
+assert{not  2.0 =   1.0}
+assert{     2.0 <>  1.0}
+assert{    -2.0 <  -1.0}
+assert{    -2.0 <= -1.0}
+assert{not -2.0 >  -1.0}
+assert{not -2.0 >= -1.0}
+assert{not -2.0 =  -1.0}
+assert{    -2.0 <> -1.0}
+assert{not -1.0 <  -2.0}
+assert{not -1.0 <= -2.0}
+assert{    -1.0 >  -2.0}
+assert{    -1.0 >= -2.0}
+assert{not -1.0 =  -2.0}
+assert{    -1.0 <> -2.0}
+
+assert{(1.0 <  2.0) = 1.0}
+assert{(1.0 <= 2.0) = 1.0}
+assert{(2.0 >  1.0) = 2.0}
+assert{(2.0 >= 1.0) = 2.0}
+assert{(1.0 =  1.0) = 1.0}
+assert{(1.0 <> 2.0) = 1.0}
+
+# We rely on this in TestOrdering, so check it first
+assert{NaN = NaN}
+assert{not(NaN <> NaN)}
+
+# Float ordering: this is a list that is in the expected sorted order with no duplicates,
+# and we verify that ordering relations between pairs are what we expect
+# The cases involving NaNs are partially ordered and need some special care
+TestOrdering()<decides>:void =
+    ExpectedOrdering:[]float := array{-PosInfty, -DoubleMax, -0.5 * DoubleMax, -SmallestNormal, -LargestSubnormal,
+        -SmallestSubnormal, -0.0, SmallestSubnormal, HalfSmallestNormal, SmallestNormal, 1.0, 123.0, DoubleMax, PosInfty, NaN}
+    for (I1->F1 : ExpectedOrdering; I2->F2 : ExpectedOrdering):
+        if (F1 <> NaN and F2 <> NaN):
+            # Ordered comparison cases
+            logic{F1 < F2} = logic{I1 < I2}
+            logic{F1 <= F2} = logic{I1 <= I2}
+            logic{F1 = F2} = logic{I1 = I2}
+        else:
+            # Unordered comparison cases (involving at least one NaN). We never have true <, but we might have
+            # equality for NaN=NaN.
+            logic{F1 < F2} = false
+            logic{F1 <= F2} = logic{I1 = I2} # only unordered <= case is equality between NaNs
+            logic{F1 = F2} = logic{I1 = I2}
+
+assert{TestOrdering[]}

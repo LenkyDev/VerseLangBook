@@ -1,0 +1,3 @@
+C0 := class { coro(x:int)<suspends>:int={return x} }
+C1 := class(C0) { coro<override>(y:int)<suspends>:int={return y+1} }
+assert{spawn{C1{}.coro(0)}}

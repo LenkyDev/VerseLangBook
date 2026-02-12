@@ -1,0 +1,48 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Check that global variables cannot be "hacked" in by using a global class instance.
+assert_semantic_error(3512):
+    foo_module := module:
+        global_class_instance := class<allocates>:
+            var X<public>:int = 0
+        MyGlobalVariable:global_class_instance = global_class_instance{}
+
+# This should also hold true for definitions at snippet-level scope.
+assert_semantic_error(3512):
+    global_class_instance := class<allocates>:
+        var X<public>:int = 0
+    MyGlobalVariable:global_class_instance = global_class_instance{}
+
+# This should also trigger if trying to instantiate an archetype of a sub-class that has a `<varies>` constructor.
+assert_semantic_error(3512):
+    class_that_has_varies_constructor := class<allocates>:
+        var X<public>:int = 0
+
+    global_sub_class := class(class_that_has_varies_constructor):
+        Y:int
+
+    MyGlobalVariable:global_sub_class = global_sub_class{ Y := 1}
+
+assert_semantic_error(3502):
+    a := class:
+        MyInt:int = 0
+
+    b := module:
+        var ArrayOfA:[]a = array{}
+    
+assert_semantic_error(3502): 
+   var A:int = 0
+
+assert_valid:
+    a := module:
+        B:int = 0
+
+assert_valid:
+    A:int = 0
+
+# Test that trying to instantiate a class with the `<varies>` effect in its constructor won't work
+# in the constructor of another class with a more restricted effect.
+assert_semantic_error(3512):
+    c0 := class<computes>{Subobject:c1}
+    c1 := class<allocates>{var X:int=0}
+    C0:c0 = c0{Subobject:=c1{}}

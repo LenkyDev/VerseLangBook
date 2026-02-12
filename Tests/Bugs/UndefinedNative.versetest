@@ -1,0 +1,5 @@
+<#> assert_link_error(todo):
+    
+    UndefinedNativeClass<native> := class:
+        
+        UndefinedNativeFunction<native>():void=

@@ -1,0 +1,8 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Check that defining an external package should give a compiler error that there should only be an `external{}` macro.
+assert_semantic_error(3580,3580,3580):
+    vpackage(P0,/P0,?Role:=External,?Scope:=PublicUser):
+        snippet:
+            F(X:int)<transacts>:?int=option{X}
+            G():void=if(Y := F(1)?){}

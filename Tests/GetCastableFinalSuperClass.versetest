@@ -1,0 +1,340 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# now lets try GetCastableFinalSuperClass[]
+# given a base type and an object instance, returns the subtype marked <final_super> subclasses the specified base type otherwise failure
+
+#            base_type<castable>
+#               /         \
+#  a_class<final_super>   w_class
+#         |                  |
+#      b_class            x_class<final_super>
+#         |                  |
+#      c_class            y_class
+#         |                  |
+#      d_class            z_class
+
+base_type<public> := class<castable>:
+    Value<public>:int = 42
+
+a_class<public> := class<final_super>(base_type){}
+b_class<public> := class(a_class){}
+c_class<public> := class(b_class) {}
+d_class<public> := class(c_class) {}
+
+w_class<public> := class(base_type){}
+x_class<public> := class<final_super>(w_class){}
+y_class<public> := class(x_class) {}
+z_class<public> := class(y_class) {}
+
+# GetCastableFinalSuperClass is not defined in the new VM because of gaps in VNI support for types
+verse_vm_todo {
+
+assert:
+    Y:y_class = y_class{}
+    if (TT:castable_subtype(w_class) = GetCastableFinalSuperClass[w_class, Y]):
+        XX:w_class = TT[Y]
+        XX.Value = 42
+    else:
+        0 = 1
+
+assert { GetCastableFinalSuperClass[base_type, a_class{}] } # returns castable_subtype(base_type) := a_class
+assert { GetCastableFinalSuperClass[base_type, b_class{}] } # returns castable_subtype(base_type) := b_class
+assert { GetCastableFinalSuperClass[base_type, c_class{}] } # returns castable_subtype(base_type) := c_class
+assert { GetCastableFinalSuperClass[base_type, d_class{}] } # returns castable_subtype(base_type) := d_class
+
+assert { GetCastableFinalSuperClassFromType[base_type, a_class] } # returns castable_subtype(base_type) := a_class
+assert { GetCastableFinalSuperClassFromType[base_type, b_class] } # returns castable_subtype(base_type) := b_class
+assert { GetCastableFinalSuperClassFromType[base_type, c_class] } # returns castable_subtype(base_type) := c_class
+assert { GetCastableFinalSuperClassFromType[base_type, d_class] } # returns castable_subtype(base_type) := d_class
+
+assert { not GetCastableFinalSuperClass[a_class, a_class{}] } # fails
+assert { not GetCastableFinalSuperClass[a_class, b_class{}] } # fails
+assert { not GetCastableFinalSuperClass[b_class, c_class{}] } # fails
+assert { not GetCastableFinalSuperClass[c_class, d_class{}] } # fails
+
+assert { not GetCastableFinalSuperClassFromType[a_class, a_class] } # fails
+assert { not GetCastableFinalSuperClassFromType[a_class, b_class] } # fails
+assert { not GetCastableFinalSuperClassFromType[b_class, c_class] } # fails
+assert { not GetCastableFinalSuperClassFromType[c_class, d_class] } # fails
+
+assert { not GetCastableFinalSuperClass[base_type, w_class{}] } # returns castable_subtype(base_type) := failure because w_class isn't direct
+assert { not GetCastableFinalSuperClass[base_type, x_class{}] } # returns castable_subtype(base_type) := failure 
+assert { not GetCastableFinalSuperClass[base_type, y_class{}] } # returns castable_subtype(base_type) := failure
+assert { not GetCastableFinalSuperClass[base_type, z_class{}] } # returns castable_subtype(base_type) := failure
+assert { not GetCastableFinalSuperClass[w_class, w_class{}] } # returns castable_subtype(base_type) := failure
+assert { GetCastableFinalSuperClass[w_class, x_class{}] } # returns castable_subtype(base_type) := x_class 
+assert { GetCastableFinalSuperClass[w_class, y_class{}] } # returns castable_subtype(base_type) := x_class 
+assert { GetCastableFinalSuperClass[w_class, z_class{}] } # returns castable_subtype(base_type) := x_class 
+
+assert { not GetCastableFinalSuperClassFromType[base_type, w_class] } # returns castable_subtype(base_type) := failure because w_class isn't direct
+assert { not GetCastableFinalSuperClassFromType[base_type, x_class] } # returns castable_subtype(base_type) := failure 
+assert { not GetCastableFinalSuperClassFromType[base_type, y_class] } # returns castable_subtype(base_type) := failure
+assert { not GetCastableFinalSuperClassFromType[base_type, z_class] } # returns castable_subtype(base_type) := failure
+assert { not GetCastableFinalSuperClassFromType[w_class, w_class] } # returns castable_subtype(base_type) := failure
+assert { GetCastableFinalSuperClassFromType[w_class, x_class] } # returns castable_subtype(base_type) := x_class 
+assert { GetCastableFinalSuperClassFromType[w_class, y_class] } # returns castable_subtype(base_type) := x_class 
+assert { GetCastableFinalSuperClassFromType[w_class, z_class] } # returns castable_subtype(base_type) := x_class 
+
+assert { not GetCastableFinalSuperClass[w_class, w_class{}] } # fails
+assert { GetCastableFinalSuperClass[w_class, x_class{}] } 
+assert { not GetCastableFinalSuperClass[y_class, z_class{}] } # fails
+assert { not GetCastableFinalSuperClass[z_class, z_class{}] } # fails
+
+assert { not GetCastableFinalSuperClassFromType[w_class, w_class] } # fails
+assert { GetCastableFinalSuperClassFromType[w_class, x_class] } 
+assert { not GetCastableFinalSuperClassFromType[y_class, z_class] } # fails
+assert { not GetCastableFinalSuperClassFromType[z_class, z_class] } # fails
+
+# base_type does not have a direct subclass from itself
+assert { not GetCastableFinalSuperClass[base_type, base_type{}] } # fails
+assert { not GetCastableFinalSuperClassFromType[base_type, base_type] } # fails
+
+assert { GetCastableFinalSuperClass[w_class, y_class{}] } # returns castable_subtype(w_class) := y_class
+assert { GetCastableFinalSuperClassFromType[w_class, y_class] } # returns castable_subtype(w_class) := y_class
+
+# jump through some base layers to make sure we scale to deeper heirarchies
+assert { GetCastableFinalSuperClass[w_class, y_class{}] }
+assert { GetCastableFinalSuperClass[w_class, z_class{}] }
+assert { GetCastableFinalSuperClassFromType[w_class, y_class] }
+assert { GetCastableFinalSuperClassFromType[w_class, z_class] }
+
+# the object instance (arg-2) must be a subtype of arg-1
+assert_semantic_error<depends_on_library>(3509):
+    bb_base_type:=class{}
+    AA := class(bb_base_type){}
+    Func():void=
+        if:
+            GetCastableFinalSuperClass[AA, bb_base_type{}]
+
+assert {not GetCastableFinalSuperClassFromType[a_class, base_type] }
+
+# obviously unrelated types are right out
+assert_semantic_error<depends_on_library>(3509):
+    bb_base_type:=class{}
+    AA := class{}
+    Func():void=
+        if:
+            GetCastableFinalSuperClass[AA, bb_base_type{}]
+
+    
+assert_semantic_error<depends_on_library>(3509):
+    bb_base_type:=class{}
+    AA := class{}
+    Func():void=
+        if:
+            GetCastableFinalSuperClass[AA, bb_base_type]
+
+assert_semantic_error<depends_on_library>(3509):
+    WW := class<castable>{}
+    DD := class<final_super>(WW) {}
+
+    Work := class:
+        DoIt()<decides>:void=
+            d:DD = DD{}
+            TT:castable_subtype(WW) := GetCastableFinalSuperClass[WW, d]  # returns y_class, but TT is a subtype(w_class)
+            dd:DD = TT[d]
+
+assert_semantic_error<depends_on_library>(3509):
+    WW := class<castable>{}
+    DD := class<final_super>(WW) {}
+
+    Work := class:
+        DoIt()<decides>:void=
+            d:DD = DD{}
+            TT:castable_subtype(WW) := GetCastableFinalSuperClassFromType[WW, DD]  # returns y_class, but TT is a subtype(w_class)
+            dd:DD = TT[d]
+
+# can the result of this be passed back through itself?
+func_class<public> := class:
+    Func<public>(arg:castable_subtype(w_class)):int=
+        42
+
+assert:
+    FC:func_class = func_class{}
+    FC.Func(GetCastableFinalSuperClass[w_class, y_class{}]) = 42
+
+assert:
+    FC:func_class = func_class{}
+    FC.Func(GetCastableFinalSuperClassFromType[w_class, y_class]) = 42
+
+assert_valid<depends_on_library>:
+    bb_base_type<public> := class<castable> {}
+    AA<public> := class(bb_base_type) {}
+    BB<public> := class<final_super>(AA) {}
+
+    w_class := class:
+        y_class():void=
+            d:BB = BB{}
+            if (TT:castable_subtype(AA) = GetCastableFinalSuperClass[AA, d]):  # OK returns BB, but TT is a castable_subtype(AA)
+                return
+
+assert_valid<depends_on_library>:
+    bb_base_type<public> := class<castable> {}
+    AA<public> := class(bb_base_type) {}
+    BB<public> := class<final_super>(AA) {}
+
+    w_class := class:
+        y_class():void=
+            d:BB = BB{}
+            if (TT:castable_subtype(AA) = GetCastableFinalSuperClassFromType[AA, BB]):  # OK returns BB, but TT is a castable_subtype(AA)
+                return
+
+assert_semantic_error<depends_on_library>(3509):
+    bb_base_type<public> := class<castable> {}
+    AA<public> := class(bb_base_type) {}
+    BB<public> := class<final_super>(AA) {}
+
+    w_class := class:
+        y_class():void=
+            d:BB = BB{}
+            if (TT:castable_subtype(BB) = GetCastableFinalSuperClass[AA, d]):  # 3509 = returns BB, but TT is a castable_subtype(AA)
+                return
+
+assert_semantic_error<depends_on_library>(3509):
+    bb_base_type<public> := class<castable> {}
+    AA<public> := class(bb_base_type) {}
+    BB<public> := class<final_super>(AA) {}
+
+    w_class := class:
+        y_class():void=
+            d:BB = BB{}
+            if (TT:castable_subtype(BB) = GetCastableFinalSuperClassFromType[AA, BB]):  # 3509 = returns BB, but TT is a castable_subtype(AA)
+                return
+
+#       base_type<castable>
+#             | 
+#          m_class   
+#             |
+#     n_class<final_super>
+#         /      \
+#  o_class        nn_class
+
+m_class := class(base_type) {}
+n_class := class<final_super>(base_type) {}
+nn_class := class(n_class) {}
+o_class := class(base_type) {}
+assert:
+    SomeList:[]base_type = array{a_class{}, n_class{}, n_class{}, o_class{}, nn_class{}}
+
+    var Count:int = 0
+    TS:subtype(base_type) := a_class
+    NN:nn_class = nn_class{}
+    if (TT := GetCastableFinalSuperClass[base_type, NN]):
+        for(B : SomeList; TT[B]):
+            set Count += NN.Value
+
+    #DebugPrint("{Count}")
+    Count = 42*3
+
+assert:
+    SomeList:[]base_type = array{a_class{}, n_class{}, n_class{}, o_class{}, nn_class{}}
+
+    var Count:int = 0
+    TS:subtype(base_type) := a_class
+    NN:nn_class = nn_class{}
+    if (TT := GetCastableFinalSuperClassFromType[base_type, nn_class]):
+        for(B : SomeList; TT[B]):
+            set Count += NN.Value
+
+    #DebugPrint("{Count}")
+    Count = 42*3
+
+#                   i_castable<castable>
+#                           |
+#                         i_base      iw2_interface
+#                         /    \      /
+#     a2_class<final_super>    w2_class           ix2_interface
+#            |                   |                /
+#         b2_class            x2_class<final_super>
+#            |
+#   c2_class<final_super>
+
+i_castable<public> := interface<castable> {}
+i_base<public> := interface(i_castable) {}
+a2_class<public> := class<final_super>(i_base) {}
+b2_class<public> := class(a2_class) {}
+c2_class<public> := class<final_super>(b2_class) {}
+
+iw2_interface<public> := interface{}
+ix2_interface<public> := interface{}
+
+w2_class<public> := class(i_base, iw2_interface) {}
+x2_class<public> := class<final_super>(w2_class, ix2_interface) {}
+
+assert { Result:subtype(i_base)            = GetCastableFinalSuperClass[i_base, a2_class{}] } # returns castable_subtype(i_base) := a2_class
+assert { Result:castable_subtype(i_base)   = GetCastableFinalSuperClass[i_base, b2_class{}] } # returns castable_subtype(i_base) := a2_class
+assert { Result:castable_subtype(i_base)   = GetCastableFinalSuperClass[i_base, c2_class{}] } # returns castable_subtype(i_base) := a2_class
+assert { Result:castable_subtype(b2_class) = GetCastableFinalSuperClass[b2_class, c2_class{}] }    # returns castable_subtype(b2_class) := c2_class
+
+assert { Result:subtype(i_base)            = GetCastableFinalSuperClassFromType[i_base, a2_class] } # returns castable_subtype(i_base) := a2_class
+assert { Result:castable_subtype(i_base)   = GetCastableFinalSuperClassFromType[i_base, b2_class] } # returns castable_subtype(i_base) := a2_class
+assert { Result:castable_subtype(i_base)   = GetCastableFinalSuperClassFromType[i_base, c2_class] } # returns castable_subtype(i_base) := a2_class
+assert { Result:castable_subtype(b2_class) = GetCastableFinalSuperClassFromType[b2_class, c2_class] }    # returns castable_subtype(b2_class) := c2_class
+
+assert:
+    if (TT := GetCastableFinalSuperClass[b2_class, c2_class{}]): # returns castable_subtype(b2_class) := c2_class
+        not TT[b2_class{}]     # fails because TT is c2_class
+        TT[c2_class{}]         # but this succeeds
+    else:
+        1 = 0
+
+assert:
+    if (TT := GetCastableFinalSuperClassFromType[b2_class, c2_class]): # returns castable_subtype(b2_class) := c2_class
+        not TT[b2_class{}]     # fails because TT is c2_class
+        TT[c2_class{}]         # but this succeeds
+    else:
+        1 = 0
+
+assert { GetCastableFinalSuperClass[ix2_interface, x2_class{}] } # returns castable_subtype(ix2_interface) := x2_class
+assert { Result:castable_subtype(iw2_interface) = GetCastableFinalSuperClass[w2_class, x2_class{}] } # returns castable_subtype(ix2_interface) := x2_class
+assert { not GetCastableFinalSuperClass[iw2_interface, x2_class{}] } # returns castable_subtype(iw2_interface) := failure because iw2_interface is not a direct base
+
+assert { GetCastableFinalSuperClassFromType[ix2_interface, x2_class] } # returns castable_subtype(ix2_interface) := x2_class
+assert { Result:castable_subtype(iw2_interface) = GetCastableFinalSuperClassFromType[w2_class, x2_class] } # returns castable_subtype(ix2_interface) := x2_class
+assert { not GetCastableFinalSuperClassFromType[iw2_interface, x2_class] } # returns castable_subtype(iw2_interface) := failure because iw2_interface is not a direct base
+    
+# because we can't really constrain the first argument to UClass types, we need to make sure non-class types don't cause problems
+assert { not GetCastableFinalSuperClass[int, 42] }
+assert { not GetCastableFinalSuperClass[float, 666.6] }
+assert { not GetCastableFinalSuperClass[any, b_class{}] }
+
+assert { not GetCastableFinalSuperClassFromType[any, b_class] }
+assert { not GetCastableFinalSuperClassFromType[any, any] }
+assert { not GetCastableFinalSuperClassFromType[base_type, int] }
+assert { not GetCastableFinalSuperClassFromType[base_type, any] }
+
+#                     i_base0
+#                        |
+#                     i_base1
+#                        |
+#                     i_base2 
+#                      /    \
+# a3_class<final_super>     w3_class<castable>     ix3_interface
+#        |                        \                /
+#   b3_class                    x3_class<final_super>
+#        |
+#  c3_class<final_super>
+
+i_base0<public> := interface {}
+i_base1<public> := interface(i_base0) {}
+i_base2<public> := interface(i_base1) {}
+a3_class<public> := class<final_super>(i_base2) {}
+b3_class<public> := class(a3_class) {}
+c3_class<public> := class<final_super>(b3_class) {}
+
+ix3_interface<public> := interface{}
+
+w3_class<public> := class<castable>(i_base2) {}
+x3_class<public> := class<final_super>(w3_class, ix3_interface) {}
+
+assert { not GetCastableFinalSuperClassFromType[base_type, ix3_interface] }
+assert { not GetCastableFinalSuperClassFromType[i_base0, i_base1] }
+assert { not GetCastableFinalSuperClassFromType[i_base2, a3_class] }     # not castable
+
+assert { GetCastableFinalSuperClassFromType[w3_class, x3_class] }
+assert { GetCastableFinalSuperClassFromType[ix3_interface, x3_class] }
+
+assert { not GetCastableFinalSuperClassFromType[b3_class, c3_class] } 
+assert { not GetCastableFinalSuperClassFromType[a3_class, c3_class] } 
+
+} # verse_vm_todo

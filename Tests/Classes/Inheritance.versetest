@@ -1,0 +1,24 @@
+assert_valid { C := class(attribute) {} }
+assert_valid { C := class {} }
+
+assert_valid { C0 := class {}; C1 := class(C0) {} }
+
+# Test that classes without a shared super class can't be joined.
+# This test is temporarily inverted until we remove the object class.
+assert_valid: #assert_semantic_error(3565) in:
+    C := class{}
+    D := class{}
+    F(X:logic):void=if(X?) then C{} else D{}
+
+# Test that inheritance from non-Object, non-attribute types produces an error.
+assert_semantic_error(3590){ C := class(int) {} }
+assert_semantic_error(3590){ C := class(void) {} }
+assert_semantic_error(3502){ C := class(array) {} }
+assert_semantic_error(3502){ C := class(option) {} }
+assert_semantic_error(3506){ C := class(tuple) {} }
+
+# Test that inheritance from multiple classes is not supported.
+assert_semantic_error(3589){ C0 := class {}; C1 := class {}; C2 := class(C0, C1) {} }
+
+# Test that inheritance from non-class non-interface types is not supported.
+assert_semantic_error(3590){ E := enum {}; C := class(E) {} }

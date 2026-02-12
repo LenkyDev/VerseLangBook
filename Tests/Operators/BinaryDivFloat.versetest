@@ -1,0 +1,153 @@
+using{/Verse.org/Tests/VerseTestScriptCmd/FloatConstants};
+
+assert{+0.0 / +1.0 = 0.0}
+assert{+0.0 / -1.0 = 0.0}
+
+assert{+1.0 / +1.0 = +1.0}
+assert{+1.0 / -1.0 = -1.0}
+assert{-1.0 / +1.0 = -1.0}
+assert{-1.0 / -1.0 = +1.0}
+
+assert{+1.0 / +2.0 = +0.5}
+assert{+1.0 / -2.0 = -0.5}
+assert{-1.0 / +2.0 = -0.5}
+assert{-1.0 / -2.0 = +0.5}
+
+assert{+2.0 / +1.0 = +2.0}
+assert{+2.0 / -1.0 = -2.0}
+assert{-2.0 / +1.0 = -2.0}
+assert{-2.0 / -1.0 = +2.0}
+
+assert{+2.0 / +2.0 = +1.0}
+assert{+2.0 / -2.0 = -1.0}
+assert{-2.0 / +2.0 = -1.0}
+assert{-2.0 / -2.0 = +1.0}
+
+assert{+3.0 / +2.0 = +1.5}
+assert{+3.0 / -2.0 = -1.5}
+assert{-3.0 / +2.0 = -1.5}
+assert{-3.0 / -2.0 = +1.5}
+
+assert{+4.0 / +2.0 = +2.0}
+assert{+4.0 / -2.0 = -2.0}
+assert{-4.0 / +2.0 = -2.0}
+assert{-4.0 / -2.0 = +2.0}
+
+# There isn't a way to express floating point infinity as a literal yet.
+#assert{+1.0 / +0.0 = +inf}
+#assert{+1.0 / -0.0 = +inf}
+#assert{-1.0 / +0.0 = -inf}
+#assert{-1.0 / -0.0 = -inf}
+
+# but we can verify that they don't fail, and are at least pairwise equals
+assert{+1.0 / +0.0 = +1.0 / -0.0}
+assert{+1.0 / -0.0 = +1.0 / +0.0}
+assert{-1.0 / +0.0 = -1.0 / -0.0}
+assert{-1.0 / -0.0 = -1.0 / +0.0}
+
+# we can also check they behave as infinities should
+assert{x:float = +1.0 / 0.0; 0.0 < 0.5 * x and 0.5 * x = x}
+assert{x:float = -1.0 / 0.0; 0.0 > 0.5 * x and 0.5 * x = x}
+
+assert{var x:float = +0.0; set x /= +1.0; x = 0.0}
+assert{var x:float = +0.0; set x /= -1.0; x = 0.0}
+
+assert{var x:float = +1.0; set x /= +1.0; x = +1.0}
+assert{var x:float = +1.0; set x /= -1.0; x = -1.0}
+assert{var x:float = -1.0; set x /= +1.0; x = -1.0}
+assert{var x:float = -1.0; set x /= -1.0; x = +1.0}
+
+assert{var x:float = +1.0; set x /= +2.0; x = +0.5}
+assert{var x:float = +1.0; set x /= -2.0; x = -0.5}
+assert{var x:float = -1.0; set x /= +2.0; x = -0.5}
+assert{var x:float = -1.0; set x /= -2.0; x = +0.5}
+
+assert{var x:float = +2.0; set x /= +1.0; x = +2.0}
+assert{var x:float = +2.0; set x /= -1.0; x = -2.0}
+assert{var x:float = -2.0; set x /= +1.0; x = -2.0}
+assert{var x:float = -2.0; set x /= -1.0; x = +2.0}
+
+assert{var x:float = +2.0; set x /= +2.0; x = +1.0}
+assert{var x:float = +2.0; set x /= -2.0; x = -1.0}
+assert{var x:float = -2.0; set x /= +2.0; x = -1.0}
+assert{var x:float = -2.0; set x /= -2.0; x = +1.0}
+
+assert{var x:float = +3.0; set x /= +2.0; x = +1.5}
+assert{var x:float = +3.0; set x /= -2.0; x = -1.5}
+assert{var x:float = -3.0; set x /= +2.0; x = -1.5}
+assert{var x:float = -3.0; set x /= -2.0; x = +1.5}
+
+assert{var x:float = +4.0; set x /= +2.0; x = +2.0}
+assert{var x:float = +4.0; set x /= -2.0; x = -2.0}
+assert{var x:float = -4.0; set x /= +2.0; x = -2.0}
+assert{var x:float = -4.0; set x /= -2.0; x = +2.0}
+
+# There isn't a way to express floating point infinity as a literal yet.
+#assert{var x:float = +1.0; set x /= +0.0; x = +inf}
+#assert{var x:float = +1.0; set x /= -0.0; x = +inf}
+#assert{var x:float = -1.0; set x /= +0.0; x = -inf}
+#assert{var x:float = -1.0; set x /= -0.0; x = -inf}
+
+# but we can verify that they don't fail, and are at least pairwise equals
+assert{var x:float = +1.0; set x /= +0.0; x = +1.0 / -0.0}
+assert{var x:float = +1.0; set x /= -0.0; x = +1.0 / +0.0}
+assert{var x:float = -1.0; set x /= +0.0; x = -1.0 / -0.0}
+assert{var x:float = -1.0; set x /= -0.0; x = -1.0 / +0.0}
+
+# we can also check they behave as infinities should
+assert{var x:float = +1.0; set x /= 0.0; 0.0 < 0.5 * x and 0.5 * x = x}
+assert{var x:float = -1.0; set x /= 0.0; 0.0 > 0.5 * x and 0.5 * x = x}
+
+# Overflow to infinity from normal numbers
+assert{1e+20 / SmallestNormal = PosInfty}
+
+# Overflow to infinity from dividing by zero
+assert{-1.0 / 0.0 = -PosInfty}
+
+# Canonicalization of -0.0 to +0.0 before divide
+assert{1.0 / -0.0 = PosInfty}
+
+# Rounding test: division has no exact halfway rounding cases in the normal range, so we just need to test regular rounding.
+# 1 / (1 - x) = 1 + x + x^2 + ... (geometric series) so we know the infinite binary expansion
+assert{1.0 / (1.0 - Pow2_Minus28) = 1.0 + Pow2_Minus28} # Series is 1 + 2^(-28) + 2^(-56) + ...
+
+# (1 + 2^(-25)) / (1 - 2^(-28)) can use the same series expansion
+# = (1 + 2^(-25)) + 2^(-28) (1 + 2^(-25)) + ...
+# = 1 + 2^(-25) + 2^(-28) + 2^(-53) + ...
+# the part before the ... is an exact halfway point and there are further non-negative terms,
+# so should round up.
+assert{(1.0 + Pow2_Minus25) / (1.0 - Pow2_Minus28) = 1.0 + Pow2_Minus25 + Pow2_Minus28 + (1.0 / Pow2_52)}
+
+# 0/0 and inf/inf should yield NaNs
+assert{0.0 / 0.0 = NaN}
+assert{PosInfty / PosInfty = NaN}
+assert{PosInfty / -PosInfty = NaN}
+
+# Anything non-infinity divided by infinity should be 0
+assert{0.0 / PosInfty = 0.0}
+assert{123.0 / PosInfty = 0.0}
+assert{DoubleMax / -PosInfty = 0.0}
+
+# NaN divided by anything, or anything divided by NaN, should be NaN
+assert{NaN / 0.0 = NaN}
+assert{NaN / LargestSubnormal = NaN}
+assert{NaN / 1.0 = NaN}
+assert{NaN / PosInfty = NaN}
+assert{0.0 / NaN = NaN}
+assert{-LargestSubnormal / NaN = NaN}
+assert{-1.0 / NaN = NaN}
+assert{-PosInfty / NaN = NaN}
+assert{NaN / NaN = NaN}
+
+# Two normal inputs, subnormal result
+assert{SmallestNormal / 2.0 = HalfSmallestNormal}
+
+# One subnormal input, overflow result
+assert{1.0 / SmallestSubnormal = PosInfty}
+
+# One subnormal input, subnormal result, exactly halfway rounding case
+# HalfSmallestNormal is the faithful rounding with LSB=0 ("even")
+assert{LargestSubnormal / 2.0 = HalfSmallestNormal}
+
+# Two subnormal inputs, normal result
+assert{HalfSmallestNormal / (0.5 * HalfSmallestNormal) = 2.0}

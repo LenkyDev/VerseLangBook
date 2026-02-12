@@ -1,0 +1,74 @@
+<#>
+    Test all the various combinations of attribute scope attributes and uses of those attributes in different scopes.
+
+    The tests are a combination of an attribute definition snippet:
+        @attribscope_class       Attr := class(attribute) {}
+        @attribscope_attribclass Attr := class(attribute) {}
+        @attribscope_enum        Attr := class(attribute) {}
+        @attribscope_interface   Attr := class(attribute) {}
+        @attribscope_method      Attr := class(attribute) {}
+        @attribscope_data        Attr := class(attribute) {}
+
+    and an attribute use snippet:
+        @Attr A := class {}
+        @Attr A := class(attribute) {}
+        @Attr A := enum {a, b}
+        @Attr A := interface {}
+        A := class { @Attr method():void={} }
+        A := interface { @Attr method():void }
+        A := class { @Attr data:int = 0 }
+
+assert_valid               { @attribscope_class Attr := class(attribute) {}; @Attr A := class {} }
+assert_valid               { @attribscope_class Attr := class(attribute) {}; @Attr A := class(attribute) {} }
+assert_semantic_error(3596){ @attribscope_class Attr := class(attribute) {}; @Attr A := enum {a, b} }
+assert_semantic_error(3596){ @attribscope_class Attr := class(attribute) {}; @Attr A := interface {} }
+assert_semantic_error(3596){ @attribscope_class Attr := class(attribute) {}; A := class { @Attr method():void={} } }
+assert_semantic_error(3596){ @attribscope_class Attr := class(attribute) {}; A := interface { @Attr method():void } }
+assert_semantic_error(3596){ @attribscope_class Attr := class(attribute) {}; A := class { @Attr data:int = 0 } }
+
+assert_semantic_error(3596){ @attribscope_attribclass Attr := class(attribute) {}; @Attr A := class {} }
+assert_semantic_error(3596){ @attribscope_attribclass Attr := class(attribute) {}; @Attr A := enum {a, b} }
+assert_valid               { @attribscope_attribclass Attr := class(attribute) {}; @Attr A := class(attribute) {} }
+assert_semantic_error(3596){ @attribscope_attribclass Attr := class(attribute) {}; @Attr A := interface {} }
+assert_semantic_error(3596){ @attribscope_attribclass Attr := class(attribute) {}; A := class { @Attr method():void={} } }
+assert_semantic_error(3596){ @attribscope_attribclass Attr := class(attribute) {}; A := interface { @Attr method():void } }
+assert_semantic_error(3596){ @attribscope_attribclass Attr := class(attribute) {}; A := class { @Attr data:int = 0 } }
+
+assert_semantic_error(3596){ @attribscope_enum Attr := class(attribute) {}; @Attr A := class {} }
+assert_semantic_error(3596){ @attribscope_enum Attr := class(attribute) {}; @Attr A := class(attribute) {} }
+assert_valid               { @attribscope_enum Attr := class(attribute) {}; @Attr A := enum {a, b} }
+assert_semantic_error(3596){ @attribscope_enum Attr := class(attribute) {}; @Attr A := interface {} }
+assert_semantic_error(3596){ @attribscope_enum Attr := class(attribute) {}; A := class { @Attr method():void={} } }
+assert_semantic_error(3596){ @attribscope_enum Attr := class(attribute) {}; A := interface { @Attr method():void } }
+assert_semantic_error(3596){ @attribscope_enum Attr := class(attribute) {}; A := class { @Attr data:int = 0 } }
+
+assert_semantic_error(3596){ @attribscope_interface Attr := class(attribute) {}; @Attr A := class {} }
+assert_semantic_error(3596){ @attribscope_interface Attr := class(attribute) {}; @Attr A := class(attribute) {} }
+assert_semantic_error(3596){ @attribscope_interface Attr := class(attribute) {}; @Attr A := enum {a, b} }
+assert_valid               { @attribscope_interface Attr := class(attribute) {}; @Attr A := interface {} }
+assert_semantic_error(3596){ @attribscope_interface Attr := class(attribute) {}; A := class { @Attr method():void={} } }
+assert_semantic_error(3596){ @attribscope_interface Attr := class(attribute) {}; A := interface { @Attr method():void } }
+assert_semantic_error(3596){ @attribscope_interface Attr := class(attribute) {}; A := class { @Attr data:int = 0 } }
+
+assert_semantic_error(3596){ @attribscope_function Attr := class(attribute) {}; @Attr A := class {} }
+assert_semantic_error(3596){ @attribscope_function Attr := class(attribute) {}; @Attr A := class(attribute) {} }
+assert_semantic_error(3596){ @attribscope_function Attr := class(attribute) {}; @Attr A := enum {a, b} }
+assert_semantic_error(3596){ @attribscope_function Attr := class(attribute) {}; @Attr A := interface {} }
+assert_valid               { @attribscope_function Attr := class(attribute) {}; A := class { @Attr method():void={} } }
+assert_valid               { @attribscope_function Attr := class(attribute) {}; A := interface { @Attr method():void } }
+assert_semantic_error(3596){ @attribscope_function Attr := class(attribute) {}; A := class { @Attr data:int = 0 } }
+
+assert_semantic_error(3596){ @attribscope_data Attr := class(attribute) {}; @Attr A := class {} }
+assert_semantic_error(3596){ @attribscope_data Attr := class(attribute) {}; @Attr A := class(attribute) {} }
+assert_semantic_error(3596){ @attribscope_data Attr := class(attribute) {}; @Attr A := enum {a, b} }
+assert_semantic_error(3596){ @attribscope_data Attr := class(attribute) {}; @Attr A := interface {} }
+assert_semantic_error(3596){ @attribscope_data Attr := class(attribute) {}; A := class { @Attr method():void={} } }
+assert_semantic_error(3596){ @attribscope_data Attr := class(attribute) {}; A := interface { @Attr method():void } }
+assert_valid               { @attribscope_data Attr := class(attribute) {}; A := class { @Attr data:int = 0 } }
+
+# Attributes cannot see instance members, except for getter() and setter()
+assert_valid                    { @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=42} X:int }}
+assert_valid                    { @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; Y:int = 4711; C := class { @Attr{V:=Y} X:int }}
+assert_semantic_error(3506,9005){ @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=Y} X:int; Y:int = 4711 }}
+assert_semantic_error(3548,9005){ @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=Self.Y} X:int; Y:int = 4711 }}
+assert_valid<depends_on_library>{ C := class { var X<getter(GetX)><setter(SetX)>:int = external{}; GetX(:accessor)<transacts>:int = 42; SetX(:accessor,:int)<transacts>:void = false }}

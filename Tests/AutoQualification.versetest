@@ -1,0 +1,165 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Minimal tests
+
+assert_auto_qualification(
+(/A:)Function((local:)X:(/Verse.org/Verse:)int):(/Verse.org/Verse:)int = (local:)X
+):
+    vpackage(P0, /A):
+      snippet:
+        Function(X:int):int = X
+
+
+
+assert_auto_qualification(
+(/A:)Variable:(/Verse.org/Verse:)int = 10
+):
+    vpackage(P0, /A):
+      snippet:
+        Variable:int = 10
+
+assert_auto_qualification(
+(/A:)c := class:
+    (/A/c:)Method((local:)X:(/Verse.org/Verse:)int):(/Verse.org/Verse:)int = (local:)X
+    (/A/c:)Variable:(/Verse.org/Verse:)int = 42
+    var (/A/c:)MutableVariable:(/Verse.org/Verse:)float = 10.0
+):
+    vpackage(P0, /A):
+      snippet:
+        c := class:
+          Method(X:int):int = X
+          Variable:int = 42
+          var MutableVariable:float = 10.0
+
+assert_auto_qualification(
+(/A:)i := interface:
+    (/A/i:)Method((local:)X:(/Verse.org/Verse:)int):(/Verse.org/Verse:)int = (local:)X
+    (/A/i:)Variable:(/Verse.org/Verse:)int = 42
+    var (/A/i:)MutableVariable:(/Verse.org/Verse:)float = 10.0
+):
+    vpackage(P0, /A):
+      snippet:
+        i := interface:
+          Method(X:int):int = X
+          Variable:int = 42
+          var MutableVariable:float = 10.0
+
+# TODO qualify enum values
+assert_auto_qualification(
+(/A:)e := enum:
+    First
+    Second
+):
+    vpackage(P0, /A):
+      snippet:
+        e := enum:
+          First
+          Second
+
+assert_auto_qualification(
+(/A:)m := module:
+    (/A/m:)Value<public>:(/Verse.org/Verse:)int = 42
+    (/A/m:)Function<public>((local:)X:(/Verse.org/Verse:)int):(/Verse.org/Verse:)int = (/A/m:)Value + (local:)X
+
+(/A:)Use():(/Verse.org/Verse:)int = (/A:)m.(/A/m:)Function((/A:)m.(/A/m:)Value)
+):
+    vpackage(P0, /A):
+      snippet:
+        m := module:
+          Value<public>:int = 42
+          Function<public>(X:int):int = Value + X
+
+        Use():int = m.Function(m.Value)
+
+
+assert_auto_qualification(
+(/A:)c := class:
+    (/A/c:)Method((local:)X:(/Verse.org/Verse:)int):(/Verse.org/Verse:)int = (local:)X
+    (/A/c:)Variable:(/Verse.org/Verse:)int = 42
+    var (/A/c:)MutableVariable:(/Verse.org/Verse:)float
+    block:
+        set (/A/c:)MutableVariable = 1.0 * (/A/c:)Variable
+):
+    vpackage(P0, /A):
+      snippet:
+        c := class:
+          Method(X:int):int = X
+          Variable:int = 42
+          var MutableVariable:float
+          block:
+            set MutableVariable = 1.0*Variable
+
+assert_auto_qualification<depends_on_library>(
+(/A:)form2a<public> := module:
+    (/A/form2a:)TheMsg<localizes>:(/Verse.org/Verse:)message = "The Message"
+    (/A/form2a:)func<public>()<decides>:void =
+        (/Verse.org/Verse:)Localize((/A/form2a:)TheMsg) = "The Message"
+):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse")):
+    snippet:
+      form2a<public> := module:
+        TheMsg<localizes> : message = "The Message"
+        func<public>()<decides>:void=
+            Localize(TheMsg) = "The Message"
+
+
+assert_auto_qualification<depends_on_library>(
+(/A:)form2b<public> := module:
+    (/A/form2b:)TheMsg<localizes>:(/Verse.org/Verse:)message = "The {'M'}essage"
+    (/A/form2b:)func<public>()<decides>:void =
+        (/Verse.org/Verse:)Localize((/A/form2b:)TheMsg) = "The Message"
+):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse")):
+    snippet:
+      form2b<public> := module:
+        TheMsg<localizes> : message = "The {0u004d}essage"
+        func<public>()<decides>:void=
+            Localize(TheMsg) = "The Message"
+
+assert_auto_qualification<depends_on_library>(
+(/A:)TheMsg6<localizes>((local:)Name:(/Verse.org/Verse:)string):(/Verse.org/Verse:)message = "The Message to {Name}"
+):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse")):
+    snippet:
+      TheMsg6<localizes>(Name:string) : message = "The Message to {Name}"
+
+# Try to auto qualify something that already is qualified
+assert_auto_qualification<depends_on_library>(
+(/A:)TheMsg6<localizes>((local:)Name:(/Verse.org/Verse:)string):(/Verse.org/Verse:)message = "The Message to {Name}"
+):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse")):
+    snippet:
+      (/A:)TheMsg6<localizes>((local:)Name:(/Verse.org/Verse:)string):(/Verse.org/Verse:)message = "The Message to {Name}"
+
+# TODO qualify named parameters, when we know how
+
+assert_auto_qualification(
+(/A:)Function(?Y:(/Verse.org/Verse:)int = 1):(/Verse.org/Verse:)int = Y
+):
+    vpackage(P0, /A):
+      snippet:
+        Function(?Y:int = 1):int = Y
+
+assert_auto_qualification(
+(/A:)Function((local:)X:(/Verse.org/Verse:)int, ?Y:(/Verse.org/Verse:)int = 0):(/Verse.org/Verse:)int = (local:)X + Y
+(/A:)Apply((local:)F:(local:)t->(local:)u, (local:)X:(local:)t where (local:)t:(/Verse.org/Verse:)type, (local:)u:(/Verse.org/Verse:)type):(local:)u = (local:)F((local:)X)
+
+(/A:)Use():(/Verse.org/Verse:)int =
+    (/A:)Apply((/A:)Function, 1)
+    (/A:)Apply((/A:)Function, (1, ?Y := 2))
+):
+    vpackage(P0, /A):
+      snippet:
+        Function(X:int, ?Y:int=0):int = X+Y
+        Apply(F:t->u, X:t where t:type, u:type):u = F(X)
+
+        Use():int = 
+          Apply(Function, 1)
+          Apply(Function, (1, ?Y:=2))
+
+
+  
+
+

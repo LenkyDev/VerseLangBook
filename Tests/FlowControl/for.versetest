@@ -1,0 +1,419 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert:
+    List:[]int= for(X:=1 .. 3) { X }
+    3 = List.Length
+    1 = List[0]
+    2 = List[1]
+    3 = List[2]
+
+assert: # range with type
+    List:[]int= for(X:int=2 .. 3) { X } 
+    2 = List.Length
+    2 = List[0]
+    3 = List[1]
+
+assert: # empty range
+    List:[]int= for(X:=0 .. -1) { X } 
+    0 = List.Length
+
+assert:
+    List:[]int= for(X:array{3, 2}) { X }
+    2 = List.Length
+    3 = List[0]
+    2 = List[1]
+
+assert: # Empty array
+    Empty:[]int= array{}
+    List:[]int= for(X:Empty) { X }
+    0 = List.Length  
+
+assert: # Define variable
+    List:[]int= for(X:=1 .. 4, Y := X) { Y }
+
+assert: # filter
+    List:[]int= for(X:=1 .. 4, X<>3) { X }
+    3 = List.Length
+    1 = List[0]
+    2 = List[1]
+    4 = List[2]
+
+assert: # Define variable that fails
+    List:[]int= for(X:=-2 .. 2, X<>0, Y:=Floor(8/X)) { Y }
+    4 = List.Length
+    -4 = List[0]
+    -8 = List[1]
+    +8 = List[2]
+    +4 = List[3]
+   
+assert: # multiple filters, range
+    FilteredList:[]int= for(X:=1 .. 4, X<>2, X<>3) { X }
+    2 = FilteredList.Length
+    1 = FilteredList[0]
+    4 = FilteredList[1]
+
+assert: # multiple filters, array
+    FilteredList:[]int= for(X:array{5, 2, 3, 0}, X<>2, X<>3) { X }
+    2 = FilteredList.Length
+    5 = FilteredList[0]
+    0 = FilteredList[1]
+
+assert:
+    FilteredList:[]int= for(X:=1 .. 5, X<>2, Y := 2*X, Y<10) { Y }
+    3 = FilteredList.Length
+    2 = FilteredList[0]
+    6 = FilteredList[1]
+    8 = FilteredList[2]
+
+assert:
+    FilteredList:[]int= for(X:array{5,4,3,2,1}, X<>2, Y := 2*X, Y<10) { Y }
+    3 = FilteredList.Length
+    8 = FilteredList[0]
+    6 = FilteredList[1]
+    2 = FilteredList[2]
+
+assert: # range & range
+    List:= for(X:=1 .. 3, Y:=1 .. 2) { X*10+Y }
+    List.Length = 6
+    11 = List[0]
+    12 = List[1]
+    21 = List[2]
+    22 = List[3]
+    31 = List[4]
+    32 = List[5]
+
+assert: # array & range
+    List:= for(X:array{10,20}, Y:=1 .. 3) { X+Y }
+    List.Length = 6
+    11 = List[0]
+    12 = List[1]
+    13 = List[2]
+    21 = List[3]
+    22 = List[4]
+    23 = List[5]
+
+assert: # range & array
+    List:= for(X:=1 .. 3, Y:array{10,20}) { X+Y }
+    List.Length = 6
+    11 = List[0]
+    21 = List[1]
+    12 = List[2]
+    22 = List[3]
+    13 = List[4]
+    23 = List[5]
+
+assert: # array & array
+    List:= for(X:array{10,20}, Y:array{1, 2, 3}) { X+Y }
+    List.Length = 6
+    11 = List[0]
+    12 = List[1]
+    13 = List[2]
+    21 = List[3]
+    22 = List[4]
+    23 = List[5]
+ 
+assert: # range & local array variable
+    List:= for(X:=1 .. 2, Y:=array{10+X,20+X}) { Y }
+    List.Length = 2
+    List[0].Length = 2
+    11 = List[0][0]
+    21 = List[0][1]
+    List[1].Length = 2
+    12 = List[1][0]
+    22 = List[1][1]
+    
+# This was in sol-1894, nice to check that it works
+SplitSort(AS:[]int):[]int=
+        N:=AS.Length
+        if(N<2) then:
+            return AS
+        else:
+            Mid := AS[Floor(N/2) or 0] or 0 # 2 is not 0, and the resulting index is always there
+            Less := for(A:AS, A<Mid) { A }
+            Equal := for(A:AS, A=Mid) { A }
+            More := for(A:AS, A>Mid) { A }
+            # sol-1736 prevents writing 
+            # return SplitSort(Less) + Equal + SplitSort(More)
+            SortedLess := SplitSort(Less)
+            SortedMore := SplitSort(More)
+            Tmp := SortedLess + Equal
+            return Tmp + SortedMore
+
+assert:
+    List:[]int= for(X:=1..5) { 10-X }
+    SortedList:[]int=SplitSort(List)
+
+    SortedList.Length = List.Length
+    5 = SortedList[0]
+    6 = SortedList[1]
+    7 = SortedList[2]
+    8 = SortedList[3]
+    9 = SortedList[4]
+
+# Some more generic tests
+assert:
+    List:[]int= for(X:=1..4, Y:=1..4, Z:=1..4, X=Y=Z, X<>3) { X+Y+Z }
+    List.Length = List.Length
+    3 = List[0]
+    6 = List[1]
+    12 = List[2]
+
+assert:
+    List:[]int= for(X:=1..4, X<>3, Y:=1..4, X=Y, Z:=1..4, X=Z) { X+Y+Z }
+    List.Length = List.Length
+    3 = List[0]
+    6 = List[1]
+    12 = List[2]
+    
+# Test for with iterating over empty arrays.
+assert:
+    Array:=for(X:array{}, Y:array{1}) { X+Y }
+    Array=array{}
+
+assert:
+    Array:=for(X:array{1}, Y:array{}) { X+Y }
+    Array=array{}
+
+assert_semantic_error(3560, 3549, 3524): # This syntax should make it possible to iterate over an empty array.
+    NoTypeInfo:[]int= for(X:int= :array{}) { X } 
+
+# Errors
+assert_semantic_error(3524):
+    ArrayUsingRangeSyntax:[][]int= for(X:=array{1, 2, 3}) { X }
+
+assert_semantic_error(3552, 3524):
+    RangeUsingArraySyntax:[]int= for(X:1 .. 3) { X }
+
+assert_semantic_error(3524): # Not an iterable
+    NotAnIterable :[]int= for(1) { 1 } 
+    
+assert_semantic_error(3524): # This is technically allowed, but unsupported.
+    X:?int = option{42}
+    NotAnIterable :void= for(X?) { }
+
+assert_semantic_error(3524): # Not an iterable
+    NotAnIterable :[]int= for(X:=1) { X } 
+    
+assert_semantic_error(3524): # This is technically allowed, but unsupported.
+    NotAnIterable()<transacts><decides>:void={}
+    FailIteration():void=
+        for(NotAnIterable[]) {}
+
+assert_semantic_error(3524): # This is technically allowed, but unsupported.
+    foo := class:
+        NotAnIterable()<transacts><decides>:void={}
+
+    FailIteration():void=
+        F:foo = foo{}
+        for(F.NotAnIterable[]) {}
+
+assert_semantic_error(3501, 3524):
+    NotAnIterable:void= for(stub{}) {}
+    
+assert_semantic_error(3524):
+    NotAnIterable:void= for("just a string") {}
+    
+assert_semantic_error(3524):
+    NotAnIterable:void= for('c') {}
+
+assert_semantic_error(3524):
+    NotAnIterable:void= for(true) {}
+
+assert_semantic_error(3524): # Not an iterable
+    NotAnIterable :[]int= for(X:1) { X } 
+
+assert_semantic_error(3588, 3532):  # Redefine X
+    Redefine :[]int= for(X:=1 .. 5, X := 2) { X }
+
+assert_semantic_error(3588, 3532): # Redefine X as range
+    Redefine :[]int= for(X:=1 .. 5, X := 2 .. 3) { X } 
+
+assert_semantic_error(3588, 3532): # Redefine X as array
+    Redefine :[]int= for(X:=1 .. 5, X :array{2, 3}) { X } 
+
+assert_semantic_error(3513): # Filter can not fail
+    NoFailure:[]int= for(X:=1 .. 4, 1) { X } 
+
+assert_semantic_error(3509): # Wrong type
+    WrongType:[]int= for(X:float=1 .. 4) { X } 
+
+assert_valid: # Write mutable variable
+    Main():void =
+        var Temp:int = 0
+        Array:[]int = array{3, 4, 5}
+        ShouldFail:[]int= for(X:=1 .. 2; Element:=Array[X]; (set Temp = Element; true?)) { X }
+
+assert_semantic_error(3546): # Define mutable variable. Should this be legal?
+    ShouldFail:[]int= for(X:=1 .. 2, var Temp:rational = 10/X) { X } 
+
+# Array pair iteration tests.
+assert:
+    FilteredIndices:[]int=for(Index->Value:array{5, 2, 3, 0}, Value>2) { Index }
+    FilteredIndices=array{0,2}
+
+assert:
+    FilteredIndices:[]int=for(Index->Value:array{5, 2, 3, 0}, Index<>2) { Value }
+    FilteredIndices=array{5,2,0}
+
+assert_semantic_error(3546      ){ F():void=for(1->X:array{0}){X} }
+assert_semantic_error(3546      ){ F():void=for(X->1:array{0}){X} }
+assert_semantic_error(3524,3546){ F():void=for(X->Y:=array{0}){X} }
+
+assert_semantic_error(3524,3546){ F():void=for(X->Y:int=0){X} }
+assert_semantic_error(3546     ){ F():void=for(X->Y:int=0..10){X} }
+
+assert:
+    A:=for(X->Y:array{10,20}; Z:array{100,200}) {X+Y+Z}
+    A=array{110,210,121,221}
+
+# Basic map iteration tests.
+assert:
+    Empty:[int]int = map{}
+    Result := for(X:Empty) { X }
+    0 = Result.Length
+
+assert:
+    Result := for(X:map{0=>1,1=>2}) { X }
+    Result=array{1,2}
+
+# Pairs with redundant keys are removed, keeping the last pair with the key.
+assert:
+    Result := for(X:map{0=>1, 1=>2, 0=>3, 2=>4, 0=>5}) { X }
+    Result=array{2,4,5}
+
+assert:
+    Result := for(X:ConcatenateMaps(map{0=>1},map{0=>2})) { X }
+    Result=array{2}
+
+assert:
+    Result := for(Key->Value:map{1=>2,2=>3,3=>4}) {Key+Value}
+    Result=array{3,5,7}
+
+# Test iterating over strings.
+assert{for(Character:""){Character}=""}
+assert{for(Character:"abcdef"){Character}="abcdef"}
+assert{for(Character:"abcdefghijklmnopqrstuvwxyz01234567890"){Character}="abcdefghijklmnopqrstuvwxyz01234567890"}
+assert{for(Character:"abcdef"; Character<>'c'){Character}="abdef"}
+assert{for(Character:"abc"){ToString(Character)}=array{"a","b","c"}}
+assert{for(Character:"abcdef"){ToString(Character)}=array{"a","b","c","d","e","f"}}
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+assert{for(Character:"abc"; I:=1..2){Character}="aabbcc"}
+assert{for(Index->Character:"abc"){Character,Index}=array{('a',0),('b',1),('c',2)}}
+
+# Test interaction between failures and for 
+c := class:
+    var V:int
+    var E:int=-1
+
+    Inc()<transacts>:int=
+       set V = V + 1
+       V
+
+    QInc()<decides><transacts>:int=
+       V <> E
+       Inc()
+
+# Base case
+assert:
+    S :c= c{V:=0}
+    X :c= c{V:=1}
+    array{1,2} = for(I:=1..X.Inc(); S.QInc[]) {I}
+    X.V = 2
+    S.V = 2
+
+# Failure in setup
+assert:
+    S:c= c{V:=0}
+    X:c= c{V:=1, E:=1}
+    array{} = for(I:=1..X.QInc[]; S.QInc[]) {I}
+    X.V = 1
+    S.V = 0
+	
+assert:
+    X:c= c{V:=1}
+    array{1, 2} = for(I:=1..X.QInc[]) {I}
+    X.V = 2
+
+# Failure in filter
+assert:
+    S:c= c{V:=0}
+    X:c= c{V:=1}
+    array{2} = for(I:=1..X.Inc(); I <> 1; S.QInc[]) {I}
+    X.V = 2
+    S.V = 1
+
+assert:
+    S:c= c{V:=0}
+    X:c= c{V:=1}
+    array{2} = for(I:=1..X.Inc(); S.QInc[]; I <> 1) {I}
+    X.V = 2
+    S.V = 1       
+
+assert:
+    S:c= c{V:=0}
+    X:c= c{V:=1}
+    array{} = for(I:=1..X.Inc(); S.QInc[]; I > 2) {I}
+    X.V = 1     
+    S.V = 0
+
+# Failure in body
+assert:
+    S:c= c{V:=0}
+    X:c= c{V:=1}
+    if(array{} = for(I:=1..X.Inc(); S.QInc[]) {I<2}):
+      false?
+    else:
+      X.V = 1
+      S.V = 0
+
+# Slightly more complicated
+assert:
+    S :c= c{V:=0}
+    X :c= c{V:=2}
+    Y :c= c{V:=2}   
+    array{11, 12, 13, 31, 32, 33, 34} = for(I:=1..X.Inc(); J:=1..Y.Inc(); S.QInc[]; I <> 2) {10*I+J}
+    X.V = 3
+    Y.V = 4 # Only two increments since no values with I=2 reaches the body of the for loop
+    S.V = 7
+
+assert:
+    S :c= c{V:=0}
+    X :c= c{V:=2}
+    Y :c= c{V:=2}   
+    array{ array{11, 12, 13}, 
+           array{}, 
+           array{31, 32, 33, 34} } = for(I:=1..X.Inc()):
+                                       for(J:=1..Y.Inc(); S.QInc[]; I <> 2) {10*I+J}
+    X.V = 3
+    Y.V = 4
+    S.V = 7       
+
+
+# Not using the return value changes the code enough to fail an earlier implementation.
+assert:
+   S :c= c{V:=0}
+   X :c= c{V:=1}
+   for(I:=1..X.Inc(); S.QInc[]) {I}
+   X.V = 2
+   S.V = 2
+
+assert:
+   S :c= c{V:=0}
+   X :c= c{V:=2}
+   Y :c= c{V:=2}   
+   for(I:=1..X.Inc(); J:=1..Y.Inc(); S.QInc[]; I <> 2) {10*I+J}
+   X.V = 3
+   Y.V = 4 # Only two increments since no values with I=2 reaches the body of the for loop
+   S.V = 7
+
+assert:
+    s_cycle:string = "cycle"
+    var log :string = ""
+    var ch:char = ' '
+    cycle := for (i:=0..s_cycle.Length):
+                 if(NewCh := s_cycle[i]):
+                    set ch = NewCh
+                    set log = log + array{ch}
+    log = s_cycle

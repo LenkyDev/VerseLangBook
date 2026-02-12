@@ -1,0 +1,36 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+TestIntToString(Value:int, ExpectedString:string)<reads><decides>:void=
+    String := ToString(Value)
+    if (String <> ExpectedString):
+        DebugPrint("TestIntToString expected {ExpectedString}, but got {String}")
+    String = ExpectedString
+
+TestSignedIntToString(Value:int, ExpectedString:string)<reads><decides>:void=
+    TestIntToString[Value, ExpectedString]
+    TestIntToString[-Value, "-{ExpectedString}"]
+
+assert{TestIntToString[0, "0"]}
+assert{TestSignedIntToString[1, "1"]}
+assert{TestSignedIntToString[99, "99"]}
+assert{TestSignedIntToString[100, "100"]}
+assert{TestSignedIntToString[999, "999"]}
+assert{TestSignedIntToString[1000, "1000"]}
+assert{TestSignedIntToString[4294967295, "4294967295"]}
+assert{TestSignedIntToString[4294967296, "4294967296"]}
+assert{TestSignedIntToString[10000000000, "10000000000"]} # Hit the new VM's int64 printing code with a number that doesn't fit in int32.
+assert{TestSignedIntToString[9223372036854775807, "9223372036854775807"]}
+
+<# Can't test larger than 64-bit integer printing even on VerseVM yet because VNI assumes Verse's int corresponds to int64 in C++.
+verse_vm_only
+{
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+0)*1+0,    "9223372036854775807"]} # 2^63-1
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*1+0,    "9223372036854775808"]} # 2^63
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*2-1,   "18446744073709551615"]} # 2^64-1
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*2+0,   "18446744073709551616"]} # 2^64
+assert{TestSignedIntToDiagnosticString[(9223372036854775807+1)*2+1,   "18446744073709551617"]} # 2^64+1
+assert{TestSignedIntToDiagnosticString[10000000000*10000000000,      "100000000000000000000"]}
+}
+#>

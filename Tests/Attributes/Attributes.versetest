@@ -1,0 +1,54 @@
+
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test various kinds of invalid attributes.
+assert_semantic_error(3553){@int X:int=0}
+assert_semantic_error(3502){@option X:int=0}
+assert_semantic_error(3553){c:=class{}; @c X:int=0}
+assert_semantic_error(3553){F()<computes>:int=1; @F() X:int=0}
+
+# prefix attributes must be followed by a newline, or another attribtue and not be followed by a
+# semicolon.
+assert_syntax_error(3100){"@doc; X:int=4"}
+assert_syntax_error(3100){"@doc foo X:int=4"}
+assert_syntax_error(3101){"@<doc<foo>> X:int=4"}
+assert_syntax_error(3100){"@doc:foo X:int=4"}
+
+assert_valid_syntax {"@doc X:int=4"}
+assert_valid_syntax {"@doc\nX:int=4"}
+assert_valid_syntax {"@doc \nX:int=4"}
+
+assert_valid_syntax {"@doc X:int=4"}
+assert_valid_syntax {"@doc\nX:int=4"}
+
+# specifiers don't go where attributes go
+assert_syntax_error(3101){"<doc> X:int=4"}
+assert_syntax_error(3101){"<doc>\nX:int=4"}
+assert_syntax_error(3101){"<doc> \nX:int=4"}
+
+assert_valid_syntax {"@doc @moc X:int=4"}
+assert_valid_syntax {"@doc@moc X:int=4"}
+assert_valid_syntax {"@doc\n@moc X:int=4"}
+assert_valid_syntax {"@doc\n@moc\n X:int=4"}
+
+# attributes don't syntactically go in these places
+assert_syntax_error(3101){"X@doc():int=4"}
+assert_syntax_error(3100){"X:@doc()int=4"}
+assert_syntax_error(3101){"X:int@doc()=4"}
+assert_syntax_error(3100){"X:int=@doc()4"}
+assert_syntax_error(3101){"X:int=4@doc()"}
+
+# specifiers go in some of these places
+assert_valid_syntax      {"X<doc()>:int=4"}
+assert_syntax_error(3101){"X:<doc()>int=4"}
+assert_syntax_error(3101){"X:int=<doc()>4"}
+assert_valid_syntax      {"X:int=4<doc()>"}
+
+# access specifiers are only allowed with postfix specifier syntax, not as prefix attributes
+assert_semantic_error(3596){      C := class { @public    m0:int }}
+assert_semantic_error(3593,3596){ C := class { @private   m0:int }}
+assert_semantic_error(3593,3596){ C := class { @protected m0:int }}
+
+# Attribute classes should not be usable as a superclass outside of epic_internal modules.
+assert_valid               { vpackage(P,/Verse.org   ,?Scope:=InternalAPI) { snippet { c := class(public){} } } }
+assert_semantic_error(3552){ vpackage(P,/NotVerse.org,?Scope:=PublicUser ) { snippet { c := class(public){} } } }

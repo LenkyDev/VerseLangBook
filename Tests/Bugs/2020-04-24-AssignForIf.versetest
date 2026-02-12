@@ -1,0 +1,17 @@
+assert_valid:
+    C0 := class {}
+    C1 := class:
+        crashOnCompile1():void=
+            # creates an array of void types which seems odd,
+            # though is currently accepted
+            myArray := for(i:=0..3):
+                if(i < 2):
+                    C0{}
+
+assert_semantic_error(3509):
+    C0 := class {}
+    C1 := class:
+        crashOnCompile1():void=
+            myArray:[]C0 := for(i:=0..3):
+                if(i < 2):
+                    C0{}

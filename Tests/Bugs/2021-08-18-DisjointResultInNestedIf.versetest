@@ -1,0 +1,5 @@
+F():void=
+    if(true?) {}
+    else if(true?) {0}
+    else {0.0}
+assert{F()}

@@ -1,0 +1,69 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            public_parametric_class<public>(t:type) := class{X<public>:t}
+            friend_accessible := scoped{/Verse.org/VerseTests/Module, /A}
+            friend_accessible_class<friend_accessible> := class{}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            class_with_public_field_using_friend_accessible_class<public> := class:
+                X<public>:public_parametric_class(friend_accessible_class)
+
+assert_semantic_error(3593):
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            public_parametric_class<public>(t:type) := class{X<public>:t}
+            friend_accessible := scoped{/Verse.org/VerseTests/Module, /A}
+            friend_accessible_class<friend_accessible> := class{}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            class_with_public_field_using_friend_accessible_class<public> := class:
+                X<public>:public_parametric_class(friend_accessible_class)
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            public_parametric_class<public>(t:type) := class{X<public>:t}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            previously_uploaded_class := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                X<public>:public_parametric_class(previously_uploaded_class)
+
+assert_semantic_error(3593):
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            public_parametric_class<public>(t:type) := class{X<public>:t}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            previously_uploaded_class := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                X<public>:public_parametric_class(previously_uploaded_class)
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            public_parametric_class<public>(t:type) := class{X<public>:t}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            previously_uploaded_class := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                X<public>:public_parametric_class(tuple(previously_uploaded_class, int))
+
+assert_semantic_error(3593):
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            public_parametric_class<public>(t:type) := class{X<public>:t}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            previously_uploaded_class := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                X<public>:public_parametric_class(tuple(previously_uploaded_class, int))

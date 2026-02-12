@@ -1,0 +1,7 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{not array{1,2,3,1,2,3}.ReplaceFirstElement[0, 9]}
+assert{    array{1,2,3,1,2,3}.ReplaceFirstElement[1, 9]=array{9,2,3,1,2,3}}
+assert{    array{1,2,3,1,2,3}.ReplaceFirstElement[2, 9]=array{1,9,3,1,2,3}}
+assert{    array{1,2,3,1,2,3}.ReplaceFirstElement[3, 9]=array{1,2,9,1,2,3}}
+assert{not array{1,2,3,1,2,3}.ReplaceFirstElement[4, 9]}

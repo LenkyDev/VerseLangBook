@@ -1,0 +1,13 @@
+assert{ x:=-(1+2+4); x=-7 }
+assert{ x:=-1+2+4; x=5 }
+assert{ x:=-1; y:=-2; -x-y=3 }
+assert{ x:=2; y:=-1+1; x+y=2 }
+
+bp_vm_only
+{
+assert_runtime_error{ x:=-9223372036854775808; -x }
+}
+verse_vm_only
+{
+assert{ x:=-9223372036854775808; -x = 9223372036854775807+1}
+}

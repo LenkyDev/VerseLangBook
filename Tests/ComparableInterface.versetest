@@ -1,0 +1,241 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    Interface := interface<unique> {
+        Method():void
+    }
+    Comp(A:Interface, B:Interface):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    MakeInterface(T:type) := interface<unique> {
+        Method(X:T):void
+    }
+
+    Comp1(A:MakeInterface(int), B:MakeInterface(int)):logic = {
+        if (A = B) { true } else { false }
+    }
+
+    Comp2(A:MakeInterface(float), B:MakeInterface(float)):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    Interface1 := interface<unique> {
+        Method1():void
+    }
+    Interface2 := interface(Interface1) {
+        Method2():void
+    }
+    Comp(A:Interface2, B:Interface2):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    MakeInterface(T:type) := interface<unique> {
+        Method(X:T):void
+    }
+    Interface1 := interface(MakeInterface(int)) {
+        Method2():void
+    }
+    Interface2 := interface(MakeInterface(float)) {
+        Method2():void
+    }
+    Interface3 := interface(Interface1) {
+        Method3():void
+    }
+    Comp1(A:Interface1, B:Interface1):logic = {
+        if (A = B) { true } else { false }
+    }
+    Comp2(A:Interface2, B:Interface2):logic = {
+        if (A = B) { true } else { false }
+    }
+    Comp3(A:Interface3, B:Interface3):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    Interface := interface<unique> {
+        Method():void
+    }
+    C := class(Interface):
+        Method<override>():void =
+            42
+    Comp(A:C, B:C):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    Interface1 := interface {
+        Method1():void
+    }
+    Interface2 := interface<unique> {
+        Method2():void
+    }
+    P := class:
+        X:int = 42
+    C := class(P, Interface1, Interface2):
+        Method1<override>():void =
+            42
+        Method2<override>():void =
+            42
+    Comp(A:C, B:C):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    Interface1 := interface<unique> {
+        Method1():void
+    }
+    Interface2 := interface {
+        Method2():void
+    }
+    Interface3 := interface(Interface1) {
+        Method3():void
+    }
+    P := class:
+        X:int = 42
+    C := class(P, Interface2, Interface3):
+        Method1<override>():void =
+            42
+        Method2<override>():void =
+            42
+        Method3<override>():void =
+            42
+    Comp(A:C, B:C):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    Interface1 := interface<unique> {
+        Method1():void
+    }
+    Interface2 := interface {
+        Method2():void
+    }
+    Interface3 := interface(Interface1) {
+        Method3():void
+    }
+    C := class<unique>(Interface2, Interface3):
+        Method1<override>():void =
+            42
+        Method2<override>():void =
+            42
+        Method3<override>():void =
+            42
+    Comp(A:C, B:C):logic = {
+        if (A = B) { true } else { false }
+    }
+
+assert_valid:
+    Interface := interface {
+        Method1():void
+    }
+    Comp(X:comparable, Y:comparable):void = 42
+    Comp(X:Interface, Y:Interface):void = 42
+
+assert_semantic_error(3532):
+    Interface := interface<unique> {
+        Method1():void
+    }
+    # these are ambiguous
+    Comp(X:comparable, Y:comparable):void = 42
+    Comp(X:Interface, Y:Interface):void = 42
+
+assert_semantic_error(3596): 
+    Interface := interface<computes> {
+        Method():void
+    }
+assert_valid:
+    Interface := interface<public> {
+        Method():void
+    }
+assert_semantic_error(3596): 
+    Interface := interface<decides> {
+        Method():void
+    }
+
+Interface := interface<unique> {
+    Method():void
+}
+MakeInterface(T:type) := interface<unique> {
+    Method(X:T):T
+}
+ParentInterface := interface<unique> {
+    Method1():void
+}
+ChildInterface := interface(ParentInterface) {
+    Method2():void
+}
+
+Comp(A:Interface, B:Interface):logic = {
+    if (A = B) { true } else { false }
+}
+
+C1 := class(Interface):
+    Method<override>():void =
+        42
+
+C2 := class(MakeInterface(int)):
+    Method<override>(X:int):int =
+        X
+
+C3 := class(ChildInterface):
+    Method1<override>():void =
+        42
+    Method2<override>():void =
+        42
+
+assert:
+    O1 := C1 {}
+    O2 := C1 {}
+    A := O1
+    B := O2
+
+    O1 <> O2
+    A <> B
+    A = A
+    A = O1
+    B = B
+    B = O2
+
+assert:
+    O1 := C2 {}
+    O2 := C2 {}
+    A := O1
+    B := O2
+
+    O1 <> O2
+    A <> B
+    A = A
+    A = O1
+    B = B
+    B = O2
+
+    A.Method(1) = 1
+    B.Method(42) = 42
+
+assert:
+    O1 := C3 {}
+    O2 := C3 {}
+    A := O1
+    B := O2
+
+    O1 <> O2
+    A <> B
+    A = A
+    A = O1
+    B = B
+    B = O2
+
+    var Good:logic = false
+    if (O1 = O2) { set Good = false } else { set Good = true }
+    Good = true
+
+    O1.Method1()
+    O1.Method2()
+    O2.Method1()
+    O2.Method2()

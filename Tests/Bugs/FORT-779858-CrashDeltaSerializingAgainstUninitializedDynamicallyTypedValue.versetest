@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+parametric_field(t:subtype(comparable)) := class(serializable_class):
+    Value:t
+
+TestSerializeAndDeserialize(t:subtype(comparable), Value:t, ?Imports:[]any=array{})<transacts><decides>:void=
+    Instance := parametric_field(t){Value:=Value}
+    var AllSucceeded:logic = true
+    for (Mode : array{serialization_mode.VersionedBinary, serialization_mode.UnversionedBinary, serialization_mode.Text}):
+        RoundtrippedInstance := SerializeAndDeserialize(Instance, parametric_field(t), ?Mode:=Mode, ?Imports:=Imports, ?EnableDeltaSerialization:=true)
+        if(Instance.Value <> RoundtrippedInstance.Value):
+            DebugPrint("TestSerializeAndDeserialize failed for {DebugToString(Mode)}:")
+            DebugPrint("Serialized value {DebugToString(Value)}, but deserialized {DebugToString(RoundtrippedInstance.Value)}")
+            set AllSucceeded = false
+    AllSucceeded?
+
+assert{TestSerializeAndDeserialize[logic, false]}
+assert{TestSerializeAndDeserialize[logic, true]}
+}

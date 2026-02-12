@@ -1,0 +1,659 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{ /Verse.org/Tests/VerseTestScriptCmd }
+
+<#>
+   Current limitations are: 
+   * No parametric types in mutable variables (not supported in classes either)
+   * Interaction with editable (did a simple test and it seems the editor doesn't see them)
+
+###### ##### Interfaces with method definition
+
+InterfaceWithMethod1 := interface:
+    Method1<public>(X:int):int = X + 1
+
+CallMethod1InInterfaceWithMethod1(Object:InterfaceWithMethod1, X:int):int = Object.Method1(X)
+
+Class01 := class(InterfaceWithMethod1):
+
+assert:
+  Object := Class01{}
+  Object.Method1(100) = 101
+  CallMethod1InInterfaceWithMethod1(Object, 200) = 201
+
+##### Override definition in interface
+
+Class02 := class(InterfaceWithMethod1):
+    Method1<override>(X:int):int = X + 10
+
+assert:
+  Object := Class02{}
+  Object.Method1(100) = 110
+  CallMethod1InInterfaceWithMethod1(Object, 200) = 210
+
+##### Diamond
+
+InterfaceWithMethod2 := interface(InterfaceWithMethod1):
+    Method2<public>(X:int):int = X + 2
+
+CallMethod1InInterfaceWithMethod2(Object:InterfaceWithMethod2, X:int):int = Object.Method1(X)
+CallMethod2InInterfaceWithMethod2(Object:InterfaceWithMethod2, X:int):int = Object.Method2(X)
+
+Class11 := class(Class01, InterfaceWithMethod2):
+
+assert:
+  Object := Class11{}
+  Object.Method1(100) = 101
+  Object.Method2(100) = 102
+  CallMethod1InInterfaceWithMethod1(Object, 100) = 101
+  CallMethod1InInterfaceWithMethod2(Object, 100) = 101
+  CallMethod2InInterfaceWithMethod2(Object, 100) = 102
+
+##### Diamond and override
+
+Class12 := class(Class02, InterfaceWithMethod2):
+   # Class02 overrides (InterfaceWithMethod1:)Method1
+
+Class13 := class(Class01, InterfaceWithMethod2):
+    Method1<override>(X:int):int = X + 20
+
+assert:
+  Object := Class12{}
+  Object.Method1(100) = 110
+  Object.Method2(100) = 102
+  CallMethod1InInterfaceWithMethod1(Object, 100) = 110
+  CallMethod1InInterfaceWithMethod2(Object, 100) = 110
+  CallMethod2InInterfaceWithMethod2(Object, 100) = 102
+
+assert:
+  Object := Class13{}
+  Object.Method1(100) = 120
+  Object.Method2(100) = 102
+  CallMethod1InInterfaceWithMethod1(Object, 100) = 120
+  CallMethod1InInterfaceWithMethod2(Object, 100) = 120
+  CallMethod2InInterfaceWithMethod2(Object, 100) = 102
+
+#### Methods with same name inherited from two interfaces
+
+Interface1A := interface:
+    Method<public>(X:int):int = X + 10
+
+Interface1B := interface:
+    Method<public>(X:int):int = X + 20
+
+Class1AB := class(Interface1A, Interface1B):
+
+assert:
+  Object := Class1AB{}
+  Object.(Interface1A:)Method(2) = 12
+  Object.(Interface1B:)Method(1) = 21
+
+##### ##### Interface with immutable value
+Interface1i := interface:
+    Value1<public>:int
+
+Class21i := class(Interface1i):
+    Value3<public>:int = 30
+
+Class21Value1(ObjectA:Class21i):int = ObjectA.Value1
+Class21Value3(ObjectC:Class21i):int = ObjectC.Value3
+
+Interface1Value1(ObjectB:Interface1i):int = ObjectB.Value1
+
+assert:
+  Object := Class21i{Value1 := 10}
+  Object.Value1 = 10
+  Object.Value3 = 30
+
+  Class21Value1(Object) = 10
+  Class21Value3(Object) = 30
+
+  Interface1Value1(Object) = 10
+
+##### Diamond inheritance of Interfaces with values
+ 
+Interface2i := interface(Interface1i):
+    Value2<public>:int
+    
+Class22i := class(Class21i, Interface2i):
+    Value4<public>:int = 40
+
+Class22Value1(ObjectA:Class22i):int = ObjectA.Value1
+Class22Value2(ObjectA:Class22i):int = ObjectA.Value2
+Class22Value3(ObjectA:Class22i):int = ObjectA.Value3
+Class22Value4(ObjectA:Class22i):int = ObjectA.Value4
+
+Interface2Value1(ObjectB:Interface2i):int = ObjectB.Value1
+Interface2Value2(ObjectB:Interface2i):int = ObjectB.Value2
+
+assert:
+  Object := Class22i{Value1 := 10, Value2 := 20}
+  Object.Value1 = 10
+  Object.Value2 = 20
+  Object.Value3 = 30
+  Object.Value4 = 40
+
+  Class21Value1(Object) = 10
+  Class21Value3(Object) = 30
+
+  Interface1Value1(Object) = 10
+
+  Class22Value1(Object) = 10
+  Class22Value2(Object) = 20
+  Class22Value3(Object) = 30
+  Class22Value4(Object) = 40
+
+  Interface2Value1(Object) = 10
+  Interface2Value2(Object) = 20
+
+##### Diamond inheritance of native Interfaces with values
+assert:
+    Object := class_a_interface_a{}
+    Object.ConstArray = array{1,2,3}
+    Object.VarArray = array{4,5,6}
+    Object.Elem0.Elem0 = 7
+    Object.Elem1 = (8, 9.0)
+
+##### As above, but with default value for interface field
+
+Interface3i := interface:
+    Value1<public>:int = 10
+
+Class31i := class(Interface3i):
+    Value3<public>:int = 30
+
+Class31Value1(ObjectA:Class31i):int = ObjectA.Value1
+Class31Value3(ObjectC:Class31i):int = ObjectC.Value3
+
+Interface3Value1(ObjectB:Interface3i):int = ObjectB.Value1
+
+assert:
+  Object := Class31i{}
+  Object.Value1 = 10
+  Object.Value3 = 30
+
+  Class31Value1(Object) = 10
+  Class31Value3(Object) = 30
+
+  Interface3Value1(Object) = 10
+
+
+##### Diamond inheritance of Interfaces with default values
+ 
+Interface4i := interface(Interface3i):
+    Value2<public>:int = 20
+    
+Class32i := class(Class31i, Interface4i):
+    Value4<public>:int = 40
+
+Class32Value1(ObjectA:Class32i):int = ObjectA.Value1
+Class32Value2(ObjectA:Class32i):int = ObjectA.Value2
+Class32Value3(ObjectA:Class32i):int = ObjectA.Value3
+Class32Value4(ObjectA:Class32i):int = ObjectA.Value4
+
+Interface4Value1(ObjectB:Interface4i):int = ObjectB.Value1
+Interface4Value2(ObjectB:Interface4i):int = ObjectB.Value2
+
+assert:
+  Object := Class32i{}
+  Object.Value1 = 10
+  Object.Value2 = 20
+  Object.Value3 = 30
+  Object.Value4 = 40
+
+  Class31Value1(Object) = 10
+  Class31Value3(Object) = 30
+
+  Interface3Value1(Object) = 10
+
+  Class32Value1(Object) = 10
+  Class32Value2(Object) = 20
+  Class32Value3(Object) = 30
+  Class32Value4(Object) = 40
+
+  Interface4Value1(Object) = 10
+  Interface4Value2(Object) = 20
+
+#### Fields with the same name imported from different interfaces/classes
+
+Interface2Ai := interface:
+    Value:int = 42
+    var VarValue:int = 42
+    Method1():int = Value
+
+Interface2Bi := interface:
+    Value:int = 24
+    var VarValue:int = 24
+    Method1():int = Value
+
+Class2Ac := class:
+    Value:int = 12
+    var VarValue:int = 12
+    Method1():int = Value
+
+Class2ABi := class(Interface2Ai, Interface2Bi){}
+
+Class2AcAi := class(Class2Ac, Interface2Bi){}
+
+assert:
+  Object := Class2ABi{}
+  Object.(Interface2Ai:)Value = 42
+  Object.(Interface2Bi:)Value = 24
+  Object.(Interface2Ai:)VarValue = 42
+  Object.(Interface2Bi:)VarValue = 24
+  Object.(Interface2Ai:)Method1() = 42
+  Object.(Interface2Bi:)Method1() = 24
+
+assert:
+  Object := Class2AcAi{}
+  Object.(Class2Ac:)Value = 12
+  Object.(Interface2Bi:)Value = 24
+  Object.(Class2Ac:)VarValue = 12
+  Object.(Interface2Bi:)VarValue = 24
+  Object.(Class2Ac:)Method1() = 12
+  Object.(Interface2Bi:)Method1() = 24
+
+Class2AcAiOverride := class(Class2Ac, Interface2Bi):
+    (Class2Ac:)Method1<override>():int = (Class2Ac:)Value + 10
+    (Interface2Bi:)Method1<override>():int = (Interface2Bi:)Value + 10
+
+assert:
+  Object := Class2AcAiOverride{}
+  Object.(Class2Ac:)Method1() = 22
+  Object.(Interface2Bi:)Method1() = 34
+
+##### ##### No defalt value, and none given when instatiate
+assert_semantic_error(3512, 3600):
+  InterfaceNoDefault := interface:
+    var Value<public>:int
+
+  Class31 := class(InterfaceNoDefault):
+
+  X:Class31 = Class31{}
+
+assert_semantic_error(3512, 3600):
+  InterfaceNoDefault := interface:
+    Value<public>:int
+
+  Class31 := class(InterfaceNoDefault):
+
+  X:Class31 = Class31{}
+
+##### ##### ##### 
+# Not only int
+
+C40 := class:
+    V : int
+    
+S40 := struct:
+    V : int
+
+Interface40 := interface:
+   ValueC : C40 = C40{V := 1}
+   ValueS : S40 = S40{V := 2}
+   ValueM : [string]string = map { "hej" => "hello" }
+   ValueA : []int = array {10, 20, 30}
+   String : string = "hej"
+
+Class41 := class(Interface40):
+    
+assert:
+    Object : Interface40 = Class41{}
+    Object.ValueC.V = 1
+    Object.ValueS.V = 2
+    Object.ValueM["hej"] = "hello"
+    Object.ValueA[1] = 20
+    Object.String = "hej"
+    Object.String[1] = 'e'
+
+##### ##### #####
+# Override
+
+# Can't override in an interface
+assert_semantic_error(3523, 3532):
+    C0 := class{}
+    C1 := class(C0){}
+    I0 := interface {V:C0=C0{}}
+    I1 := interface(I0) {V<override>:C1=C1{}}
+
+# A class can override an interface field, e.g., to give it a new default value.
+Class50 := class {Value:int=10}
+
+Interface51 := interface{C:Class50 = Class50{}}
+Class52 := class(Interface51){C<override>:Class50=Class50{Value:=20}}
+
+assert:
+    Object : Class52 = Class52{}
+    Object.C.Value = 20
+
+# Override with subtype
+Class45 := class:
+        V0:int = 1
+        
+Class46 := class(Class45):
+        V1:int = 2
+
+Interface47 := interface:
+      C:Class45 = Class45{}
+
+Class48 := class(Interface47):
+    C<override>:Class46 := Class46{}
+
+GetV0(X:Interface47):int = X.C.V0
+
+assert:
+    O:Class48 = Class48{}
+    O.C.V0 = 1
+    O.C.V1 = 2
+    GetV0(O) = 1
+
+# This is a more complicated override, since it needs coercion.
+interface_with_array := interface:
+    InterfaceValue: []int
+
+class_with_interface_with_array_override_tuple := class(interface_with_array):
+    InterfaceValue<override> : tuple(int, int)
+
+GetValue(X:interface_with_array, Index:int):int = 
+   if (V := X.InterfaceValue[Index]):
+     V
+   else:
+     -1
+
+assert:
+    O:class_with_interface_with_array_override_tuple = class_with_interface_with_array_override_tuple{ InterfaceValue := (1,2) }
+    O.InterfaceValue(0) = 1
+    O.InterfaceValue(1) = 2
+    GetValue(O, 0) = 1
+    GetValue(O, 1) = 2
+    GetValue(O, 2) = -1
+
+##### Another diamond inheritance, this one slightly "deeper"
+
+Interface60 := interface:
+    Value<public>:int
+
+Interface61 := interface(Interface60):
+    Value1<public>:int
+    
+Interface62 := interface(Interface60):
+    Value2<public>:int
+
+Class63 := class(Interface61, Interface62):
+
+Class63GetValue(Object:Class63):int = Object.Value
+Class63GetValue1(Object:Class63):int = Object.Value1
+Class63GetValue2(Object:Class63):int = Object.Value2
+
+Interface60GetValue(Object:Interface60):int = Object.Value
+
+Interface61GetValue(Object:Interface61):int = Object.Value
+Interface61GetValue1(Object:Interface61):int = Object.Value1
+
+Interface62GetValue(Object:Interface62):int = Object.Value
+Interface62GetValue2(Object:Interface62):int = Object.Value2
+
+assert:
+  Object := Class63{Value := 10, Value1 := 11, Value2 := 12}
+  Object.Value = 10
+  Object.Value1 = 11
+  Object.Value2 = 12
+
+  Class63GetValue(Object) = 10
+  Class63GetValue1(Object) = 11
+  Class63GetValue2(Object) = 12
+
+  Interface60GetValue(Object) = 10
+
+  Interface61GetValue(Object) = 10
+  Interface61GetValue1(Object) = 11
+
+  Interface62GetValue(Object) = 10
+  Interface62GetValue2(Object) = 12
+
+#### #### #### Accessor methods
+
+Interface70:= interface:
+   var Value<getter(GetValue)><setter(SetValue)>:int = external {}
+
+   var Storage:int = 10
+   GetValue(:accessor):int = 100+Storage
+   SetValue(:accessor, X:int):void = set Storage = Storage + X
+
+Class71 := class(Interface70){}
+
+assert:
+    Object : Class71 = Class71{}
+    Object.Value = 110
+    set Object.Value = 20
+    Object.Value = 130
+
+#### #### #### Accessor methods on fields with the same name in different interfaces
+
+Interface80:= interface:
+   var Value<getter(GetValue)><setter(SetValue)>:int = external {}
+
+   var Storage:int = 10
+   GetValue(:accessor):int = 100+Storage
+   SetValue(:accessor, X:int):void = set Storage = Storage + X
+
+Interface81:= interface:
+   var Value<getter(GetValue)><setter(SetValue)>:int = external {}
+
+   var Storage:int = 20
+   GetValue(:accessor):int = 200+Storage
+   SetValue(:accessor, X:int):void = set Storage = Storage - X
+
+Class82 := class(Interface80, Interface81){}
+
+assert:
+    Object : Class82 = Class82{}
+    Object.(Interface80:)Value = 110
+    Object.(Interface81:)Value = 220
+    set Object.(Interface80:)Value = 20
+    Object.(Interface80:)Value = 130
+    Object.(Interface81:)Value = 220
+    set Object.(Interface81:)Value = 30
+    Object.(Interface80:)Value = 130
+    Object.(Interface81:)Value = 190
+
+##### ##### ##### Accessor methods with diamond inheritance, and no default
+
+Interface90:= interface:
+   var Value<getter(GetValue)><setter(SetValue)>:int
+
+   var Storage:int = 1
+   GetValue(:accessor):int = 100+Storage
+   SetValue(:accessor, X:int):void = set Storage = Storage + X
+
+Interface91 := interface(Interface90):
+    
+Interface92 := interface(Interface90):
+
+Class93 := class(Interface91, Interface92):
+
+Class93GetValue(Object:Class93):int = Object.Value
+Interface90GetValue(Object:Interface90):int = Object.Value
+Interface91GetValue(Object:Interface91):int = Object.Value
+Interface92GetValue(Object:Interface92):int = Object.Value
+
+assert:
+  Object := Class93{Value := 10}
+  Object.Value = 111
+  Class93GetValue(Object) = 111
+  Interface90GetValue(Object) = 111
+  Interface91GetValue(Object) = 111
+  Interface92GetValue(Object) = 111
+  set Object.Value = 20
+  Object.Value = 131
+  Class93GetValue(Object) = 131
+  Interface90GetValue(Object) = 131
+  Interface91GetValue(Object) = 131
+  Interface92GetValue(Object) = 131
+
+##### ##### #####
+# Got this nagging feeling this would not work, but it did.
+# Leave the test here anyway.
+ 
+Interface100 := interface:
+    Value<public>:int := 100
+
+Class101 := class(Interface100):
+
+Class102 := class(Class101):
+    Value<override>:int = 102
+
+assert:
+    Object : Class101 = Class101{}
+    Object.Value = 100
+
+assert:
+    Object : Class102 = Class102{}
+    Object.Value = 102
+
+##### ##### #####
+# Test with qualified names
+
+Interface103 := interface:
+    Value<public>:int
+
+<# Want to do this test, but can't due to compiler not supporting qualified names when defining a value field.
+Class110 := class(Interface103):
+    (Class110:)Value<public>:int = 110
+
+assert:
+    Object : Class110 = Class110{}
+
+    Object.(Interface103:)Value = 100
+    Object.(Class110:)Value = 110
+#>
+
+# Try to fool the compiler into constructing an instance with missing values
+assert_semantic_error(3512, 3600):
+    Interface := interface:
+        Value<public>:int
+
+    Class := class(Interface):
+        (Class:)Value<public>(X:int):int= X
+
+    Object : Class = Class{}
+
+# Use the same name in interface and class
+Interface111 := interface:
+    Value<public>:int = 111
+
+Class112 := class(Interface111):
+    (Class112:)Value<public>(X:int):int= X
+
+assert:
+    Object : Class112 = Class112{}
+    Object.(Interface111:)Value = 111
+    Object.(Class112:)Value(42) = 42
+
+##### ##### #####
+# Examples taken from document about property interfaces. 
+# Dummy to make the examples compile
+
+vfx := class:
+
+#### Case 1: Simple, non-shareable Property Interfaces
+has_player_properties1:= interface:
+    var PlayerHealth<public>:float = 100.0
+    var PlayerXP<public>:int = 0
+
+some_asset1 := class(vfx, has_player_properties1):
+
+assert:
+  Asset := some_asset1{}
+  Asset.PlayerHealth = 100.0
+  set Asset.PlayerHealth = 50.0
+  Asset.PlayerHealth = 50.0
+  Asset.PlayerXP = 0
+  set Asset.PlayerXP = 10
+  Asset.PlayerXP = 10
+
+
+#### Case 2: Shareable Property Interfaces
+player_properties2 := class:
+    var PlayerHealth<public>:float = 100.0
+    var PlayerXP<public>:int = 0
+
+has_player_properties2:= interface:
+    var PlayerProperties<public>: player_properties2 = player_properties2{}
+
+some_asset2 := class(vfx, has_player_properties2):
+
+assert:
+  Asset := some_asset2{}
+  Asset.PlayerProperties.PlayerHealth = 100.0
+  set Asset.PlayerProperties.PlayerHealth = 50.0
+  Asset.PlayerProperties.PlayerHealth = 50.0
+  Asset.PlayerProperties.PlayerXP = 0
+  set Asset.PlayerProperties.PlayerXP = 10
+  Asset.PlayerProperties.PlayerXP = 10
+
+#### Case 3: Property Interfaces with subscribable properties
+# Fake the listenable interface
+
+listenable3 := interface:
+   Signal():void
+
+handler3 := class(listenable3):
+    var CallCount:int = 0
+    Signal<override>():void = set CallCount += 1
+
+player_properties3 := class:
+    # Subscribable property.
+    var<private> PlayerHealth<public>:float = 100.0
+    PlayerHealthChangedEvent<public>:listenable3
+    SetPlayerHealth<public>(NewPlayerHealth:float):void =
+        if (PlayerHealth <> NewPlayerHealth):
+            set PlayerHealth = NewPlayerHealth
+            PlayerHealthChangedEvent.Signal()
+
+    # Can be side-by-side with non-subscribable properties.
+    var PlayerXP<public>:int = 0
+
+has_player_properties3:= interface:
+    var PlayerProperties<public>: player_properties3
+
+some_asset3 := class(vfx, has_player_properties3):
+
+assert:
+  Handler := handler3{}
+  Asset := some_asset3{PlayerProperties := player_properties3{ PlayerHealthChangedEvent := Handler } }
+  Asset.PlayerProperties.SetPlayerHealth(50.0)
+  Handler.CallCount = 1
+  Asset.PlayerProperties.SetPlayerHealth(50.0)
+  Handler.CallCount = 1
+
+  Asset.PlayerProperties.PlayerXP = 0
+  set Asset.PlayerProperties.PlayerXP = 10
+  Asset.PlayerProperties.PlayerXP = 10
+
+#### Case 4: Subscribable Property Interfaces
+
+player_properties4 := class<unique>:
+    var PlayerHealth<public>:float = 100.0
+    var PlayerXP<public>:int = 0
+
+has_player_properties4:= interface:
+    var PlayerProperties<public>:player_properties4 = player_properties4{}
+    var PlayerPropertiesChangedEvent:listenable3
+    SetPlayerProperties<public>(NewPlayerProperties:player_properties4):void =
+        if (PlayerProperties <> NewPlayerProperties):
+            set PlayerProperties = NewPlayerProperties
+            PlayerPropertiesChangedEvent.Signal()
+
+
+some_asset4 := class(vfx, has_player_properties4):
+
+assert:
+  Handler := handler3{}
+  Asset := some_asset4{PlayerPropertiesChangedEvent := Handler}
+  Asset.PlayerProperties.PlayerHealth = 100.0
+  Asset.PlayerProperties.PlayerXP = 0
+  Asset.SetPlayerProperties(player_properties4{ PlayerHealth := 50.0, PlayerXP := 10})
+  Handler.CallCount = 1
+  Asset.PlayerProperties.PlayerHealth = 50.0
+  Asset.PlayerProperties.PlayerXP = 10

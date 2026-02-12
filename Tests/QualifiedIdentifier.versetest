@@ -1,0 +1,570 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+ModuleWithShadowedDefinitions  := import(/Verse.org/Tests/VerseTestScriptCmd/ModuleWithShadowedDefinitions)
+ModuleWithShadowingDefinitions := import(/Verse.org/Tests/VerseTestScriptCmd/ModuleWithShadowedDefinitions/ModuleWithShadowingDefinitions)
+
+# Qualified identifiers are not yet fully supported.
+# For the unsupported cases, test that they get through the parser at least.
+# Some of these cases are now supported.
+assert_semantic_error(3552){ C := class { m:int; f():void=C{(C:)m:=1}            } }
+assert_valid               { C := class { m:int; f():int =(C:)m                 } }
+assert_valid               { C := class { m:int; f():int =Self.(C:)m            } }
+assert_semantic_error(3552){ C := class {        f():void=(C:)for(x := 0..0) {0} } }
+assert_semantic_error(3552){ C := class {        f():?int=(C:)option{}        } }
+
+assert_valid                     { C := class { (C:)m:int = 0                      } }
+assert_semantic_error(3506)      { C := class { f((a:)b:int):void={}               } }
+assert_semantic_error(3612)      { C := class { f():void={ (C:)x:int=0 }           } }
+assert_semantic_error(3612)      { C := class { f():void={ for((C:)x := 0..0) {0} } } }
+assert_semantic_error(3506)      { (D:)C := class {                                } }
+
+# Test error for identifiers qualified with multiple expressions
+assert_semantic_error(3525, 3549){ C := class { (C,D,E:)m:int                         } }
+assert_semantic_error(3525)      { C := class { m:int; f():int =(C,D,E:)m             } }
+assert_semantic_error(3525, 3549){ (D,E:)C := class {} }
+
+assert_syntax_error(3101){"(D;E:)C := class \{\}"}
+
+assert_semantic_error(3612)      { (1:)C := class {} }
+assert_semantic_error(3612)      { ("test":)C := class {} }
+assert_semantic_error(3506){ ((D):)C := class {} }
+
+# Test shadowed definitions defined in another package.
+assert{ModuleWithShadowedDefinitions.Data=0}
+assert{ModuleWithShadowedDefinitions.Function()=0}
+assert{ModuleWithShadowedDefinitions.e.A}
+assert{ModuleWithShadowedDefinitions.e.B}
+
+F0(X:ModuleWithShadowedDefinitions.i):int = X.F()
+
+assert:
+    X := ModuleWithShadowedDefinitions.c{X := 0}
+    X.X = 0
+assert{ModuleWithShadowedDefinitions.Module.X = 0}
+
+assert{ModuleWithShadowingDefinitions.Data=1}
+assert{ModuleWithShadowingDefinitions.Function()=1}
+assert{ModuleWithShadowingDefinitions.e.C}
+assert{ModuleWithShadowingDefinitions.e.D}
+
+F1(X:ModuleWithShadowingDefinitions.i):int = X.F()
+
+assert:
+    X := ModuleWithShadowingDefinitions.c{X := 1}
+    X.X = 1
+assert{ModuleWithShadowingDefinitions.Module.X = 1}
+
+# Test that a `using` macro with a qualified identifier in it works.
+assert_valid:
+    A<public> := module:
+        B<public> := module:
+            C<public>:int = 0
+
+    D<public> := module:
+        B<public> := module:
+            C<public>:int = 1
+
+    using {/Verse.org/VerseTests/A}
+    using {/Verse.org/VerseTests/D}
+    E := module:
+        using{(A:)B}
+        foo()<computes>:void=
+            if (C = 0) {}
+            else:
+                false
+
+# Test that an unresolved qualified identifier inside a `using` statement should
+# trigger the appropriate semantic warnings.
+assert_semantic_error(3506):
+    using{(A:)B}
+
+# Test using path literals for qualifiers.
+assert_valid:
+    vpackage(P,/A):
+        snippet:
+            M := module:
+                (/A/M:)M := module:
+                    (/A/M/M:)C<public> := class{}
+                    F():(/A/M/M:)C=(/A/M:)C{}
+                C := class((/A/M:)M.C){}
+
+# Check that path literal qualifiers work across different module domains and types of identifiers.
+assert_valid:
+    vpackage(P, /A):
+        snippet:
+            M1<public> := module:
+                C1<public> := class{}
+            M2 := module:
+                C2 := class((/A:)M1.C1){}
+
+assert_valid:
+    vpackage(P, /A):
+        snippet:
+            M1<public> := module:
+                C1<public> := class {}
+                D1<public>:int = 5
+
+                M2<public> := module:
+                    C2<public> := class {}
+
+                Foo0<public>():int = { return 5 }
+
+        snippet:
+            M3 := module:
+                # Make sure path literals are supported as qualifiers for other types of data definitions.
+                Foo():int=
+                    c:(/A:)M1.C1 = (/A:)M1.C1{}
+                    return (/A:)M1.D1
+                Foo2():(/A:)M1.C1=
+                    c:(/A:)M1.C1 = (/A:)M1.C1{}
+                    return c
+
+                C3 := class((/A:)M1.M2.C2) {}
+
+                # Make sure path literals are supported as qualifiers for function parameters.
+                Foo3(d:(/A:)M1.M2.C2):int = { return (/A:)M1.Foo0() }
+                Bar(c:(/A:)M1.C1):void = {}
+                Baz():void = {Bar(Foo2())}
+
+assert_valid:
+    vpackage(P,/A):
+        snippet:    
+            M0 := module:
+                C0 := class:
+                    F0():int=
+                        D0:int = 5
+    
+# Check that an invalid path literal still raises an error.
+assert_semantic_error(3587):
+    M := module:
+        C1 := class {}
+        C2 := class((/Invalid/Path:)C1) {}
+
+# Test path literals on class members
+assert_valid:
+    vpackage(P,/A):
+        snippet:
+            c := class:
+                (/A/c:)X:int=0
+
+# Test that a `using` macro with a literal path to a class raises an error
+# Due to implementation limitations this case is not supported, but eventually it will
+assert_semantic_error(3587):
+    A<public> := module:
+        C<public> := class{}
+
+    using {/Verse.org/VerseTests/A/C}
+
+# Test that `import` with a literal path to a class raises an error
+# Due to implementation limitations this case is not supported, but eventually it will
+assert_semantic_error(3587):
+    A<public> := module:
+        C<public> := class{}
+    B<public> := module:
+        Test := import( /Verse.org/VerseTests/A/C )
+
+# Test that 'scoped' with a literal path to a class raises an error
+assert_semantic_error(3587):
+    vpackage(P0,/A):
+        snippet:
+            a := class{}
+    vpackage(P1,/B):
+        snippet:
+            b<scoped{/A/a}> := class{}
+
+# Test `(local:)` qualifier usage.
+assert_valid:
+    ExternallyDefinedModuleA<public> := module:
+        ShadowX<public>:int = 10 # added only after `ModuleB` was published
+
+    ModuleB := module:
+        using{ExternallyDefinedModuleA}
+        FooLocal():float=
+            (local:)ShadowX:float = 0.0
+            (local:)ShadowX
+
+# This shows the shadowing error(s) that would happen if `(local:)` didn't exist.
+assert_semantic_error(3588, 3532):
+    ExternallyDefinedModuleB<public> := module:
+        ShadowX<public>:int = 10 # added only after `ModuleB` was published
+
+    ModuleC := module:
+        using{ExternallyDefinedModuleB}
+        FooNoLocal():float=
+            ShadowX:float = 0.0
+            ShadowX
+
+# Make sure that we aren't overly-zealous in shadowing checks.
+assert_valid:
+    # Totally different function contexts, so there shouldn't be any shadowing here since `ShadowThis` can be uniquely-qualified.
+    ModuleFoo := module:
+        ProcBar():int=
+            ShadowThis:int = 5
+            ShadowThis
+
+        ProcFoo():float=
+            ShadowThis:float = 0.0
+            ShadowThis
+
+assert_valid:
+    ModuleFoo := module:
+        ProcFoo():int=
+            var Result:int = 5
+            for (ShadowThis := 0..2):
+                set Result += ShadowThis
+            for (ShadowThis := 0..2):
+                set Result += ShadowThis
+            Result
+
+# We don't allow uses of `local` like this right now, because while you can qualify this `local`, there's no actual
+# way to refer to it right now:
+<#
+    ModuleA<public> := module:
+        (ModuleA:)local<public>:int = 999
+
+        Foo():int=
+            (local:)A:float = 0.0  # the `local` in this qualifier cannot be disambiguated.
+            ModuleA.local
+#>
+# however, in the future you will be able to
+# write something like:
+<#
+    ModuleA<public> := module:
+        (ModuleA:)local<public>:int = 999
+
+        Foo():int=
+            ((/Verse.org/Verse:)local:)local:float = 0.0
+            ModuleA.local
+#>
+assert_semantic_error(3514):
+    ModuleA<public> := module:
+        (ModuleA:)local<public>:int = 999
+
+# Likewise, if you qualify the usage of `(local:)` even when you have something named `local`,
+# that should also be allowed. This isn't possible right now but will be when `local` can be qualified.
+<#
+assert_valid:
+    ExternallyDefinedModuleA<public> := module:
+        local<public>:int = 10 # added only after `ModuleB` was published
+
+    ModuleB := module:
+        using{ExternallyDefinedModuleA}
+        FooLocal():float=
+            ((/Verse.org/Verse:)local:)ShadowX:float = 0.0
+            ((/Verse.org.Verse:)local:)ShadowX
+#>
+    
+# Using an invalid qualifier for a reserved keyword should still give an error.
+assert_semantic_error(3514, 3506):
+    ModuleA<public> := module:
+        (Foo:)local<public>:int = 999
+
+# Make sure that `local` is not being used as a data definition identifier since now it is reserved.
+# While still being valid in previous language versions, it should now produce a warning.
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?VerseVersion:=0):
+        snippet:
+            PreviouslyDefinedModuleA<public> := module:
+                local<public>:int = 999
+
+assert_semantic_error(3514):
+    NowDefinedModuleA<public> := module:
+        local<public>:int = 999
+
+# `(local:)` is currently only allowed on data definitions within function bodies,
+# since that's where its semantics currently only work. Anything else should
+# produce an error.
+# We also produce the error that `local` can't be found since presumably that
+# might be a user symbol that the qualifier was attempting to use, rather
+# than the actual `local` qualifier.
+assert_semantic_error(3612):
+    FooModule := module:
+        (local:)X:int = 5
+
+assert_semantic_error(3612, 3612):
+    FooClass := class:
+        (local:)X:int = 5
+        (local:)Foo():void = {}
+
+assert_semantic_error(3612):
+    FooStruct := struct:
+        (local:)X:int = 5
+
+assert_semantic_error(3612):
+    FooInterface := interface:
+        (local:)FooFoo():void
+
+assert_semantic_error(3612):
+    FooModuleA<public> := module {}
+    B := module:
+        using{(local:)FooModuleA}
+
+assert_semantic_error(3612):
+    A := enum{ (local:)Foo }      # local: is only allowed inside a function
+
+assert_valid:
+    A := enum{ (A:)Foo }          # nominal type qualifiers are ok
+
+assert_valid:
+    A := enum{ (A:)A }            # even if they alias the enumeration
+assert_semantic_error(3532):
+    A := enum{ A }
+
+assert_valid:
+    A := enum{ (A:)public }       # even if they alias a reserved word
+assert_semantic_error(3532):
+    A := enum{ public }
+
+assert_valid:
+    A := enum{ (A:)for }          # even if they alias a reserved word with no built-in symbol
+assert_semantic_error(3514):
+    A := enum{ for }
+
+# Test locals being defined in and used from nested control scopes.
+assert_valid:
+    # Pretend this was added only after `FooModule` was initially published.
+    ExternallyDefinedModule<public> := module:
+        ShadowA<public>:int = 10
+        ShadowB<public>:int = 10
+        ShadowX<public>:int = 10
+        ShadowY<public>:int = 10
+        ShadowZ<public>:int = 10
+
+    FooModule := module:
+        using{ExternallyDefinedModule}
+        Foo():float=
+            (local:)ShadowZ:float = 5.0
+            block:
+                (local:)ShadowX:float = 0.0
+            for ((local:)ShadowB := 0..2):
+                (local:)ShadowY:float = 0.0
+            if ((local:)ShadowZ = 5.0):
+                return (local:)ShadowZ
+            else:
+                return 0.0
+
+# Test that class members can be disambiguated using `(local:)`.
+assert_valid:
+    ClassA<public> := class:
+        ShadowA<public>:int = 10 # Added only after `FooModule` was published
+
+    FooModule := module:
+        Foo():float=
+            (local:)ShadowA:float = 0.0
+            (local:)ShadowA
+
+# Test that parameter names can be disambiguated using `(local:)`
+assert_valid:
+    # Pretend this was added only after `FooModule` was initially published.
+    ExternallyDefinedModule<public> := module:
+        ShadowA<public>:int = 10
+
+    FooModule := module:
+        using {ExternallyDefinedModule}
+        Foo((local:)ShadowA:float):float=
+            (local:)ShadowA
+
+# Basic sanity checks for function parameter and `(local:)` usage.
+assert_valid:
+    FooModule := module:
+        Foo((local:)ShadowA:float):float=
+            ShadowA
+
+assert_valid:
+    FooModule := module:
+        Foo((local:)ShadowA:float):float=
+            (local:)ShadowA
+
+assert_valid:
+    FooModule := module:
+        Foo(ShadowA:float):float=
+            (local:)ShadowA
+
+assert_valid:
+    FooModule := module:
+        Foo((local:)ShadowA:float):float=
+            (local:)ShadowA
+
+assert_semantic_error(3588, 3532):
+    # Pretend this was added only after `FooModule` was initially published.
+    ExternallyDefinedModule<public> := module:
+        ShadowA<public>:int = 10
+
+    FooModule := module:
+        using {ExternallyDefinedModule}
+        Foo(ShadowA:float):float=
+            ShadowA
+
+# Pretend this was added only after `FooModule` was initially published.
+ExternallyDefinedModule<public> := module:
+    ShadowA<public>:int = 10
+    ShadowB<public>:int = 20
+
+FooModule<public> := module:
+    using {ExternallyDefinedModule}
+    Foo<public>():float=
+        (local:)ShadowA:float = 0.1
+        (local:)ShadowA
+
+    Bar<public>((local:)ShadowB:float):float=
+        (local:)ShadowB
+
+assert:
+    FooModule.Foo() = 0.1
+    ExternallyDefinedModule.ShadowA = 10
+    FooModule.Bar(5.0) = 5.0
+
+# Test that `(local:)` shouldn't be needed in scopes that shouldn't conflict with each other.
+assert_valid:
+    # Pretend this was added only after `FooModule` was initially published.
+    DefinedModule := module:
+        ShadowA<public>:int = 10
+
+    FooModule := module:
+        Foo(ShadowA:float):float= # `DefinedModule.ShadowA` is not public, so it should not conflict in the first place.
+            ShadowA
+
+# Test conflicting definitions for shadowed parametric type names in parametric class methods.
+assert_semantic_error(3588, 3532):
+    ParametricClass(ShadowedParam:type) := class:
+        Foo(Bar:ShadowedParam):float=
+            (local:)ShadowedParam:float = 0.0
+            (local:)ShadowedParam
+
+# Nested `block` constructs are currently unsupported for nested `(local:)` definitions.
+assert_semantic_error(3532):
+    M0<public> := module:
+        I<public>:int = 42
+
+    M1 := module:
+        using {M0} # So now M0.I is in the global namespace at this point.
+        F((local:)I:int):int=
+            block:
+                (local:)I:float = 5.5  # However, this I is different from the I function parameter passed into `F`.
+            (local:)I
+
+# Test that a local-qualified identifier cannot resolve to a parametric class member.
+ParametricC(T:type) := class:
+    ShadowY:float
+    F():int=
+        (local:)ShadowY:int = 50
+        (local:)ShadowY # Should resolve to the local `ShadowY` in `F`, not the `ShadowY` in parametric class `C`.
+assert:
+    c := ParametricC(int){ShadowY := 25.0}
+    c.F() = 50
+
+# Also test that `block`s in parametric classes should have their own local scopes.
+ParametricC2(T:type) := class:
+    ShadowZ:int
+    block:
+        (local:)ShadowZ:int = 99
+    Foo<public>():int=
+        Self.ShadowZ
+assert:
+    c := ParametricC2(int){ShadowZ := 2}
+    c.Foo() = 2
+
+# Use (local:) in a class block.
+class_with_block := class:
+    var Value<public>:int = 0
+    block:
+        (local:)Value:int = 42
+        set (/Verse.org/VerseTests/class_with_block:)Value = (local:)Value
+
+assert:
+    WithBlock:class_with_block := class_with_block { }
+    WithBlock.Value = 42
+
+module_value_code := module:
+    Value<public>:int=41
+    ValueWithCode<public>:int={(local:)Value:=1; (local:)Value+(/Verse.org/VerseTests/module_value_code:)Value}
+
+assert{module_value_code.Value = 41}
+assert{module_value_code.ValueWithCode = 42}
+
+# Also make sure that reserved symbols still can't be used as definition identifiers, even if qualified.
+assert_semantic_error(3514):
+    vpackage(P, /A):
+        snippet:
+            ModuleA<public> := module:
+                (/A/ModuleA:)spawn<public> := module {}
+
+# The path of the top level is '/Verse.org/VerseTests' and it contains two definitions of 'the_same_name'.
+# Check that it's possible to qualify definitions inside 'the_same_name(T:type)'. 
+assert_valid:
+    vpackage(P, /A):
+        snippet:
+            the_same_name(T:type) := interface:
+                (/A/the_same_name:)Function():T
+
+            the_same_name() := the_same_name(void)
+
+# Check with reverse order ...
+assert_valid:
+    vpackage(P, /A):
+        snippet:
+            the_same_name() := the_same_name(void)
+
+            the_same_name(T:type) := interface:
+                (/A/the_same_name:)Function():T
+
+# ... and with class instead of interface.
+assert_valid:
+    vpackage(P, /A):
+        snippet:
+            the_same_name(T:type) := class:
+                (/A/the_same_name:)Function(X:T):T = X
+
+            the_same_name() := the_same_name(void)
+
+assert_valid:
+    vpackage(P, /A):
+        snippet:
+            the_same_name() := the_same_name(void)
+
+            the_same_name(T:type) := class:
+                (/A/the_same_name:)Function(X:T):T = X
+
+assert_semantic_error(3587):
+    vpackage(P, /A):
+        snippet:
+            one_name() := another_name(void)
+
+            another_name(T:type) := class:
+                (/A/one_name:)Function(X:T):T = X
+
+# Can't handle this due to limitations in the backend
+assert_semantic_error(3612, 3612):
+    vpackage(P, /A):
+        snippet:
+            the_same_name(T:type) := interface:
+                (/A/the_same_name:)Function():T
+
+            the_same_name(T:type, U:type) := interface:
+                (/A/the_same_name:)Function():tuple(T,U)
+                
+            the_same_name() := (/A:)the_same_name(void)
+
+assert_semantic_error(3612, 3612):
+    vpackage(P, /A):
+        snippet:
+            the_same_name(T:type) := interface:
+                Function(X:T):T = X
+
+            the_same_name(T:type, U:type) := interface:
+                Function(X:T, Y:U):T = X
+                
+            c := class(the_same_name(int), the_same_name(int, int)):
+                (/A/the_same_name:)Function<override>(X:int):int := 10+X
+                (/A/the_same_name:)Function<override>(X:int, U:int):int = 20+X
+                Function(X:int, Y:int, Z:int):int = 30+X
+
+# The "cursed" example
+assert_semantic_error(3612, 3612, 3523, 3532):
+    vpackage(P, /A):
+        snippet:
+            same_name(T:type) := class:
+                F(X:T):T = X
+            same_name(T:type, U:type) := class(same_name(T)):
+                (/A/same_name:)F<override>(X:T):T = X
+                (/A/same_name:)F(X:T):T = X

@@ -1,0 +1,45 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Classes are comparable iff they have a unique pointer member.
+c0 := class<unique>{}
+c1 := class(c0){Y:int=0}
+assert{A:=c0{}; B:=A;      A=B;  not (A<>B)}
+assert{A:=c1{}; B:=A;      A=B;  not (A<>B)}
+assert{A:=c0{}; B:=c0{}; not (A=B);   A<>B }
+assert{A:=c1{}; B:=c1{}; not (A=B);   A<>B }
+
+assert_semantic_error(3509):
+    c2 := class{}
+    F0(A:c2, B:c2)<transacts><decides>:c2=A=B
+
+assert{A:=c0{}; B:=c1{};  not (A=B);      A<>B }
+assert{A:=c1{}; B:=c0{};  not (A=B);      A<>B }
+assert{A:=c1{}; B:=c0[A];      A=B;  not (A<>B)}
+
+assert_valid:
+    c3 := class<unique>{}
+    c4 := class(c3) {}
+    c5 := class(c3) {}
+    F1(C4:c4, C5:c5)<transacts><decides>:void=C4=C5
+
+# Comparing two class instances for equality either fails or yields a value of
+# the first class instance.
+F2(C:c1)<transacts>:int=C.Y
+assert{A:=c1{Y:=1}; B:=A;            F2(A=B)=1}
+assert{A:=c1{Y:=1}; B:=c0[A];        F2(A=B)=1}
+assert{A:=c1{Y:=1}; B:=c1{Y:=2}; not F2(A=B)  }
+assert{A:=c0{};     B:=c1{Y:=3}; not F2(B=A)  }
+
+# Comparing two class instances for inequality either fails or yields a value of
+# the left operand's class.
+assert{A:=c0{}; B:=c1{Y:=2}; F2(B<>A)=2}
+
+assert_semantic_error(3509):
+    c6 := class<unique>{}
+    c7 := class{}
+    F3(C:c6)<transacts>:void={}
+    F4(A:c6, B:c7)<transacts><decides>:void=F3(A<>B)
+
+# Both operands to the comparison operators must be comparable.
+assert_semantic_error(3509){c8 := class{}; c9 := class<unique>(c8){}; F5(A:c8, B:c9)<transacts><decides>:void=A=B}
+assert_semantic_error(3509){c8 := class{}; c9 := class<unique>(c8){}; F5(A:c8, B:c9)<transacts><decides>:void=A<>B}

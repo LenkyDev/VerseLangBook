@@ -1,0 +1,13 @@
+assert_semantic_error(3560):
+    :int
+
+assert_semantic_error(3560):
+    :int = 5
+
+assert_semantic_error(3560, 3549):
+    Main():void =
+        :int
+
+assert_semantic_error(3560, 3549):
+    Main():void =
+        :int = 5

@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Tests/VerseTestScriptCmd } # for CoroUtils
+
+MyInterface := interface {}
+
+MyClass := class(MyInterface):
+    
+    coroutineMethod<public>()<suspends>:void=
+        CoroUtils.WaitTicks(1)
+
+# Test that MyClass.coroutineMethod's coroutine context does not inherit from MyInterface.
+assert:
+    myObj := MyClass{}
+    context := spawn{myObj.coroutineMethod()}
+    not MyInterface[context]

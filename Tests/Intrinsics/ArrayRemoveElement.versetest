@@ -1,0 +1,7 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{not array{1,2,3}.RemoveElement[-1]}
+assert{    array{1,2,3}.RemoveElement[ 0]=array{2,3}}
+assert{    array{1,2,3}.RemoveElement[ 1]=array{1,3}}
+assert{    array{1,2,3}.RemoveElement[ 2]=array{1,2}}
+assert{not array{1,2,3}.RemoveElement[ 3]}

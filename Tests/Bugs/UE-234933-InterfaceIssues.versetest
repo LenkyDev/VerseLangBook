@@ -1,0 +1,52 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+<#
+The interfaces are defined in 
+Engine\Restricted\NotForLicensees\Source\Programs\Solaris\VerseTestScriptCmd\Verse\UE-234933-InterfaceIssues.native.verse
+#>
+
+UE234933_class := class(UE234933_interface) {}
+
+assert:
+    Object := UE234933_class{}
+    321 = Object.Value
+
+UE234933_class_var := class(UE234933_interface_var) {}
+
+assert:
+    Object := UE234933_class_var{}
+    421 = Object.Value
+    set Object.Value = 124
+    124 = Object.Value
+
+# This still doesn't work ...
+assert_semantic_error(3506, 3506):
+    v(t:type) := class { T<public> : ?t = false }
+    i(t:type) := interface { V<public> : v(t) = v(t){} }
+    c := class(i(int)) { }
+
+    Dummy()<decides>:void =
+        O := c{ V := v(int){ T := option{42} } }
+        O.V.T? = 42
+
+# ... but it's unrelated to default values in interfaces,
+# and hence wont be fixed in this jira.
+assert_semantic_error(3506, 3506):
+    v(t:type) := class { T<public> : ?t = false }
+    i(t:type) := interface { V<public> : v(t) }
+    c := class(i(int)) { }
+
+    Dummy()<decides>:void =
+        O := c{ V := v(int){ T := option{42} } }
+        O.V.T? = 42
+
+# Should probably work since if 'interface' is replaced with 'class' then it compiles.
+v(t:type) := class { T<public> : ?t = false }
+i(t:type) := class { V<public> : v(t) = v(t){} }
+c := class(i(int)) { }
+
+assert:
+    O := c{ V := v(int){ T := option{42} } }
+    O.V.T? = 42

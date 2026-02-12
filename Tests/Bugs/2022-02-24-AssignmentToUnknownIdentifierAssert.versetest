@@ -1,0 +1,17 @@
+# Assignment to an expression that contains an error (e.g. an unknown
+# identifier) shouldn't assert if its type is joined with another.
+assert_semantic_error(3506):
+    F():int=
+        if (true?):
+            set X = 0
+        else:
+            1
+
+# Also test assignment to a non-reference type.
+assert_semantic_error(3509):
+    G(X:int):void={}
+    F():int=
+        if (true?):
+            set G(1) = 0
+        else:
+            1

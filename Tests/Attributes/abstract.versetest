@@ -1,0 +1,53 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Ensure abstract class may not be instantiated
+assert_semantic_error(3571):
+    
+    ClassA := class<abstract>:
+        method():void=
+        {
+            a := ClassA{}
+        }
+
+# Ensure a non-abstract subclass of an abstact class may be instantiated
+assert_valid:
+    
+    ClassA := class<abstract> {}
+
+    ClassB := class(ClassA):
+        method():void=
+        {
+            b := ClassB{}
+        }
+
+assert_semantic_error(3596):
+    clazz1 := class<abstract>{Foo<abstract>():void}
+
+assert_valid:
+    clazz2 := class<abstract>{Foo():void}
+
+assert_valid:
+    clazz3 := class<abstract>{Foo():void}
+    clazz4 := class<abstract>(clazz3){}
+
+assert_semantic_error(3591):
+    clazz5 := class<abstract>{Foo():void}
+    clazz6 := class(clazz5){}
+
+assert_semantic_error(3591):
+    clazz7 := class{Foo():void}
+
+assert_semantic_error(3591, 3591):
+    clazz8 := class{Foo():void}
+    clazz9 := class(clazz8){}
+
+assert_semantic_error(3596):
+    clazz10 := class<abstract>{Foo<abstract>():void = {}}
+
+assert_semantic_error(3596):
+    clazz11 := class<abstract>{Foo<abstract>:int}
+
+assert_valid:
+    interfase1 := interface{Foo():void}
+    clazz12 := class<abstract>(interfase1){}
+

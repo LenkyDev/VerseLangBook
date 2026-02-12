@@ -1,0 +1,26 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Improved verification of qualified names
+# Previously no check for modules, classes, interfaces and enums.
+
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3299):
+    snippet: 
+      Module1 := module:
+
+      Module2 := module:
+        (Module1:)Module := module:
+        (Module1:)Class := class:
+        (Module1:)Interface := interface:
+        (Module1:)Enum := enum { e }
+
+assert_semantic_error(3612, 3612, 3612, 3612):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3300):
+    snippet: 
+      Module1 := module:
+
+      Module2 := module:
+        (Module1:)Module := module:
+        (Module1:)Class := class:
+        (Module1:)Interface := interface:
+        (Module1:)Enum := enum { e }

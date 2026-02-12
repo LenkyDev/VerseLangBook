@@ -1,0 +1,73 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# if - then - else
+assert_roundtrip{if (a < b) then c}
+assert_roundtrip{if (a < b) then c else d}
+
+assert_roundtrip{if (a < b) then {}}
+assert_roundtrip{if (a < b) then {} else {}}
+
+assert_roundtrip{if (a < b) then {c}}
+assert_roundtrip{if (a < b) then {c} else {d}}
+
+# if - {} - else
+assert_roundtrip(if (a < b){}){if (a < b) then {}}
+assert_roundtrip(if (a < b){} else {}){if (a < b) then {} else {}}
+
+assert_roundtrip(if (a < b){c}){if (a < b) then {c}}
+assert_roundtrip(if (a < b){c} else {d}){if (a < b) then {c} else {d}}
+
+# if - . - else
+assert_roundtrip(if (a < b). c){if (a < b) then c}
+assert_roundtrip(if (a < b). c else d){if (a < b) then c else d}
+
+# some variants with nested if
+assert_roundtrip{if (a) then if (b) then c}
+assert_roundtrip{if (a) then b else if (c) then d}
+assert_roundtrip{if (a) then if (b) then c else d}
+
+# Wrapped in a function to verify that indention work
+# Note that there is an extra space after the '='!
+
+assert_roundtrip{
+F():void = 
+    if (a < b):
+        c
+}
+
+assert_roundtrip{
+F():void = 
+    if (a < b):
+        c
+    else:
+        d
+}
+
+assert_roundtrip{
+F():void = 
+    if (a < b):
+        c
+    else if (a > b):
+        d
+    else:
+        e
+}
+
+assert_roundtrip{
+F():void = 
+    if (a < b) then c
+    else if (a > b) then d
+    else e
+}
+
+assert_roundtrip{if (a > b) then {d; e} else if (f[]) then {h; i} else j}
+assert_roundtrip{
+if (a > b):
+    d
+    e
+else if (f[], g?, h):
+    i
+    j
+else:
+    k
+}
