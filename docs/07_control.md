@@ -40,7 +40,7 @@ CalculateReward(PlayerLevel:int)<reads>:int =
 ```
 <!-- CalculateReward(11) = 222 -->
 
-Verse has a flexible syntax with with three equivalent formats for
+Verse has a flexible syntax with three equivalent formats for
 writing blocks. The spaced format is the most common, using a colon to
 introduce the block and indentation to show structure:
 
@@ -62,7 +62,6 @@ if (IsPlayerReady[]):
     BeginCountdown()
 ```
 <!-- #> -->
-```
 
 The multi-line braced format offers familiarity for programmers coming
 from C-style languages:
@@ -87,7 +86,6 @@ if (IsPlayerReady[]) {
 }
 ```
 <!-- #> -->
-```
 
 For simple operations, the single-line dot format keeps code concise:
 
@@ -123,14 +121,13 @@ M()<transacts><decides>:void =
 -->
 <!-- 05 -->
 ```verse
-FinalScore := block:              # The variable hass the block's value
+FinalScore := block:              # The variable has the block's value
     Base := CalculateScore()
     Bonus := CalculateBonus(CompletionTime)
-    Accuracy := Floor(Accuracy * 100.0)
+    Accuracy := Floor[AccuracyValue * 100.0]
     Base + Bonus + Accuracy       # This becomes the block's value
 ```
 <!-- #> -->
-```
 
 
 ## If Expressions
@@ -167,7 +164,6 @@ HandlePlayerAction(Player:player, Action:string):void =
         Player.Idle()
 ```
 <!-- #> -->
-```
 
 This approach allows you to chain conditions that might fail without
 explicit error handling at each step.
@@ -357,7 +353,6 @@ GetVector(Dir:direction):tuple(int, int) =
 GetVector(direction.North) = (0, 1)
 ```
 <!-- #> -->
-```
 
 If you add a wildcard when all cases are covered, you'll get a warning
 that the wildcard is unreachable:
@@ -388,7 +383,6 @@ GetVectorWithUnreachable(Dir:direction):tuple(int, int) =
         _ => (0, 0)  # Warning: all cases already covered
 ```
 <!-- #> -->
-```
 
 Incomplete case coverage is allowed in a `<decides>` context:
 
@@ -410,7 +404,6 @@ GetPrimaryDirection2(Dir:direction)<decides>:string =
         # Other directions cause function to fail
 ```
 <!-- #> -->
-```
 
 Open enums can have values added after publication, so they can never
 be exhaustive. They always require either a wildcard or a `<decides>`
@@ -438,7 +431,6 @@ GameLoop():void =
         if (GameOver[]). break
 ```
 <!-- #> -->
-```
 
 The `break` expression exits the loop entirely, terminating iteration.
 `break` has "bottom" type—a type that represents a computation that
@@ -475,7 +467,7 @@ loop:
     loop:
         set Inner += 1
         if (Inner = 5):
-            break        # Exits inner loo
+            break        # Exits inner loop
     if (Outer = 10):
         break            # Exits outer loop
 ```
@@ -512,12 +504,11 @@ CalculateTotalScore(Players:[]player)<transacts>:int =
     Total
 ```
 <!-- #> -->
-```
 
-While it may look familiar from earlier imperative language, `for` is
-a best thought in the light of functional construct that combine
-iteration, filtering with speculative execution, and construction 
-of a collection of results.
+While it may look familiar from earlier imperative languages, `for` is
+best thought of as a functional construct that combines iteration,
+filtering with speculative execution, and construction of a collection
+of results.
 
 <!--versetest-->
 <!-- 223 -->
@@ -527,7 +518,7 @@ Result :=
    for:
       V : Values
       V >= 10.0
-   	  R := Floor[V]
+      R := Floor[V]
    do:
       R*2.0
 
@@ -536,8 +527,8 @@ Result = array{20.0, 200.0}
 
 The above is written with an alternative multi-clause syntax using the
 `do:` keyword to  separate the iteration specification  from the body.
-The `for` iterates  over the `Values` array,  discaring values smaller
-than 10  and rounding down  numbers. It  returns an array  of strings.
+The `for` iterates  over the `Values` array,  discarding values smaller
+than 10  and rounding down  numbers. It  returns an array  of floats.
 The `Floor` function is defined as `decides` --if it were to fail that
 iterate would be discarded.
 
@@ -558,7 +549,6 @@ M():void =
 for (V : Values). DoSomething(V)
 ```
 <!-- #> -->
-```
 
 **Index and Value Pairs:**
 
@@ -576,7 +566,6 @@ PrintRoster(Players:[]player):void =
         Print("Player {Index}: {Player.Name}")
 ```
 <!-- #> -->
-```
 
 The index is zero-based, matching Verse's array indexing convention.
 
@@ -688,7 +677,6 @@ GetHighScorers(Players:[]player):[]player =
         Player  # Only players with score > 1000 are included
 ```
 <!-- #> -->
-```
 
 When any expression in the iteration header fails, that iteration is
 skipped. This allows elegant filtering without explicit `if`
@@ -706,7 +694,6 @@ AffordableItems(Items:[]item, Budget:float):[]float =
         Item.Price * 1.1  # Apply 10% markup
 ```
 <!-- #> -->
-```
 
 **For as an Expression:**
 
@@ -724,7 +711,6 @@ GetNames(Players:[]player):[]string =
         Player.Name  # Each iteration produces a string
 ```
 <!-- #> -->
-```
 
 This makes `for` a powerful tool for transforming collections without
 explicit accumulator variables.
@@ -761,7 +747,6 @@ ProcessValidItems(Items:[]item):void =
         ProcessItem(Item)  # Only valid items reach here
 ```
 <!-- #> -->
-```
 
 
 **Range Iteration.** The range operator `..` provides numeric
@@ -884,7 +869,6 @@ ValidateInput(Value:int):string =
     "Valid"     # Implicit return
 ```
 <!-- #> -->
-```
 
 Return statements can only appear in specific positions within your
 code—they must be in "tail position," meaning they must be the last
@@ -913,7 +897,6 @@ GetStatus(Value:int):string =
         return "Non-positive"
 ```
 <!-- #> -->
-```
 
 Verse functions implicitly return the value of their last expression,
 so `return` is only needed for early exits:
@@ -938,7 +921,6 @@ GetDiscount(Price:float):float =
     Price * 0.1  # Implicit return with 10% discount
 ```
 <!-- #> -->
-```
 
 In functions with the `<decides>` effect, `return` allows you to
 provide successful values from early exits, while still allowing other
@@ -960,7 +942,6 @@ RetryableOperation()<transacts>:string =
     "Failed" # All retries exhausted
 ```
 <!-- #> -->
-```
 
 This pattern is common for search operations where you want to return
 immediately upon finding a match, but fail if no match is found.
@@ -991,7 +972,6 @@ ProcessFile(FileName:string)<transacts><decides>:void =
     SaveResults[]
 ```
 <!-- #> -->
-```
 
 Deferred code executes when the scope exits successfully or through
 explicit control flow like `return`:
@@ -1018,7 +998,6 @@ ProcessQuery()<transacts>:void =
     # defer executes before leaving the function scope on success
 ```
 <!-- #> -->
-```
 
 This is a subtle but crucial point: if a function fails due to
 speculative execution, deferred code does **not** execute. This is
@@ -1042,7 +1021,6 @@ ExampleWithFailure()<transacts><decides>:void =
     # defer does NOT run - entire scope was speculative and rolled back
 ```
 <!-- #> -->
-```
 
 When the `RiskyOperation` fails, the entire function also fails, and
 speculative execution undoes everything—including the defer
@@ -1081,7 +1059,6 @@ DatabaseTransaction()<transacts><decides>:void =
     # Defers execute: CommitTransaction, then CloseDatabase
 ```
 <!-- #> -->
-```
 
 **Defers and Async Cancellation:**
 
@@ -1129,7 +1106,6 @@ ProcessWithCleanup():void =
     # Output: A D B C inner
 ```
 <!-- #> -->
-```
 
 The execution order follows the LIFO principle at each nesting
 level—inner defers execute after the outer defer's code, maintaining
@@ -1164,7 +1140,6 @@ ProcessWithIf(Condition:logic):void =
         Log("Else body")
 ```
 <!-- #> -->
-```
 
 Each control flow path executes its own defers independently.
 
@@ -1227,5 +1202,4 @@ PlayerDamage := profile("Damage Calculation"):
     BaseDamage * GetMultiplier() * GetCriticalBonus()
 ```
 <!-- #> -->
-```
 
