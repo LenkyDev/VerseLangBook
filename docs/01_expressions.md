@@ -329,7 +329,6 @@ Path syntax follows specific rules:
 
 - Starts with `/`
 - Contains label (alphanumeric, `.`, `-`)
-- Optional version after `@`
 - Identifiers must start with letter or `_`
 
 Path literals are covered in detail in the Modules chapter.
@@ -744,6 +743,45 @@ set Total *= Factor   # Equivalent to: set Total = Total * Factor
 ```
 <!-- #> -->
 
+Compound assignment operators evaluate the left-hand side
+expression only once** which is observable when the expression has side
+effects:
+
+<!--versetest
+assert:
+    var TestArray:[]int = array{10, 20, 30, 40, 50}
+    var Index:int = 0
+    Inc():int =
+        set Index += 1
+        Index
+
+    # Compound assignment: Inc() called ONCE
+    set TestArray[Inc()] += 1
+
+    # Verify: Index = 1 (Inc called once)
+    Index = 1
+    # TestArray[1] = 20 + 1 = 21
+    TestArray[1] = 21
+-->
+```verse
+var Index:int = 0
+Inc():int =
+    set Index += 1
+    Index
+
+# Compound assignment calls Inc() one
+set Array[Inc()] += 1
+# Result: Array[1] = Array[1] + 1
+
+# Expanded form would call Inc() twice
+# set Array[Inc()] = Array[Inc()] + 1
+# Result: Array[1] = Array[2] + 1  (different!)
+```
+
+In the compound assignment `set Array[Inc()] += 1`, the function `Inc()`
+is called once to determine the index, then that location is read,
+incremented, and stored back.
+
 ### Range Expressions
 
 The range operator (`..`) creates integer ranges for iteration in
@@ -838,8 +876,19 @@ Different := logic{A <> B}
 ```
 
 All comparison operators have the same precedence and are evaluated
-left-to-right, allowing natural mathematical notation for range
-checks.
+left-to-right. **Importantly, comparison operators return their left
+operand** when the comparison succeeds, which enables natural chaining for
+range checks:
+
+```verse
+0 <= Value <= 100
+# Evaluates as: (0 <= Value) <= 100
+# First: 0 <= Value succeeds and returns Value
+# Then: Value <= 100 is checked
+```
+
+This behavior allows mathematical notation for ranges without requiring
+`and` operators.
 
 ### Arithmetic Operations
 
@@ -909,9 +958,17 @@ set Map[Key] = MappedValue    # Map entry assignment
 ```
 <!-- #> -->
 
-Set expressions are themselves expressions, though they're typically
-used for their side effects rather than their value. The left-hand
-side must be a valid LValue—something that can be assigned to.
+Set expressions are themselves expressions that **return the value being
+assigned** (the right-hand side). For example, `set Obj.Field = Value`
+returns `Value`, not `Obj`. This allows chaining assignments:
+
+```verse
+set Y = set X = 5  # Both X and Y become 5
+```
+
+Though set expressions have a value, they're typically used for their side
+effects. The left-hand side must be a valid LValue—something that can be
+assigned to.
 
 Complex LValues are supported, allowing updates deep within data structures:
 
@@ -1086,12 +1143,15 @@ for (X := 1..3; X <> 2) { X }
 for (X := 1..3, X <> 2) { X }      # Same meaning in this context
 ```
 
-In `array{}` constructor - use commas to separate elements:
+In `array{}` constructors, elements can be separated by commas **or**
+semicolons (but not mixed):
 
 <!--versetest-->
 <!-- 61 -->
 ```verse
-Numbers := array{1, 2, 3}          # Array of three elements
+CommaArray := array{1, 2, 3}       # Commas work
+SemiArray := array{1; 2; 3}        # Semicolons also work
+# MixedArray := array{1, 2; 3}     # ERROR: Cannot mix separators
 ```
 
 ### Newlines as Separators
