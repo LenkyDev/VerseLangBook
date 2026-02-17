@@ -1,0 +1,12 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# The self-referential function should not cause an infinite recurrsion int he compiler or otherwise crash
+
+assert_semantic_error(3542, 3502):
+	m := module:
+		a() := a
+
+assert_valid:
+	m := module:
+		a():any := a
+		

@@ -1,0 +1,283 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Basic overloading test case.
+assert_valid { f(x:float):void={}; f(x:int):void={}; g():void={f(1.0); f(1)} }
+
+f0(x:float):float=return x
+f0(x:int):int=return x
+
+assert{f0(1.0)=1.0}
+assert{f0(1)=1}
+
+# Capturing an overloaded function reference isn't supported yet.
+assert_semantic_error(3502):
+    f(x:int):void={}
+    f(x:float):void={}
+    g:void=f
+
+# Require that the each overload's domain is distinct.
+assert_valid                     { C:=class{}; D:=class   {}; f(c:C):void={}; f(d:D):void={} }
+assert_semantic_error(3532){ C:=class{}; D:=class(C){}; f(c:C):void={}; f(d:D):void={} }
+
+assert_semantic_error(3532){ C:=class{}; D:=class   {}; f(x:[]C):void={}; f(x:[]D):void={} }
+assert_semantic_error(3532){ C:=class{}; D:=class(C){}; f(x:[]C):void={}; f(x:[]D):void={} }
+                                     
+assert_semantic_error(3532){ C:=class{}; D:=class   {}; f(x:?C):void={}; f(x:?D):void={} }
+assert_semantic_error(3532){ C:=class{}; D:=class(C){}; f(x:?C):void={}; f(x:?D):void={} }
+                                     
+assert_semantic_error(3532){ f(g(     ):void):void={}; f(h(     ):int):void={} }
+assert_semantic_error(3532){ f(g(     ):void):void={}; f(h(x:int):int):void={} }
+assert_semantic_error(3532){ f(g(     ):void):void={}; f(h(     ):void):void={} }
+assert_semantic_error(3532){ f(g(     ):void):void={}; f(h(x:int):void):void={} }
+
+# The type of return (false, the bottom type), can't be used to resolve an overload.
+assert_semantic_error(3518):
+    F(X:int):int=X
+    F(X:float):float=X
+    G():void={ F(@ignore_unreachable return); 0 }
+
+# Test overloading a function across different scopes.
+assert_valid { f():void={}; g(f(x:int):void):void={} }
+assert_valid { f():void={}; C:=class{f(x:int):void:={}} }
+
+assert_semantic_error(3532):
+    f1(x:int):int=42
+    f2(x:float):float=42.5
+
+    f3(f(x:int):int):int=42
+    f3(f(x:float):float):float=42.5
+
+# Test overloading a function from a different module.
+assert_valid:
+    vmodule(A):
+        snippet:
+            f<public>():void={}
+    vmodule(B):
+        snippet:
+            using{A}
+            f(x:int):void={}
+            g():void={f(); f(0)}
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            f<public>():void={}
+    vmodule(B):
+        snippet:
+            using{A}
+            f(x:int):void={}
+            g():void={f(); f(0)}
+
+# Overloading with different fallibility should be allowed if the overloads are also of distinct domains.
+f4(x:float):float=return x
+f4(x:int)<transacts><decides>:int=return x=1
+
+assert{f4(3.0) = 3.0}
+assert{not f4[0] and f4[1]=1 and not f4[2]}
+
+# Overloads with different fallibility shouldn't be allowed unless the overloads have distinct domains.
+assert_semantic_error(3532){ f(x:int):void={}; f(x:int)<transacts><decides>:void={} }
+
+# Test overloaded function members.
+C0:=class:
+    f(x:int):int=return x
+    f(x:float):float=return x
+C1:=class(C0):
+    y:int=1
+    z:float=1.0
+    f<override>(x:int):int=return x+y
+    f<override>(x:float):float=return x+z
+assert{C0{}.f(0  )=0}
+assert{C0{}.f(1  )=1}
+assert{C0{}.f(2  )=2}
+assert{C0{}.f(0.0)=0.0}
+assert{C0{}.f(1.0)=1.0}
+assert{C0{}.f(2.0)=2.0}
+assert{C1{}.f(0  )=1}
+assert{C1{}.f(1  )=2}
+assert{C1{}.f(2  )=3}
+assert{C1{}.f(0.0)=1.0}
+assert{C1{}.f(1.0)=2.0}
+assert{C1{}.f(2.0)=3.0}
+assert{C1{y:=-1,z:=-1.0}.f(0  )=-1}
+assert{C1{y:=-1,z:=-1.0}.f(1  )= 0}
+assert{C1{y:=-1,z:=-1.0}.f(2  )=+1}
+assert{C1{y:=-1,z:=-1.0}.f(0.0)=-1.0}
+assert{C1{y:=-1,z:=-1.0}.f(1.0)= 0.0}
+assert{C1{y:=-1,z:=-1.0}.f(2.0)=+1.0}
+
+# Test adding an overload to a non-overloaded function in a subclass.
+C2:=class:
+    f(x:int):int=return x
+C3:=class(C2):
+    f(x:float):float=return x
+assert{C2{}.f(0)=0}
+assert{C2{}.f(1)=1}
+assert{C2{}.f(2)=2}
+assert{C3{}.f(0)=0}
+assert{C3{}.f(1)=1}
+assert{C3{}.f(2)=2}
+assert{C3{}.f(0.0)=0.0}
+assert{C3{}.f(1.0)=1.0}
+assert{C3{}.f(2.0)=2.0}
+
+# Test that a method that aliases method(s) in a parent must either overload the function for a
+# distinct domain, or override exactly one of the overloads defined in the parent.
+assert_valid:
+    C:=class{}
+    D:=class(C){}
+    E:=class:
+        f(d:D):D=return d
+        f(e:E):E=return e
+    F:=class(E):
+        f<override>(c:C):D=return D{}
+assert_semantic_error(3532, 3532):
+    C:=class{}
+    D:=class(C){}
+    E:=class:
+        f(c:C):C=return c
+        f(e:E):E=return e
+    F:=class(E):
+        f(d:D):D=return d
+
+# Test overloaded interface functions.
+assert_valid:
+    T0:=interface:
+        f(x:int):int=return x
+        f(x:float):float=return x
+
+# Don't allow overloaded function pointers.
+assert_semantic_error(3502, 3502):
+    var f():void={}
+    var f(x:int):void={}
+assert_semantic_error(3502):
+    f():void={}
+    var f(x:int):void={}
+assert_semantic_error(3502):
+    var f():void={}
+    f(x:int):void={}
+
+# Make sure overloaded functions can't alias definitions of other kinds.
+assert_semantic_error(3532):
+    f:int=0
+    f():void={}
+assert_semantic_error(3588,3532):
+    f():void={}
+    f(x:int):void={}
+    g():void={f:=1; return f}
+
+assert_semantic_error(3588, 3532, 3588, 3532, 3588, 3588, 3588): #overloading a class is not ok for now
+    f := class:
+        f():f={ return f{} }
+        f(x:int):f={ return f{} }
+        g():f={return f()}
+
+# Test calling overloaded async functions.
+f5(x:int)<suspends>:void={CoroUtils.LogEvent("int:")}
+f5(x:float)<suspends>:void={CoroUtils.LogEvent("float:")}
+assert:
+    spawn{f5(11)}
+    CoroUtils.Tick(1)
+    spawn{f5(13.0)}
+    CoroUtils.Tick(1);
+    CoroUtils.GetEventLogString() = "int:,float:,"
+
+# Test calling an overloaded function with both async and non-async overloads.
+f5(x:logic):void={CoroUtils.LogEvent("logic:")}
+assert:
+    f5(true)
+    CoroUtils.GetEventLogString() = "logic:"
+
+assert_semantic_error(3512){f(x:int):void={}; f(x:float)<suspends>:void={}; g():void=f(1.0) }
+assert_semantic_error(3538){f(x:int):void={}; f(x:float)<suspends>:void={}; g():void=spawn{f(1)} }
+
+# Test overloading the arithmetic operators (+ - * /).
+vec2i:=struct{X:int, Y:int}
+
+prefix'-'(V:vec2i):vec2i=return vec2i{X:=-V.X, Y:=-V.Y}
+operator'+'(L:vec2i, R:vec2i):vec2i=return vec2i{X:=L.X+R.X, Y:=L.Y+R.Y}
+operator'-'(L:vec2i, R:vec2i):vec2i=return vec2i{X:=L.X-R.X, Y:=L.Y-R.Y}
+operator'*'(L:vec2i, R:int  ):vec2i=return vec2i{X:=L.X*R  , Y:=L.Y*R  }
+operator'*'(L:int  , R:vec2i):vec2i=return vec2i{X:=L  *R.X, Y:=L  *R.Y}
+operator'/'(L:vec2i, R:int  )<transacts><decides>:vec2i=return R<>0 and vec2i{X:=Floor(L.X/R), Y:=Floor(L.Y/R)}
+
+assert{V:=-vec2i{X:=1,Y:=2}                   ; V.X=-1 and V.Y=-2}
+assert{V:=vec2i{X:=3,Y:=4} + vec2i{X:=5,Y:=6} ; V.X=8  and V.Y=10}
+assert{V:=vec2i{X:=7,Y:=8} - vec2i{X:=9,Y:=10}; V.X=-2 and V.Y=-2}
+assert{V:=vec2i{X:=11,Y:=12} * 2              ; V.X=22 and V.Y=24}
+assert{V:=3 * vec2i{X:=13,Y:=14}              ; V.X=39 and V.Y=42}
+assert{V:=vec2i{X:=15,Y:=16} / 2              ; V.X=7  and V.Y=8 }
+assert{not (vec2i{X:=15,Y:=16} / 0)}
+
+# Test overloading the indexing operator.
+assert_semantic_error(3514):
+    vec2i:=struct{X:int, Y:int}
+    operator'()'(V:vec2i, I:int)<transacts><decides>:int=
+        if (I = 0) { return V.X  }
+        else if (I = 1) { return V.Y }
+        else { false?; return 0 }
+
+assert_semantic_error(3514, 3518, 3532):
+    operator'()'(A:[]int, I:int)<transacts><decides>:int=42
+    X:int=array{0,1}[0]
+
+# The mutation and comparison operators aren't overloadable yet:
+# Mutation operators aren't overloadable because we don't support non-unique pointers yet.
+#   operator'+='(L:^T, R:T):T
+#   operator'-='(L:^T, R:T):T
+#   operator'*='(L:^T, R:T):T
+#   operator'/='(L:^T, R:T):T
+# Comparison:
+#   operator'<'
+#   operator'<='
+#   operator'>'
+#   operator'>='
+#   operator'='
+#   operator'<>'
+
+# Test that internal operators are not considered for overload resolution
+assert_semantic_error(3509):
+    vmodule(A):
+        snippet:
+            c<public>:=class{}
+            operator'+'<internal>(Lhs:c, Rhs:c):c=c{}
+    vmodule(B):
+        snippet:
+            using{A}
+            g():void={c{}+c{}}
+
+# Test that overloading a class is not allowed.
+assert_semantic_error(3588, 3532, 3588):
+    C:=class{}
+    C(x:int):C=return C{}
+
+# Test that the intrinsic + operator can be used places that prohibit side-effects, but overloaded + cannot without the total effect.
+assert_valid{C:=class{x:int=1+2}}
+assert_semantic_error(3582){C:=class<computes>{}; operator'+'(l:C, r:C):C=C{}; D:=class<computes>{x:C=C{}+C{}} }
+
+assert_valid:
+    a := struct {}
+    F(:a):void={}
+    F(:[]a):void={}
+
+assert_semantic_error(3532):
+    a := struct {}
+    F(:a, :a):void={}
+    F(:[]a):void={}
+
+# We currently cannot call `(super:)` on fields right now in BetaVerse; this will need to be updated when we eventually implement this.
+<#
+assert_semantic_error(3509):
+    vmodule(A):
+        snippet:
+            C0 := class { Foo<public>:int = 5 }
+            C1 := class(C0) { Bar:int = (super:)Foo }
+# We currently have a limitation in BetaVerse that we cannot have fields named the same across subclasses, even if we fully qualify them.
+assert_semantic_error(3509):
+    vmodule(A):
+        snippet:
+            C0 := class { Foo:int = 5 }
+            C1 := class(C0) { (/A/C1:)Foo:string = "test" }
+#>

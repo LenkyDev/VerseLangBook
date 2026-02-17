@@ -1,0 +1,111 @@
+
+################################################################################
+# Test discovery of module scoped instances
+## 
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_todo
+{
+
+i1 := interface{}
+i2 := interface{}
+i3 := interface(i1){}
+c := class<computes>(i1){}
+d := class<computes>(c){}
+e := class<computes>(d,i2){}
+f := class<computes>{}
+g := class<computes>(i3){}
+h := class<computes>(g){}
+
+G0:e = e{}
+
+MyModule := module:
+    V0:f = f{}
+    V1:i1 = c{}
+    V2:i2 = e{}
+    V3:c = e{}
+    V4:d = d{}
+    V5:i1 = d{}
+    V6:i1 = e{}
+    V7:e = e{}
+    V8:i1 = g{}
+    V9:i3 = g{}
+    V10:g = g{}
+    V11:h = h{}
+
+# This class exists to ensure GetVersePathsOfModuleScopedInstances does not find class members accidentally
+my_decoy_class := class:
+    V0:f = f{}
+    V1:i1 = c{}
+    V2:i2 = e{}
+    V3:c = e{}
+    V4:d = d{}
+    V5:i1 = d{}
+    V6:i1 = e{}
+    V7:e = e{}
+    V8:i1 = g{}
+    V9:i3 = g{}
+    V10:g = g{}
+    V11:h = h{}
+
+# Note that for GetVersePathsOfModuleScopedInstances(), the type we are filtering for applies to the type of the _definition_, _not_ the type of the _value_ 
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(i1) = array:
+        "/verse.org/VerseTests/G0"
+        "/verse.org/VerseTests/MyModule/V1"
+        "/verse.org/VerseTests/MyModule/V3"
+        "/verse.org/VerseTests/MyModule/V4"
+        "/verse.org/VerseTests/MyModule/V5"
+        "/verse.org/VerseTests/MyModule/V6"
+        "/verse.org/VerseTests/MyModule/V7"
+        "/verse.org/VerseTests/MyModule/V8"
+        "/verse.org/VerseTests/MyModule/V9"
+        "/verse.org/VerseTests/MyModule/V10"
+        "/verse.org/VerseTests/MyModule/V11"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(i2) = array:
+        "/verse.org/VerseTests/G0"
+        "/verse.org/VerseTests/MyModule/V2"
+        "/verse.org/VerseTests/MyModule/V7"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(i3) = array:
+        "/verse.org/VerseTests/MyModule/V9"
+        "/verse.org/VerseTests/MyModule/V10"
+        "/verse.org/VerseTests/MyModule/V11"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(c) = array:
+        "/verse.org/VerseTests/G0"
+        "/verse.org/VerseTests/MyModule/V3"
+        "/verse.org/VerseTests/MyModule/V4"
+        "/verse.org/VerseTests/MyModule/V7"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(d) = array:
+        "/verse.org/VerseTests/G0"
+        "/verse.org/VerseTests/MyModule/V4"
+        "/verse.org/VerseTests/MyModule/V7"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(e) = array:
+        "/verse.org/VerseTests/G0"
+        "/verse.org/VerseTests/MyModule/V7"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(f) = array:
+        "/verse.org/VerseTests/MyModule/V0"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(g) = array:
+        "/verse.org/VerseTests/MyModule/V10"
+        "/verse.org/VerseTests/MyModule/V11"
+
+assert:
+    TestUtils.GetVersePathsOfModuleScopedInstances(h) = array:
+        "/verse.org/VerseTests/MyModule/V11"
+
+}

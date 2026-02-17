@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{not false?}
+assert{(not false?) = false}
+assert{(not not true?) = false}
+assert{(not not not false?) = false}
+
+assert{maybeInt:?int = false; not maybeInt?}
+assert{maybeInt:?int = false; (not maybeInt?) = false}
+assert{maybeInt:?int = false; (not not not maybeInt?) = false}
+
+# Test that logical `not` doesn't work on expressions that can't fail.
+assert_semantic_error(3513){ f()<transacts><decides>:void={ not 1 } }
+assert_semantic_error(3513){ f()<transacts><decides>:void={ not true } }
+assert_semantic_error(3513){ f()<transacts><decides>:void={ not false } }
+assert_semantic_error(3513){ f()<transacts><decides>:void={ maybeInt:?int = false; not maybeInt } }

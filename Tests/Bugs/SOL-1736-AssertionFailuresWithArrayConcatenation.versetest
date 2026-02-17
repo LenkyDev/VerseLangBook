@@ -1,0 +1,27 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert:
+    A := array{1} + array{2} + array{3}
+    A=array{1,2,3}
+
+assert:
+    var A:[]int=array{}
+    set A += array{1}
+    set A += array{2} + array{3}
+    A=array{1,2,3}
+
+FunctionReturningArray():[]int=array{1}
+assert{FunctionReturningArray()=array{1}}
+
+s:=struct{A:[]int}
+FunctionReturningStructWithArray():s=s{A:=array{1}}
+assert{FunctionReturningStructWithArray().A=array{1}}
+
+FunctionReturningOptionalArray():?[]int=option{array{1}}
+assert{FunctionReturningOptionalArray()?=array{1}}
+
+FunctionReturningMap():[int]string=map{1=>"1"}
+assert{FunctionReturningMap()=map{1=>"1"}}
+
+FunctionReturningArrayOfStructs():[]s=array{s{A:=array{1}}}
+assert{FunctionReturningArrayOfStructs()[0].A=array{1}}

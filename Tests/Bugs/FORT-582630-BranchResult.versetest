@@ -1,0 +1,17 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3509):
+    Immediate()<suspends>:int = 0
+    BranchTest()<suspends>:void =
+        Result:true = branch:
+            Immediate()
+
+
+Immediate()<suspends>:int = 0
+
+BranchTest()<suspends>:void =
+    Result:any = branch:
+        Immediate()
+
+assert:
+    spawn{BranchTest()}

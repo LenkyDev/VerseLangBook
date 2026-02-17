@@ -1,0 +1,83 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    i_base<public> := interface {}
+    final_super_type<public> := class<final_super>(i_base) {}
+
+assert_valid:
+    i_base<public> := interface {}
+    final_super_type<public> := class<final_super>(i_base) {}
+
+assert_valid:
+    base<public> := class {}
+    final_super_type<public> := class<final_super>(base) {}
+        
+assert_valid:
+    base := class<final_super_base>{}
+    c := class<final_super>(base) {}
+
+# the final_super_base attribute is not required
+assert_valid:
+    base := class{}
+    c := class<final_super>(base) {}
+
+assert_valid:
+    i_base := interface<final_super_base>{}
+    c := class<final_super>(i_base) {}
+
+assert_valid:
+    i_base := interface<final_super_base>{}
+    i_c := interface(i_base) {}
+
+# the final_super_base attribute is not required
+assert_valid:
+    base := class{}
+    c := class<final_super>(base) {}
+    
+# classes derived from a <final_super_base> type should be marked <final_super>
+assert_semantic_error(3680):
+    base := class<final_super_base>{}
+    c := class(base) {}
+
+assert_semantic_error(3680):
+    i_base := interface<final_super_base>{}
+    c := class(i_base) {}
+
+assert_semantic_error(3680):
+    base := class<final_super_base>{}
+    i_base := interface<final_super_base>{}
+    c := class(base, i_base) {}
+
+# final_super types must have some sort of base type
+assert_semantic_error(3679):
+    a<public> := class<final_super> {}
+
+# The <final_super> attribute is not allowed in other places
+assert_semantic_error(3596):
+    i<final_super>:int = 42
+assert_semantic_error(3596):
+    c<final_super> := class {}
+assert_semantic_error(3596):
+    i<final_super> := interface {}
+assert_semantic_error(3596):
+    i := interface<final_super> {}
+assert_semantic_error(3596):
+    m<final_super> := module{}
+assert_semantic_error(3596):
+    Func<final_super>():int = 42
+assert_semantic_error(3596):
+    Func()<final_super>:int = 42
+
+# The <final_super_base> attribute is not allowed in other places
+assert_semantic_error(3596):
+    i<final_super_base>:int = 42
+assert_semantic_error(3596):
+    c<final_super_base> := class {}
+assert_semantic_error(3596):
+    i<final_super_base> := interface {}
+assert_semantic_error(3596):
+    m<final_super_base> := module{}
+assert_semantic_error(3596):
+    Func<final_super_base>():int = 42
+assert_semantic_error(3596):
+    Func()<final_super_base>:int = 42

@@ -1,0 +1,282 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# When these bugs are fixed, we should no longer need to provide an explicit
+# expected result. Instead we should be able to use the simple form of
+# assert_roundtrip{expr}.
+
+
+# !!! Turn on whitespace rendering when working with these bugs !!!
+
+
+# Bug
+#    The `then` keyword is not necessary here. We should omit it, but
+#    need more information in Vst to detect when explicit "then" is used in the source
+assert_roundtrip(if (a, b, c){d, e}) {if (a, b, c) then {d, e}}
+assert_roundtrip(if (a; b; c){d; e}) {if (a; b; c) then {d; e}}
+
+assert_roundtrip{if (a, b, c) then {d, e}}
+assert_roundtrip{if (a; b; c) then {d; e}}
+
+assert_roundtrip{if (a; b, c) then {d; e, f}}
+assert_roundtrip{if (a, b; c) then {d, e; f}}
+
+assert_roundtrip{
+if (a, b, c):
+    d
+    e
+else if (f[], g?):
+    h
+    i
+else:
+    j
+}
+
+assert_roundtrip{
+if:
+    a, b, c
+then:
+    d
+    e
+else if:
+    f[], g?
+then:
+    h
+    i
+else:
+    j
+}
+
+# Bug - dangling else; this should be an error
+assert_roundtrip{if (a) then if (b) then c else d}
+
+# Bug - whitespace after function definition.
+# f():void = <- unnecessary space
+#     return 5
+assert_roundtrip{
+f():void = 
+    return 5
+}
+
+# Bug - multiple attribute specifiers would result in any attribute specifier after the first
+# not getting indented correctly.
+assert_roundtrip{
+Simulation<public> := module:
+    @attribscope_class
+    @customattribhandler
+    editable<public> := class(attribute):
+}
+
+# Output can be parsed, but it can also be improved.
+assert_roundtrip(
+f():void = 
+    <#C1#>
+    <#C2#>
+    (
+    <#C3#>
+    <#C4#>
+    false
+    <#C5#>
+    <#C6#>
+    )
+    <#C7#>
+    <#C8#>
+){
+f():void = 
+    <#C1#>
+    <#C2#>
+    (
+    <#C3#>
+    <#C4#>
+    false<#C5#>
+    <#C6#>
+    )<#C7#>
+    <#C8#>
+
+}
+
+assert_roundtrip(
+f():void = 
+<#C1#>
+<#C2#>
+{
+    <#C3#>
+    <#C4#>
+    true?
+    <#C5#>
+    <#C6#>
+}
+<#C7#>
+<#C8#>
+){
+f():void = 
+<#C1#>
+<#C2#>
+{
+    <#C3#>
+    <#C4#>
+    true?<#C5#>
+    <#C6#>
+}
+
+<#C7#>
+<#C8#>
+}
+
+# Differently formatted tuples
+assert_roundtrip{
+F2():tuple(int, int) = (1, 2)
+}
+
+assert_roundtrip(
+F2():tuple(int, int) =
+    (
+        1,
+        2
+    )
+){
+F2():tuple(int, int) = 
+    (
+    1,
+    2
+    )
+}
+
+assert_roundtrip(
+F2():tuple(int, int) =
+    (
+        1
+        2
+    )
+){
+F2():tuple(int, int) = 
+    (
+    1
+    2)
+}
+
+# Differently formatted expressions in parenthesis
+assert_roundtrip{
+F1():int = (1; 2)
+}
+
+assert_roundtrip(
+F1():int =
+    (
+        1;
+        2
+    )
+){
+F1():int = 
+    (
+    1; 2)
+}
+
+# Doesn't keep *_only macros
+bp_vm_only{
+assert_roundtrip(
+F(X:int)<decides>:void =
+    verse_vm_only{ 1 = X }
+    bp_vm_only{ 2 = X }
+    if (1 = X):
+        false?
+){
+F(X:int)<decides>:void = 
+    2 = X
+    if (1 = X):
+        false?
+}
+
+}
+
+assert_roundtrip(
+TestChar8s:[]char8 = array:
+    0o00
+    '\n'
+    '\t'
+    '\\'
+    0o80
+    'a'
+    0off
+){
+TestChar8s:[]char8 = array:
+    0o00
+    '\n'
+    '\t'
+    '\\'
+    0o80
+    'a'
+    0oFF
+}
+
+assert_roundtrip(
+TestChar32s:[]char32 = array:
+    0u00000
+    0u00080
+    0u000a0
+    0u00800
+    0u10000
+    '\n'
+    '\t'
+    '\\'
+    '好'
+    '😀'
+    '🚀'
+){
+TestChar32s:[]char32 = array:
+    0u00000
+    0u00080
+    0u000A0
+    0u00800
+    0u10000
+    '\n'
+    '\t'
+    '\\'
+    0u0597D
+    0u1F600
+    0u1F680
+}
+
+assert_roundtrip(
+F(X:int):void =
+    1
+    2;
+    3
+){
+F(X:int):void = 
+    1
+    2; 3
+}
+
+# Note, space after = and +=, and the empty line is indented with spaces
+assert_roundtrip(
+F(X:int):int =
+  var Y:int =
+    1
+  set X =
+    Y
+  set X +=
+    Y   
+){
+F(X:int):int = 
+    var Y:int = 
+        1
+    
+    set X = 
+        Y
+    set X += 
+        Y
+}
+
+assert_roundtrip(
+F := class:
+	E():void=
+		# no-op
+		{}
+){
+F := class:
+    E():void = 
+    # no-op
+    {
+        }
+}
+

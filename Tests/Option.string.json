@@ -1,0 +1,9 @@
+{
+	"localizations": [
+		{
+			"path": "",
+			"default": "test",
+			"where": "Option.versetest(83,16, 83,20)"
+		}
+	]
+}

@@ -1,0 +1,39 @@
+
+my_large_struct := struct:
+    Value0  : int = 0
+    Value1  : int = 1
+    Value2  : int = 2
+    Value3  : int = 3
+    Value4  : int = 4
+    Value5  : int = 5
+    Value6  : int = 6
+    Value7  : int = 7
+    Value8  : int = 8
+    Value9  : int = 9
+    Value10 : int = 10
+    Value11 : int = 11
+    Value12 : int = 12
+    Value13 : int = 13
+    Value14 : int = 14
+    Value15 : int = 15
+    Value16 : int = 16
+    Value17 : int = 17
+    Value18 : int = 18
+    Value19 : int = 19
+    Value20 : int = 20
+    Value21 : int = 21
+    Value22 : int = 22
+    Value23 : int = 23
+    Value24 : int = 24
+    Value25 : int = 25
+    Value26 : int = 26
+    Value27 : int = 27
+    Value28 : int = 28
+    Value29 : int = 29
+    Value30 : int = 30
+    Value31 : int = 31
+
+assert:
+    # 32768 iterations should be enough to overflow the Virtual Stack Allocator with an object of 256 bytes
+    var BigArray : []tuple(int, my_large_struct) = for (x := 0..40000){ (x, my_large_struct{}) }
+    BigArray[123](0) = 123

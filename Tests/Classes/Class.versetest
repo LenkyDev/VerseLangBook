@@ -1,0 +1,86 @@
+assert_valid { C := class {} }
+assert_semantic_error(3591){ C := class { f():void } }
+assert_semantic_error(3591){ C := class { f():int } }
+assert_semantic_error(3591){ C := class { f(x:int):int } }
+assert_semantic_error(3591){ C := class { f(x:int, y:float):int } }
+assert_semantic_error(3591, 3591, 3591){ C := class { f0():void, f1():int, f2():float } }
+assert_valid { C := class { f():void = {} } }
+assert_valid { C := class { f():int = { 42 } } }
+assert_valid { C := class { f(x:int):int = { x } } }
+assert_valid { C := class { f(x:int, y:float):int = { x } } }
+assert_valid { C := class { f0():void = {}, f1():int = { 42 }, f2():float = { 42.5 } } }
+assert_valid { C := class { x:int } }
+assert_valid { C := class { var x:int } }
+
+assert_semantic_error(3502){c := class}
+
+# Expressions in the class body must be a definition.
+assert_semantic_error(3585, 3591){ C := class { f():void, f() } }
+assert_semantic_error(3560){ C := class { 1 } }
+assert_semantic_error(3560){ C := class { 1+2 } }
+assert_semantic_error(3560){ C := class { int } }
+assert_semantic_error(3560){ C := class { []int } }
+assert_semantic_error(3560){ C := class { :int } }
+
+# Duplicate definition of a class is not allowed
+assert_semantic_error(3532){ C := class {}; C := class {} }
+
+# Data definitions at class scope must specify their value domain.
+assert_semantic_error(3547){ C := class { x:=2 } }
+
+int_ref := class:
+    var Property:int
+
+Incr(X:int_ref):int_ref =
+    set X.Property += 1
+    X
+
+# Ensure side effects in the context of a data identifier are preserved.
+assert:
+    X := int_ref{Property := 0}
+    Incr(X).Property
+    X.Property = 1
+
+# Ensure a particular superclass (rather than a bound)
+assert_semantic_error(3502):
+    class1 := class {}
+    class2 := class(class1) {}
+    class3 := class(if (false?) {class1} else {class2}) {}
+
+# Ensure a particular superinterface (rather than a bound)
+assert_semantic_error(3502):
+    interface1 := interface {}
+    interface2 := interface(interface1) {}
+    class3 := class(if (false?) {interface1} else {interface2}) {}
+
+# Class definitions must occur at module scope.
+assert_semantic_error(3502){c         := class    {d         := class{}}}
+assert_semantic_error(3502){c(t:type) := class    {d         := class{}}}
+assert_semantic_error(3502){c         := class    {d(u:type) := class{}}}
+assert_semantic_error(3502){c(t:type) := class    {d(u:type) := class{}}}
+assert_semantic_error(3502){s         := struct   {d         := class{}}}
+assert_semantic_error(3502){s(t:type) := struct   {d         := class{}}}
+assert_semantic_error(3502){i         := interface{d         := class{}}}
+assert_semantic_error(3502){i(t:type) := interface{d         := class{}}}
+assert_semantic_error(3502){i         := interface{d(u:type) := class{}}}
+assert_semantic_error(3502){i(t:type) := interface{d(u:type) := class{}}}
+assert_semantic_error(3502){F():void            = {d         := class{}}}
+assert_semantic_error(3502){F():void            = {d(u:type) := class{}}}
+
+# Ensure additional data of functions added during type processing don't result
+# in a crash.
+assert_semantic_error(3547):
+    class1 := class:
+        X:(Y:int)
+
+assert_semantic_error(3547):
+    class1 := class:
+        X:(F():void = {})
+
+assert_semantic_error(3547):
+    class1 := class:
+        X:(F():void = {})
+
+assert_semantic_error(3547):
+    class1 := class:
+        F():(G():void = {}) = {}

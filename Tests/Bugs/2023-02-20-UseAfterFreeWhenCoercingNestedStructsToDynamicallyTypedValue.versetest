@@ -1,0 +1,27 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+nested_struct_0  := struct{Sub:?nested_struct_1 =false}
+nested_struct_1  := struct{Sub:?nested_struct_2 =false}
+nested_struct_2  := struct{Sub:?nested_struct_3 =false}
+nested_struct_3  := struct{Sub:?nested_struct_4 =false}
+nested_struct_4  := struct{Sub:?nested_struct_5 =false}
+nested_struct_5  := struct{Sub:?nested_struct_6 =false}
+nested_struct_6  := struct{Sub:?nested_struct_7 =false}
+nested_struct_7  := struct{Sub:?nested_struct_8 =false}
+nested_struct_8  := struct{Sub:?nested_struct_9 =false}
+nested_struct_9  := struct{Sub:?nested_struct_10=false}
+nested_struct_10 := struct{Sub:?nested_struct_11=false}
+nested_struct_11 := struct{Sub:?nested_struct_12=false}
+nested_struct_12 := struct{Sub:?nested_struct_13=false}
+nested_struct_13 := struct{Sub:?nested_struct_14=false}
+nested_struct_14 := struct{Sub:?nested_struct_15=false}
+nested_struct_15 := struct{Sub:?nested_struct_16=false}
+nested_struct_16 := struct{Sub:?nested_struct_17=false}
+nested_struct_17 := struct{Sub:?nested_struct_18=false}
+nested_struct_18 := struct{Sub:?nested_struct_19=false}
+nested_struct_19 := struct{Sub:?nested_struct_20=false}
+nested_struct_20 := struct{}
+
+F(X:any):void={}
+
+assert{F(nested_struct_0{})}

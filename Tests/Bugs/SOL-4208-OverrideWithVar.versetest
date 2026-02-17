@@ -1,0 +1,12 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3602, 3600, 3588, 3532):
+    class1 := class:
+        Prop:int
+    class2 := class(class1):
+        var Prop<override>:int
+    
+    Main()<decides>:void =
+        var X:class2 = class2:
+            Prop := 0
+        set X.Prop = 1

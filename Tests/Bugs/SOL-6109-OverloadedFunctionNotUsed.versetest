@@ -1,0 +1,25 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Access an overloaded function, and then not use it is ok.
+
+F(X:int):int = X
+F(X:float):float = X
+c := class:
+    H(X:int):int =
+        F  # Overloaded and not used is ok
+        X
+
+# Still an error to use an overloading function, except to call it.
+assert_semantic_error(3502):
+    F(X:int):int = X
+    F(X:float):float = X
+
+    c := class:
+        H():tuple(int)->int = F
+
+
+# Only to verify that fix didn't break calling overloaded functions
+assert:
+    F(42) = 42
+    F(3.14) = 3.14
+

@@ -1,0 +1,48 @@
+# Test that class<internal> forces folks outside the owning module to use a constructor function.
+Foo := module:
+    my_class<public> := class<internal>{x<public>:int}
+    CreateMyClass<public>(x:int):my_class = my_class{x := x + 42}
+    
+assert:
+    Foo.CreateMyClass(100).x = 142
+
+assert:
+    O:Foo.my_class = Foo.CreateMyClass(100)
+    O.x = 142
+
+assert_semantic_error(3593):
+    Foo := module:
+        my_class<public> := class<internal>{x<public>:int}
+    Bar()<transacts><decides>:void =
+        Foo.my_class{x := 100}.x = 100
+
+# Test that you cannot get around the restrictions by using subclassing.
+assert_semantic_error(3593):
+    Foo := module:
+        my_class<public> := class<internal>{x<public>:int}
+    my_impl_class := class(Foo.my_class){}
+
+# Check that struct<internal> works.
+Baz := module:
+    my_struct<public> := struct<internal>{x<public>:int}
+    CreateMyStruct<public>(x:int):my_struct = my_struct{x := x + 42}
+    
+assert:
+    O:Baz.my_struct = Baz.CreateMyStruct(100)
+    O.x = 142
+
+assert_semantic_error(3593):
+    Baz := module:
+        my_struct<public> := struct<internal>{x<public>:int}
+    Foo()<transacts><decides>:void =
+        Baz.my_struct{x := 100}.x = 100
+
+# Check misuses of access specifiers.
+assert_semantic_error(3594):
+    my_struct<public> := struct<protected>{x<public>:int}
+assert_semantic_error(3594):
+    my_struct<public> := struct<private>{x<public>:int}
+assert_valid:
+    my_class<public> := class<protected>{x<public>:int}
+assert_semantic_error(3594):
+    my_class<public> := class<private>{x<public>:int}

@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3502){A:for(){}={}}
+assert_semantic_error(3502){A:for(X:=0..10){X}={}}

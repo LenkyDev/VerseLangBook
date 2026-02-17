@@ -1,0 +1,93 @@
+TestUsing<public> := module:
+    WithASubmodule<public> := module:
+        AndSomeClass<public> := class:
+            with_a_field<public> : int
+
+M0<public> := module:
+    using{TestUsing.WithASubmodule}
+
+    F<public>() : int =
+        some_class := AndSomeClass { with_a_field := 42 }
+        return some_class.with_a_field
+
+assert:
+    M0.F() = 42
+
+# Test that using a top-level module without a vmodule results in an error.
+assert_semantic_error(3587, 3506):
+    M0<public> := module:
+        using{/Verse.org/VerseTests/TestUsing}
+
+        F<public>() : int =
+            some_class := TestUsing.WithASubmodule.AndSomeClass { with_a_field := 42 }
+            return some_class.with_a_field
+
+assert_valid:
+    vmodule(TestUsing):
+        snippet:
+            WithASubmodule<public> := module:
+                AndSomeClass<public> := class:
+                    with_a_field<public> : int
+    
+    # Test that using a top-level module from the package lets us get at the sub-modules in the package.
+    M0<public> := module:
+        using{/Verse.org/VerseTests/TestUsing}
+
+        F<public>() : int =
+            some_class := TestUsing.WithASubmodule.AndSomeClass { with_a_field := 42 }
+            return some_class.with_a_field
+    
+    # Test that multiple using works to bring in from a fully qualified path then using the module imported directly.
+    M1<public> := module:
+        using{/Verse.org/VerseTests/TestUsing}
+        using{WithASubmodule}
+
+        F<public>() : int =
+            some_class := AndSomeClass { with_a_field := 42 }
+            return some_class.with_a_field
+      
+    # Test that using a sub-module from a package works.
+    M2<public> := module:
+        using{/Verse.org/VerseTests/TestUsing/WithASubmodule}
+
+        F<public>() : int =
+            some_class := AndSomeClass { with_a_field := 42 }
+            return some_class.with_a_field
+            
+    
+# Test that using could result in an ambiguous identifier.
+assert_semantic_error(3588, 3532):
+    vmodule(TestUsing):
+        snippet:
+            WithASubmodule<public> := module:
+                AndSomeClass<public> := class:
+                    with_a_field<public> : int
+
+    WithASubmodule<public> := module:
+        AndAnotherClass<public> := class:
+            with_a_field<public> : int
+
+    using{/Verse.org/VerseTests/TestUsing}
+
+    # This is ambiguous because our using above brings in a WithASubmodule
+    # and we define our own version just above that too!
+    using{WithASubmodule}
+
+# vpackages must begin with a '/'.
+assert_semantic_error(3587):
+    vpackage(P0,"Some/Path/Without/Leading/Separator",?Scope:=PublicAPI):
+        snippet:
+            F<public>() : int =
+                return 13
+
+# Explicitly using a "/localhost" package is not allowed.
+assert_semantic_error(3544, 3587):
+    using{/localhost}
+
+# Explicitly using something in a "/localhost" package is not allowed.
+assert_semantic_error(3544, 3587):
+    using{/localhost/something}
+
+# Explicitly using something in a path that just begins with "/localhost" should not produce a 3544 glitch.
+assert_semantic_error(3587):
+    using{/localhostkinda}

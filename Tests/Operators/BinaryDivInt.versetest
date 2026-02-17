@@ -1,0 +1,49 @@
+assert{Floor(+0 / +1) = 0}
+assert{Floor(+0 / -1) = 0}
+
+assert{Floor(+1 / +1) = +1}
+assert{Floor(+1 / -1) = -1}
+assert{Floor(-1 / +1) = -1}
+assert{Floor(-1 / -1) = +1}
+
+assert{Floor(+1 / +2) =  0}
+assert{Ceil(+1 / -2) =  0}
+assert{Ceil(-1 / +2) =  0}
+assert{Floor(-1 / -2) =  0}
+
+assert{Floor(+2 / +1) = +2}
+assert{Floor(+2 / -1) = -2}
+assert{Floor(-2 / +1) = -2}
+assert{Floor(-2 / -1) = +2}
+
+assert{Floor(+2 / +2) = +1}
+assert{Floor(+2 / -2) = -1}
+assert{Floor(-2 / +2) = -1}
+assert{Floor(-2 / -2) = +1}
+
+assert{Floor(+3 / +2) = +1}
+assert{Ceil(+3 / -2) = -1}
+assert{Ceil(-3 / +2) = -1}
+assert{Floor(-3 / -2) = +1}
+
+assert{Floor(+4 / +2) = +2}
+assert{Floor(+4 / -2) = -2}
+assert{Floor(-4 / +2) = -2}
+assert{Floor(-4 / -2) = +2}
+
+# Divide by zero fail.
+assert{not (-1 / 0)}
+assert{not (+0 / 0)}
+assert{not (+1 / 0)}
+assert{not (+2 / 0)}
+bp_vm_only
+{
+# integer divide overflow
+assert_runtime_error{Floor(-9223372036854775808 / -1)}
+assert_runtime_error{Ceil(-9223372036854775808 / -1)}
+}
+verse_vm_only
+{
+assert{Floor(-9223372036854775808 / -1) = 9223372036854775807+1}
+assert{Ceil(-9223372036854775808 / -1) = 9223372036854775807+1}
+}

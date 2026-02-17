@@ -1,0 +1,488 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    Identity(X:t where t:type):t = X
+
+assert_semantic_error(3503, 3510):
+    Identity(X:t where t:type, u:type):u = X
+
+Identity(X:t where t:type)<computes>:t = X
+
+assert:
+    Identity(1) = 1
+    Identity(true) = true
+    Identity('a') = 'a'
+
+assert_valid:
+    Const(X:t, Y:u where t:type, u:type):t = X
+
+assert_semantic_error(3510):
+    Const(X:t, Y:u where t:type, u:type):u = X
+
+Const(X:t, Y:u where t:type, u:type)<computes>:t = X
+
+assert:
+    Const(1, 2) = 1
+    Const(true, 2) = true
+    Const(1, 'a') = 1
+
+assert_semantic_error(3509):
+    class1 := class:
+    F(X:t where t:subtype(class1)):t = X
+    G(X:t where t:type):t = F(X)
+    
+assert_semantic_error(3509):
+    class1 := class:
+    AsClass1(X:t where t:subtype(class1)):t = X
+    F():class1 = AsClass1(0)
+
+assert_semantic_error(3510):
+    class1 := class:
+    AsClass1(X:t where t:subtype(class1)):t = X
+    F():int = AsClass1(class1{})
+
+assert_valid:
+    class1 := class:
+    AsClass1(X:t where t:subtype(class1)):t = X
+    F():class1 = AsClass1(class1{})
+
+assert_valid:
+    class1 := class:
+    class2 := class(class1):
+    AsClass1(X:t where t:subtype(class1)):t = X
+    F():class1 = AsClass1(class2{})
+
+assert_valid:
+    class1 := class:
+    class2 := class(class1):
+    AsClass1(X:t where t:subtype(class1)):t = X
+    F():class2 = AsClass1(class2{})
+
+assert_semantic_error(3510):
+    class1 := class:
+    class2 := class(class1):
+    AsClass1(X:t where t:subtype(class1)):t = X
+    F():class2 = AsClass1(class1{})
+
+assert_semantic_error(3510):
+    class1 := class:
+    class2 := class(class1):
+    AsClass1(X:t where t:subtype(class1)):t = X
+    Identity(X:t where t:type):t = X
+    F():class2 = Identity(AsClass1(class1{}))
+
+class1 := class:
+
+class2 := class(class1):
+    Property<public>:int
+    Method<public>():int = Property + 1
+
+AsClass1(X:t where t:subtype(class1)):t = X
+
+assert:
+    X:class2 := AsClass1(class2{Property:=1})
+    X.Property = 1
+    X.Method() = 2
+
+assert:
+    X:class2 := Identity(AsClass1(class2{Property:=1}))
+    X.Property = 1
+    X.Method() = 2
+
+assert:
+    X:class1 := Identity(AsClass1(class2{Property:=1}))
+
+AsClass2(P:logic, X:t, Y:u where t:subtype(class2), u:subtype(class2)):class2 =
+    if (P?):
+        X
+    else:
+        Y
+
+assert:
+    Z:class2 = AsClass2(true, class2{Property:=1}, class2{Property:=2})
+    Z.Property = 1
+
+AsClass2(:int, X:t where t:subtype(class2)):class2 = X
+
+assert:
+    Z:class2 = AsClass2(0, class2{Property:=1})
+    Z.Property = 1
+
+assert_semantic_error(3502): # References to (super:) qualified functions are not yet implemented.
+    base := class:
+        X():void = {}
+    derived := class(base):
+        X<override>():void = { SuperXReference := (super:)X }
+
+assert_valid:
+    base := class:
+        X():void = {}
+    derived := class(base):
+        X<override>():void = { (super:)X; void }  # The super-qualified reference isn't used or invoked, so it's not an error.
+                
+# Need `supertype`
+# assert_valid:
+#     class1 := class:
+#     AsClass1(P:logic, X(:t):int, Y(:u):int where t:supertype(class1), u:supertype(class1)):type{_(:class1):int} =
+#         if (P?):
+#             X
+#         else:
+#             Y
+
+# `subtype` doesn't support type variable argument
+# assert_valid:
+#     F0(A:t, B:u where t:type, u:subtype(t)):t =
+#         var C:t = A
+#         set C = B
+
+# `subtype` doesn't support type variable argument.  Non-unique pointers are not supported
+# assert_semantic_error(3510):
+#     F0(A:t, B:u, P:logic where t:type, u:subtype(t)):void =
+#         C:^t = A
+#         D:^u = B
+#         E:^u = if (P?) { C } else { D }
+
+assert:
+    X := AsClass1(class2{Property:=1})
+    X.Property = 1
+    X.Method() = 2
+
+assert:
+    AsClass1(class2{Property:=1}).Property = 1
+
+assert:
+    AsClass1(class2{Property:=1}).Property = 1
+
+assert:
+    Identity(class2{Property:=1}).Property = 1
+
+GetProperty(X:t where t:subtype(class2)):tuple(t, int) =
+    (X, X.Property)
+
+assert:
+    GetProperty(class2{Property:=1})(1) = 1
+
+assert:
+    Identity(array{1}).Length = 1
+
+assert:
+    Identity(1, 2, 3)(1) = 2
+
+assert:
+    Identity(array{1, 2, 3})[1] = 2
+
+assert_valid:
+    F0(X:t where t:type):t = X
+    F1(F(:int):int, X:int, Y:int):int = F(X) + F(Y)
+
+ApplyThenAdd(F(:int)<transacts>:int, X:int, Y:int):int = F(X) + F(Y)
+
+assert:
+    ApplyThenAdd(Identity, 1, 2) = 3
+
+Apply(F(:t)<transacts>:u, X:t where t:type, u:type):u = F(X)
+
+Incr(X:int)<computes>:int = X + 1
+
+assert:
+    Apply(Incr, 1) = 2
+
+assert:
+    X:[]int = Apply(Identity, (1, 2))
+    X = array{1, 2}
+
+Option := module:
+    fmap<public>(F(:t)<transacts>:u, X:?t where t:type, u:type):?u =
+        if (Y := X?):
+            option{F(Y)}
+        else:
+            false
+    replace<public>(X:?t, Y:t where t:type):?t =
+        if (X?):
+            option{Y}
+        else:
+            false
+
+assert:
+    X:?int = option{1}
+    Y:?int = Option.fmap(Incr, X)
+    X? = 1
+    Y? = 2
+
+assert:
+    X:?int = option{1}
+    Y:?int = Option.replace(X, 2)
+    Y? = 2
+
+assert:
+    X:?int = false
+    Y:?int = Option.replace(X, 2)
+    not Y?
+
+assert:
+   X:tuple(int, int) = Identity(1, 2)
+   X(0) = 1
+   X(1) = 2
+
+assert:
+    X:[]int = Identity(1, 2)
+    X[0] = 1
+    X[1] = 2
+
+# Ensure types containing generalized type variables used both covariantly and
+# contravariantly are supertypes of types containing similarly constrained
+# instantiated type variables
+assert_valid:
+    Identity(X:t where t:type):t = X
+    class1 := class:
+    F0(:t where t:type):type{_(:t):t} = Identity
+    F1(:t where t:subtype(class1)):type{_(:t):t} = Identity
+
+assert_semantic_error(3510):
+    class1 := class:
+    F0(X:t where t:subtype(class1)):t = X
+    F1(:t where t:type):type{_(:t):t} = F0
+
+assert_valid:
+    class1 := class:
+    F0(X:t where t:subtype(class1)):t = X
+    F1(:t where t:subtype(class1)):type{_(:t):t} = F0
+
+# MakeIdentity(:t where t:type):type{_(:t):t} = Identity
+
+# assert:
+#     void(MakeIdentity(0)("0") <# type{:int|:string}, i.e. any #>)
+
+# Ensure values with only a lower bound are represented correctly
+assert:
+    X := Identity(1)
+    X
+
+assert_semantic_error(3509):
+    Identity(X:t where t:type)<computes>:t = X
+    MakeIdentity(:t where t:type)<computes>:type{_(:t)<computes>:t} = Identity
+    AsString(X:string)<computes>:string = X
+    F0()<computes>:void = AsString(MakeIdentity(0)("0"))
+
+assert_semantic_error(3509):
+    Identity(X:t where t:type)<computes>:t = X
+    MakeIdentity(:t where t:type)<computes>:type{_(:t)<computes>:t} = Identity
+    AsInt(X:int)<computes>:int = X
+    F0()<computes>:void = AsInt(MakeIdentity(0)("0"))
+
+bp_vm_only{
+assert_ir_error(3502, 3502, 3502, 3502, 3502, 3502, 3502, 3502):
+    Zero(F(:t):t, X:t where t:type):t = X
+    One(F(:t)<transacts>:t, X:t where t:type)<transacts>:t = F(X)
+    Two(F(:t)<transacts>:t, X:t where t:type)<transacts>:t = F(F(X))
+    Plus(A(F(:t)<transacts>:t, X:t)<transacts>:t, B(F(:t)<transacts>:t, X:t)<transacts>:t, F(:t)<transacts>:t, X:t where t:type)<transacts>:t = A(F, B(F, X))
+    Succ(X:int)<transacts>:int = X + 1
+    F0()<transacts><decides>:void = Plus(One, One, Succ, 0) = 2
+    F1()<transacts><decides>:void = Plus(One, Two, Succ, 0) = 3
+    F2()<transacts><decides>:void = Plus(Two, One, Succ, 0) = 3
+    F3()<transacts><decides>:void = Plus(Two, Two, Succ, 0) = 4
+}
+verse_vm_only {
+assert_valid:
+    Zero(F(:t):t, X:t where t:type):t = X
+    One(F(:t)<transacts>:t, X:t where t:type)<transacts>:t = F(X)
+    Two(F(:t)<transacts>:t, X:t where t:type)<transacts>:t = F(F(X))
+    Plus(A(F(:t)<transacts>:t, X:t)<transacts>:t, B(F(:t)<transacts>:t, X:t)<transacts>:t, F(:t)<transacts>:t, X:t where t:type)<transacts>:t = A(F, B(F, X))
+    Succ(X:int)<transacts>:int = X + 1
+    F0()<transacts><decides>:void = Plus(One, One, Succ, 0) = 2
+    F1()<transacts><decides>:void = Plus(One, Two, Succ, 0) = 3
+    F2()<transacts><decides>:void = Plus(Two, One, Succ, 0) = 3
+    F3()<transacts><decides>:void = Plus(Two, Two, Succ, 0) = 4
+}
+
+
+class3 := class:
+    Property:int
+
+# Ensure incremental code generation works with coerced functions
+assert:
+    TestParametricFunction(Identity, 1) = 1
+    TestParametricFunction(Identity, 'a') = 'a'
+    TestParametricFunction(Identity, class3{Property:=2}).Property = 2
+
+assert:
+    TestNestedUniversalQuantifier(1, 2) = 1
+
+    
+assert:
+    1.TestParametricExtensionMethod(2) = 1
+
+assert_semantic_error(3588, 3588, 3588, 3503, 3503, 3532):
+    TestDuplicateNestedUniversalQuantifier<public>((X:t where t:type), (Y:t where t:type)):t = X
+
+FallableIdentity(X:t where t:type)<decides>:t = X
+
+# Ensure calls to fallable parametric functions work
+assert:
+    FallableIdentity[0] = 0
+    FallableIdentity[1] = 1
+    FallableIdentity[class3{Property:=2}].Property = 2
+
+assert:
+    F := Identity
+    X := F(array{1})
+    X.Length = 1
+
+assert_semantic_error(3532):
+    F(:t where t:type):void = {}
+    F(:int):void = {}
+
+assert_semantic_error(3503):
+    F(() where t:type):?t = false
+
+assert_semantic_error(3503):
+    F(() where t:type):[]t = array{}
+
+assert_semantic_error(3503, 3503):
+    F(() where t:subtype(comparable), u:type):[t]u = map{}
+
+assert_semantic_error(3503, 3503):
+    F(() where t:type, u:type):tuple(?t, ?u) = (false, false)
+
+assert_semantic_error(3503):
+    F(G(:t):void where t:type):void = {}
+
+assert_semantic_error(3503):
+    class1(t:type) := class:
+        Property:t
+    F(() where t:type):?class1(t) = false
+
+assert_semantic_error(3503):
+    class1(t:type) := class:
+        Method(:t):void = {}
+    F(:class1(t) where t:type):void = {}
+
+assert_semantic_error(3503):
+    class1(t:type) := class:
+        Method(:t):void = {}
+    F(:class1(t) where t:type):void = {}
+
+assert_semantic_error(3502, 3503):
+    F(:class1(t) where t:type):void = {}
+    class1(t:type) := class:
+        Method(:t):void = {}
+
+assert_semantic_error(3503):
+    F(() where t:type):void = {}
+
+assert_semantic_error(3503):
+    F(:u where t:type, u:type):void = {}
+
+assert_valid:
+    F(:t where t:type):void = {}
+    G(() where t:type):(t->void) = F
+
+assert_valid:
+    class1(t:type) := class:
+        Property:t
+        Method(Y:u where u:type):tuple(t, u) = (Property, Y)
+
+class4 := class:
+    Property:int
+    Method(X:t where t:type):tuple(int, t) = (Property, X)
+
+ApplyThenAdd(F(:int):tuple(int, int), X:int):int =
+    Y := F(X)
+    Y(0) + Y(1)
+
+assert:
+    X := class4{Property := 1}
+    ApplyThenAdd(X.Method, 2) = 3
+
+# This correctly fails only with incremental compilation
+# Main()<decides>:void =
+#     X := TestImplicitTypeParams.class1{Property := 1}
+#     ApplyThenAdd(X.Method, 2) = 3
+
+# Ensure intrinsic parametric functions work
+TestSlice<public>(Source:[]t, StartIndex:int, EndIndex:int where t:type)<transacts><decides>:[]t =
+    for (Index := StartIndex..(EndIndex - 1)):
+        Source[Index]
+
+TestInsert<public>(Source:[]t, InsertionIndex:int, Element:t where t:type)<transacts><decides>:[]t=
+    TestSlice[Source, 0, InsertionIndex] + array{Element} + TestSlice[Source, InsertionIndex, Source.Length]
+
+assert:
+    X := array{1, 2, 3}
+    Y:[]int = TestInsert[X, 1, 4]
+    Y = array{1, 4, 2, 3}
+
+assert:
+    X := (1, 2)
+    Y := (3, 4)
+    (X + Y) = array{1, 2, 3, 4}
+
+assert:
+    X := array{1, 2, 3}
+    Y:[]int = TestInsert[X, 1, 4]
+    Y = array{1, 4, 2, 3}
+
+assert:
+    X := (1, 2)
+    Y := (3, 4)
+    (X + Y) = array{1, 2, 3, 4}
+
+# Don't allow parametric functions to return a type that is invariant in an inferred type.
+assert_semantic_error(3502):
+    c(t:type):=class{var X:t}
+    F(X:t where t:type):c(t)=
+        c(t){X:=X}
+    G():void=
+        set F(1).X = 2
+
+assert_valid:
+    c(t:type):=class{Method(X:t):t=X}
+    F(X:t where t:type):c(t)=
+        c(t){}
+    G():void=
+        F(1).Method(2)
+
+# Include superclass and implemented interfaces when performing polarity use check.
+assert_valid:
+    interface1(t:type) := interface:
+        Method()<suspends>:t
+
+    interface2(t:type) := interface(interface1(t)) {}
+    
+    F(X:interface2(t) where t:type):interface2(t) = X
+
+assert_valid:
+    interface1(t:type) := interface:
+        Method(:t)<suspends>:void = {}
+
+    class1(t:type) := class(interface1(t)):
+    
+    F(X:class1(t) where t:type):class1(t) = X
+
+assert_valid:
+    class1(t:type) := interface:
+        Method(:t)<suspends>:void = {}
+
+    class2(t:type) := class(class1(t)):
+    
+    F(X:class2(t) where t:type):class2(t) = X
+
+# Include map key and value type when performing polarity use check.
+assert_valid:
+    F(X:[t]u where t:subtype(comparable), u:type):[t]u = X
+
+assert_valid:
+    Foo(:castable_subtype(t) where t:type):void = {}
+
+assert_semantic_error(3503, 3503):
+    Foo(X:int where t:subtype(u), u:type):?t = false
+
+assert_valid:
+    Foo(X:t where t:subtype(u), u:type):t = X
+
+# Ensure we don't cycle following a type variable's constraints.
+assert_semantic_error(3506):
+    F(X:t where t:subtype(u), u:subtype(t)):void =
+        X.Foo

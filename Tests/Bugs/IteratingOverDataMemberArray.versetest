@@ -1,0 +1,10 @@
+MyObj := class:
+    i:int
+
+MyClass := class:
+    myArray:[]MyObj
+
+    f():void=
+        var Total:int = 0
+        for(o:myArray):
+            set Total += o.i

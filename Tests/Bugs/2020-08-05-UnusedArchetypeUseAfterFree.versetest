@@ -1,0 +1,3 @@
+assert_semantic_error(3506):
+    C := class:
+        f():void=C{}.g()

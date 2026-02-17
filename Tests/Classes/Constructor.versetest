@@ -1,0 +1,867 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    class1 := class:
+        Property1:int
+    Main():void =
+        X := class1:
+            block:
+                1 + 2
+            Property1 := 0
+
+code_block := module:
+    class1<public> := class:
+        Property1<public>:int
+    struct1<public> := struct:
+        Property1<public>:int
+
+assert:
+    var X:int = 0
+    Y := code_block.class1:
+        block:
+            set X += 1
+        Property1 := 0
+    X = 1
+    Y.Property1 = 0
+
+assert:
+    var X:int = 0
+    Y := code_block.struct1:
+        block:
+            set X += 1
+        Property1 := 0
+    X = 1
+    Y.Property1 = 0
+
+assert_valid:
+    class1 := class:
+        Property1:int
+    Main():void =
+        X := class1:
+            let:
+                Y := 1
+            Property1 := Y
+
+assert_semantic_error(3502):
+    Main():void =
+        let:
+            X := 1
+
+assert_semantic_error(3552):
+    class1 := class:
+        Property1:int
+    Main():void =
+        X := class1:
+            let:
+                Y := 1, Z := 2
+            Property1 := Y + Z
+
+assert_semantic_error(3560):
+    class1 := class:
+        Property1:int
+    Main():void =
+        X := class1:
+            let:
+                1
+            Property1 := 2
+
+let_block := module:
+    class1<public> := class:
+        Property1<public>:int
+    struct1<public> := struct:
+        Property1<public>:int
+
+assert:
+    X := 0
+    Y := let_block.class1:
+        let:
+            Z := X + 1
+        Property1 := Z + 2
+    Y.Property1 = 3
+
+assert:
+    X := 0
+    Y := let_block.struct1:
+        let:
+            Z := X + 1
+        Property1 := Z + 2
+    Y.Property1 = 3
+
+# Delegating constructor before other initializers is valid before 37.50
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3740, ?Scope:=PublicAPI):
+        snippet:
+            class1 := class:
+                Property1:int
+            MakeClass1<constructor>(Arg:int) := class1:
+                Property1 := 1
+            class2 := class(class1):
+                Property2:int
+            Main():void =
+                X := class2:
+                    MakeClass1<constructor>(1)
+                    Property2 := 2
+
+# Delegating constructor before other initializers is invalid from 37.50
+assert_semantic_error(3690):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3750, ?Scope:=PublicAPI):
+        snippet:
+            class1 := class:
+                Property1:int
+            MakeClass1<constructor>(Arg:int) := class1:
+                Property1 := 1
+            class2 := class(class1):
+                Property2:int
+            Main():void =
+                X := class2:
+                    MakeClass1<constructor>(1)
+                    Property2 := 2
+
+assert_valid:
+    class1 := class:
+        Property1:int
+    MakeClass1<constructor>(Arg:int) := class1:
+        Property1 := 1
+    class2 := class(class1):
+        Property2:int
+    Main():void =
+        X := class2:
+            Property2 := 2
+            MakeClass1<constructor>(1)
+
+assert_semantic_error(3542, 3596, 3512):
+    class1 := class:
+        Property:int
+    @constructor
+    MakeClass1() := class1:
+        Property := 1
+
+assert_semantic_error(3627):
+    class1 := class:
+        Property:int
+    MakeClass1<constructor>() := class1:
+        Property := 1
+    Main():void =
+        X := MakeClass1<constructor>()
+
+assert_semantic_error(3572):
+    class1 := class {}
+    MakeClass1<constructor>() := 1
+
+assert_semantic_error(3573):
+    class1 := class {}
+    class2 := class {}
+    MakeClass1<constructor>() := class1:
+        block:
+            MakeClass2()
+    MakeClass2<constructor>() := class2:
+        block:
+            X:class2 = MakeClass1()
+
+assert_semantic_error(3573):
+    class1 := class {}
+    class2 := class {}
+    MakeClass1<constructor>() := class1:
+        block:
+            MakeClass2()
+    MakeClass2<constructor>() := class2:
+        MakeClass1<constructor>()
+
+assert_semantic_error(3502):
+    struct1 := struct {}
+    MakeStruct1<constructor>() := struct1 {}
+
+assert_semantic_error(3604):
+    class1 := class:
+        MakeClass1<constructor>() := class1 {}
+
+<# See: https://jira.it.epicgames.com/browse/SOL-7433
+assert_semantic_error(TBD):
+    ConstructorInvocation := module:
+        class1<public> := class:
+            Property1<public>:int
+        MakeClass1<public><constructor>(Arg:int) := class1:
+            Property1 := 1
+        class2<public> := class(class1):
+            Property2<public>:int
+        MakeClass2<public><constructor>(Arg1:int, Arg2:int) := class2:
+            MakeClass1<constructor>(Arg1)
+            Property2 := Arg2
+#>
+
+constructor_invocation := module:
+    class1<public> := class:
+        Property1<public>:int
+    MakeClass1<public><constructor>(Arg:int) := class1:
+        Property1 := 1
+    class2<public> := class(class1):
+        Property2<public>:int
+    MakeClass2<public><constructor>(Arg1:int, Arg2:int) := class2:
+        Property2 := Arg2
+        MakeClass1<constructor>(Arg1)
+
+assert:
+    X := constructor_invocation.MakeClass1(1)
+    X.Property1 = 1
+
+assert:
+    X := constructor_invocation.class2:
+        Property2 := 2
+        constructor_invocation.MakeClass1<constructor>(1)
+    X.Property1 = 1
+    X.Property2 = 2
+
+assert:
+    X := constructor_invocation.MakeClass2(1, 2)
+    X.Property1 = 1
+    X.Property2 = 2
+
+assert:
+    F := constructor_invocation.MakeClass1
+    X := F(1)
+    X.Property1 = 1
+
+sub_before_sup := module:
+    class2<public> := class(class1):
+        Property2<public>:int
+    MakeClass2<public><constructor>(Arg1:int, Arg2:int) := class2:
+        Property2 := Arg2
+        MakeClass1<constructor>(Arg1)
+    class1<public> := class:
+        Property1<public>:int
+    MakeClass1<public><constructor>(Arg:int) := class1:
+        Property1 := 1
+
+assert:
+    X := sub_before_sup.MakeClass2(1, 2)
+    X.Property1 = 1
+    X.Property2 = 2
+
+overridden_property := module:
+    class1<public> := class:
+        Property<public>:[]int
+    MakeClass1<public><constructor>(Arg:[]int) := class1:
+        Property := Arg
+    class2<public> := class(class1):
+        Property<override>:tuple(int, int)
+    MakeClass2<public><constructor>(X:int, Y:int) := class2:
+        Property := (X, Y)
+        MakeClass1<constructor>(array{3})
+
+assert:
+    X := overridden_property.MakeClass2(1, 2)
+    X.Property(0) = 1
+    X.Property(1) = 2
+
+assert_semantic_error(3600):
+    overridden_property := module:
+        class1<public> := class:
+            Property<public>:[]int
+        MakeClass1<public><constructor>(Arg:[]int) := class1:
+            Property := Arg
+        class2<public> := class(class1):
+            Property<override>:tuple(int, int)
+        MakeClass2<public><constructor>(X:int, Y:int) := class2:
+            Property := (X, Y)
+            MakeClass1<constructor>(array{3})
+    Main():void =
+        overridden_property.class2:
+            overridden_property.MakeClass1<constructor>(array{3})
+
+forwarding_constructor := module:
+    class1<public> := class:
+        Property<public>:int
+    MakeClass1<public><constructor>(Arg:int) := class1:
+        Property := Arg
+    MakeZeroClass1<public><constructor>() := class1:
+        MakeClass1<constructor>(0)
+    MakeNonZeroClass1<public><constructor>() := class1:
+        Property := 1
+        MakeZeroClass1<constructor>()
+
+assert:
+    X := forwarding_constructor.MakeZeroClass1()
+    X.Property = 0
+
+assert:
+    X := forwarding_constructor.MakeNonZeroClass1()
+    X.Property = 1
+
+# Test that delegating/forwarding constructors work with `let` and `block`s in them.
+ForwardingConstructorWithBlockAndLet := module:
+    c1<public> := class:
+        A<public>:int = 1
+        B<public>:int = 2
+        C<public>:int = 3
+
+    c2<public> := class(c1):
+        AnotherField<public>:int = 42
+
+    MakeC1<public><constructor>(Foo:int) := c1:
+        A := Foo
+
+        let:
+            OnePlusC := 1 + Foo
+            OnePlusCPlusC := Foo + OnePlusC
+
+        block:
+            LocalVar:int = 5 + 1
+
+        B := Foo + OnePlusC
+
+    MakeC2<public><constructor>(X:int, Y:int) := c2:
+        A := X
+        MakeC1<constructor>(X + Y)
+
+assert:
+    Test := ForwardingConstructorWithBlockAndLet.MakeC1(3)
+    Test.A = 3
+    Test.B = 7 # 3 + (1 + 3)
+    Test.C = 3
+
+    Test2 := ForwardingConstructorWithBlockAndLet.MakeC2(10, 20)
+    Test2.A = 10
+    Test2.B = 61
+    Test2.C = 3
+    Test2.AnotherField = 42
+
+
+# Test deeper depths of delegating constructors. Test calling delegating constructors of both the same class
+# and the base class to make sure we have the object semantics right.
+ForwardingConstructorsSemantics := module:
+    c1<public> := class:
+        block:
+            CoroUtils.LogEvent("c1 ")
+        A<public>:int = 1
+        B<public>:int = 2
+        C<public>:int = 3
+        D<public>:int = 4
+        E<public>:int = 5
+        F<public>:int = 6
+
+    c2<public> := class(c1):
+        E<override>:int = 10
+        block:
+            CoroUtils.LogEvent("c2 ")
+
+    MakeC1<public><constructor>(Foo:int) := c1:
+        block:
+            CoroUtils.LogEvent("MakeC1 ")
+        A := Foo
+        B := Foo
+        let:
+            OnePlusFoo := Foo + 1
+        C := OnePlusFoo
+    
+    MakeC2a<public><constructor>() := c2:
+        A := 30
+        B := 30
+        block:
+            CoroUtils.LogEvent("MakeC2a ")
+        MakeC1<constructor>(40) # Before calling `MakeC1`, `c2`'s body will run first.
+
+    MakeC2<public><constructor>(Bar:int) := c2:
+        block:
+            CoroUtils.LogEvent("MakeC2 ")
+        A := Bar
+        MakeC2a<constructor>() # This calls to a constructor of the same class, so it will just execute.
+
+# NOTE: New VM behaviour is correct here - BPVM is wrong.
+verse_vm_only{
+assert:
+    O:= ForwardingConstructorsSemantics.MakeC2(20)
+    O.A = 20
+    O.B = 30
+    O.C = 41
+    O.D = 4
+    O.E = 10
+    O.F = 6
+    CoroUtils.GetEventLogString() = "MakeC2 MakeC2a c2 MakeC1 c1 "
+}
+
+bp_vm_only{
+assert:
+    O:= ForwardingConstructorsSemantics.MakeC2(20)
+    O.A = 20
+    O.B = 30
+    O.C = 41
+    O.D = 4
+    O.E = 10
+    O.F = 6
+    CoroUtils.GetEventLogString() = "MakeC2 MakeC2a MakeC1 c1 c2 "
+}
+
+
+parametric_constructor := module:
+    class1<public>(t:type) := class:
+        Property<public>:t
+    MakeClass1<public><constructor>(X:t where t:type) := class1(t):
+        Property := X
+    MakeIntClass1<public><constructor>(X:int) := class1(int):
+        MakeClass1<constructor>(X)
+
+assert:
+    X := parametric_constructor.MakeClass1(1);
+    X.Property + 1 = 2
+    Y := parametric_constructor.MakeClass1(1, 2);
+    Y.Property(0) = 1
+    Y.Property(1) = 2
+
+assert:
+    X := parametric_constructor.MakeIntClass1(1)
+    X.Property + 1 = 2
+
+decides_constructor := module:
+    class1<public> := class:
+        Property1<public>:int
+    MakeClass1<public><constructor>(Arg:int)<transacts><decides> := class1:
+        Property1 := Arg = 1
+    class2<public> := class(class1):
+        Property2<public>:int
+
+assert:
+    X := decides_constructor.MakeClass1[1]
+    X.Property1 = 1
+
+assert:
+    not decides_constructor.MakeClass1[2]
+
+assert:
+    X := decides_constructor.class2:
+        Property2 := 2
+        decides_constructor.MakeClass1<constructor>[1]
+    X.Property1 = 1
+    X.Property2 = 2
+
+assert:
+    not decides_constructor.class2:
+        Property2 := 2
+        decides_constructor.MakeClass1<constructor>[2]
+
+assert_semantic_error(3604, 3604, 3512):
+    suspends_constructor := module:
+        class1<public> := class:
+            Property1<public>:int
+        MakeClass1<public><constructor>(Arg:int)<suspends> := class1:
+            Property1 := Arg
+        class2<public> := class(class1):
+            Property2<public>:int
+        MakeClass2<public><constructor>(Arg1:int, Arg2:int)<suspends> := class2:
+            Property2 := Arg2
+            MakeClass1<constructor>(Arg1)
+    Main():void =
+        spawn{suspends_constructor.MakeClass1(1)}
+
+overloaded_constructors := module:
+    class1<public> := class:
+        Property1<public>:int
+    MakeClass1<public><constructor>(Arg1:int) := class1:
+        Property1 := Arg1
+    MakeClass1<public><constructor>() := class1:
+        Property1 := 0
+    class2<public> := class(class1):
+        Property2<public>:int
+
+assert:
+    X := overloaded_constructors.class2:
+        Property2 := 2
+        overloaded_constructors.MakeClass1<constructor>()
+    X.Property1 = 0
+    X.Property2 = 2
+
+assert:
+    X := overloaded_constructors.class2:
+        Property2 := 2
+        overloaded_constructors.MakeClass1<constructor>(1)
+    X.Property1 = 1
+    X.Property2 = 2
+
+assert_semantic_error(3626, 3626):
+    class1 := class:
+        Property1:int
+        Property2:int
+    Main():void =
+        loop:
+            class1:
+                Property1 := block:
+                    if (true?):
+                        return
+                    1
+                Property2 := block:
+                    if (true?):
+                        break
+                    2
+
+int_ref := class:
+    var Contents:int = 0
+
+order_of_evaluation := module:
+    class1<public> := class:
+        Property1<public>:int
+    MakeClass1<public><constructor>(Ref:int_ref) := class1:
+        block:
+            set Ref.Contents = Ref.Contents + 1
+        Property1 := Ref.Contents
+        block:
+            set Ref.Contents = Ref.Contents + 1
+    class2<public> := class(class1):
+        Property2<public>:int
+    MakeClass2<public><constructor>(Ref:int_ref) := class2:
+        block:
+            set Ref.Contents = Ref.Contents + 1
+        Property2 := Ref.Contents
+        MakeClass1<constructor>(Ref)
+        block:
+            set Ref.Contents = Ref.Contents + 1
+
+assert:
+    Ref := int_ref{}
+    X := order_of_evaluation.MakeClass2(Ref)
+    X.Property1 = 2
+    X.Property2 = 1
+
+internal_constructor_function := module:
+    class2<public> := class(external_constructor_function_class1):
+        Property2<public>:int
+    MakeClass2<public><constructor>(Arg1:int, Arg2:int) := class2:
+        Property2 := Arg2
+        MakeExternalConstructorFunctionClass1<constructor>(Arg1)
+
+assert:
+    X := MakeExternalConstructorFunctionClass1(1)
+    X.Property1 = 1
+
+assert:
+    X := internal_constructor_function.MakeClass2(1, 2)
+    X.Property1 = 1
+    X.Property2 = 2
+
+# NOTE: BPVM is wrong here in terms of the evaluation order. New VM behaviour is right.
+class_block_order_of_evaluation := module:
+    class1<public> := class:
+        block:
+            CoroUtils.LogEvent("class1 ")
+    class2<public> := class(class1):
+        block:
+            CoroUtils.LogEvent("class2 ")
+    class3<public> := class(class2):
+        block:
+            CoroUtils.LogEvent("class3 ")
+    MakeClass1<public><constructor>() := class1:
+        block:
+            CoroUtils.LogEvent("MakeClass1 ")
+
+bp_vm_only{
+assert:
+    X := class_block_order_of_evaluation.class3:
+        block:
+            CoroUtils.LogEvent("Before ")
+    CoroUtils.GetEventLogString() = "Before class1 class2 class3 "
+}
+
+verse_vm_only{
+assert:
+    X := class_block_order_of_evaluation.class3:
+        block:
+            CoroUtils.LogEvent("Before ")
+    CoroUtils.GetEventLogString() = "Before class3 class2 class1 "
+}
+
+TestMixingNamedAnUnnamedArgs := module:
+    class1<public> := class { X<public>:int = 42, Y<public>:int = 84}
+
+    # Test various combinations of named/unnamed arguments.
+    MakeClass1<public><constructor>(?NamedArgA:int, ?NamedArgB:int) := class1 { X := NamedArgA, Y := NamedArgB}
+    MakeClass1A<public><constructor>(UnnamedArgA:int, ?NamedArgA:int) := class1 { X := UnnamedArgA, Y := NamedArgA}
+    MakeClass1B<public><constructor>(?NamedArgA:int) := class1 { X:= NamedArgA }
+ 
+assert:
+    O1 := TestMixingNamedAnUnnamedArgs.MakeClass1(?NamedArgA := 1, ?NamedArgB := 2)
+    O1.X = 1 and O1.Y = 2
+    
+    O2 := TestMixingNamedAnUnnamedArgs.MakeClass1A(3, ?NamedArgA := 4)
+    O2.X = 3 and O2.Y = 4
+
+    O3 := TestMixingNamedAnUnnamedArgs.MakeClass1B(?NamedArgA := 5)
+    O3.X = 5
+    O3.Y = 84
+
+TestNestedUnnamedArgs := module:
+    class1<public> := class { X<public>:int = 1, Y<public>:int = 2, Z<public>:int = 3}
+    MakeClass1<public><constructor>(ArgA:int, (ArgB:int, ArgC:int)):= class1 { X:= ArgA, Y := ArgB, Z := ArgC }
+    
+assert:
+    O := TestNestedUnnamedArgs.MakeClass1(4, (5, 6))
+    O.X = 4
+    O.Y = 5
+    O.Z = 6
+
+assert_semantic_error(3635):
+    class1<public> := class {}
+    class2<public> := class(class1) {}
+    class3<public> := class(class2) {}
+    MakeClass1<public><constructor>() := class1 {}
+    Main()<decides>:void =
+        class3:
+            MakeClass1<constructor>()
+
+assert_valid:
+    class1<public> := class {}
+    MakeClass1<public><constructor>() := class1 {}
+    Main()<decides>:void =
+        class1:
+            MakeClass1<constructor>()
+
+assert_valid:
+    class1<public> := class {}
+    class2<public> := class(class1) {}
+    MakeClass1<public><constructor>() := class1 {}
+    Main()<decides>:void =
+        class2:
+            MakeClass1<constructor>()
+
+# Ensure the instancing graph implicit argument to `<constructor>`-annotated
+# invocations is referenced as a local variables of the containing function,
+# rather than a property of the related `task`.
+ConstructorInvocationWithConstructorInSuspends := module:
+    class1<public> := class:
+        Data<public>:int
+    MakeClass1<public><constructor>(Arg:int) := class1:
+        Data := Arg
+    Test<public>(Arg:int, Result:int_ref)<suspends>:void =
+        X := class1:
+            MakeClass1<constructor>(Arg)
+        set Result.Contents = X.Data
+
+assert:
+    X := int_ref{}
+    spawn{ConstructorInvocationWithConstructorInSuspends.Test(13, X)}
+    X.Contents = 13
+
+assert_semantic_error(3588, 3532, 3588):
+    test_class := class{X:int, Y:float=1.0}
+    test_class(Y:float):test_class= { return test_class{X := 42, Y := Y} }
+
+# This file tested functions with same name as a class, this is revoked for now.
+
+<# 
+Keep old tests here since the intention is to enable support for overloading between functions and classes in the future.
+
+test_class := class{X:int, Y:float=1.0}
+test_class(Y:float):test_class= { return test_class{X := 42, Y := Y} }
+test_class(X:int):test_class= { return test_class{X := X, Y := 42.0} }
+other_class := class{}
+
+assert:
+    TC := test_class{ X := 10} # OK use constructor
+    TC.X = 10
+
+assert:
+    TC := test_class(10.0) # OK use constructor function with different type
+    TC.X = 42
+    TC.Y = 10.0
+
+assert:
+    TC := test_class(40) # OK use constructor function with same type
+    TC.X = 40
+    TC.Y = 42.0    
+
+assert:
+    TC := test_class[test_class{ X := 10, Y := 10.0}] # OK dynamic cast correct type
+    TC.X = 10
+    TC.Y = 10.0
+
+assert:
+    not test_class[other_class{}] # OK dynamic cast other type
+
+# Do all tests one more time whith reverse order, i.e., class is defined after first function with same name
+ssalc_tset(Y:float):ssalc_tset= { return ssalc_tset{X := 42, Y := Y} }
+ssalc_tset := class{X:int, Y:float=1.0}
+ssalc_tset(X:int):ssalc_tset= { return ssalc_tset{X := X, Y := 42.0} }
+
+assert:
+    TC := ssalc_tset{ X := 10} # OK use constructor
+    TC.X = 10
+
+assert:
+    TC := ssalc_tset(10.0) # OK use constructor function with different type
+    TC.X = 42
+    TC.Y = 10.0
+
+assert:
+    TC := ssalc_tset(40) # OK use constructor function with same type
+    TC.X = 40
+    TC.Y = 42.0    
+
+assert:
+    TC := ssalc_tset[ssalc_tset{ X := 10, Y := 10.0}] # OK dynamic cast correct type
+    TC.X = 10
+    TC.Y = 10.0
+
+assert:
+    not ssalc_tset[other_class{}] # OK dynamic cast other type
+
+# Fail class first
+assert_semantic_error (3532,3588,3588,3532,3588): # Do not overload with function that hides dynamic cast function
+    test_class := class{X:int}
+    test_class(TC:test_class):test_class=test_class{X:=20}
+
+assert_semantic_error(3532,3532): # Do not overload functions with non-distinct argument types
+    test_class:=class{}
+    test_class2:=class(test_class){}
+    test_class(X:int):test_class=test_class{}
+    test_class(Y:int):test_class=test_class{}
+
+assert_semantic_error(3532,3532): # Function with same name as class must have subtype as return type
+    test_class:=class{}
+    test_class(X:int):int=X
+
+assert_valid: # Function with same name as class may have a subclass as return type
+    test_class:=class{}
+    test_class2:=class(test_class){}
+    test_class(X:int):test_class2= return test_class2{}
+
+# Fail class not first
+assert_semantic_error (3532,3588,3588,3532,3588): # Do not overload with function that hides dynamic cast function
+    test_class := class{X:int}
+    test_class(TC:test_class):test_class=test_class{X:=20}
+
+assert_semantic_error(3532,3532): # Do not overload functions with non-distinct argument types
+    test_class:=class{}
+    test_class2:=class(test_class){}
+    test_class(X:int):test_class=test_class{}
+    test_class(Y:int):test_class=test_class{}
+
+assert_semantic_error(3532,3532): # Function with same name as class must have subtype as return type
+    test_class:=class{}
+    test_class(X:int):int=X
+
+assert_valid: # Function with same name as class may have a subclass as return type
+    test_class:=class{}
+    test_class2:=class(test_class){}
+    test_class(X:int):test_class2= return test_class2{}
+
+# Qualified definition can distinguish a function from a class in a different scope.
+assert_valid{test_class:=class{}; M := module{(M:)test_class(X:int):int=X}}
+assert_valid{M := module{(M:)test_class:=class{}}; test_class(X:int):int=X}
+assert_valid{M := module{(M:)test_class(X:int):int=X}; test_class:=class{}}
+assert_valid{test_class(X:int):int=X; M := module{(M:)test_class:=class{}}}
+
+# Check that the type-function overload is valid on use as well.
+assert_valid:
+    A := module:
+        test_class<public> := class{}
+    B := module:
+        test_class<public>(:int):A.test_class=A.test_class{}
+    C := module:
+        using{A}
+        using{B}
+        F(:test_class):void={}
+
+assert_semantic_error(3588):
+    A := module:
+        test_class<public> := class{}
+    B := module:
+        test_class<public>(TC:A.test_class):A.test_class=A.test_class{}
+    C := module:
+        using{A}
+        using{B}
+        F(:test_class):void={}
+
+assert_semantic_error(3588):
+    A := module:
+        test_class<public>:=class{}
+    B := module:
+        test_class<public>(X:int):int=X
+    C := module:
+        using{A}
+        using{B}
+        F(:test_class):void={}
+
+# Fail order irrelevant
+assert_semantic_error(3532,3532): # Classes can not be overloaded with other classes 
+    test_class3 := class{X:float}
+    test_class3 := class{X:int}
+
+
+assert_semantic_error(3588, 3588):
+    ModuleA := module:
+        (ModuleA:)C<public>:=class{}
+    ModuleB := module:
+        (ModuleB:)C<public>:=class{}
+    using{ModuleA}
+    using{ModuleB}
+    C(X:int):C=C{}
+ #>
+
+TestConstructorDefinitionOrder := module:
+    O<public>:c2 = c2{}
+    c2<public> := class<computes>(c1) {}
+    c1<public> := class<computes> { X<public>:int = 42 }
+assert:
+    TestConstructorDefinitionOrder.O.X = 42
+
+archetype_invoking_ctor := module:
+    class1<public> := class<abstract>:
+        Value1<public>:comparable
+        GetAString<public>():string
+        AnotherString<public>:string
+
+    class2<public> := class(class1):
+        GetAString<override>():string := "class2"
+        Value1<override>:comparable := false
+        AnotherString<override>:string := "String"
+
+    MakeClass2<public><constructor>() := class2:
+        Value1 := true
+        AnotherString := "AnotherString"
+
+assert:
+    X := archetype_invoking_ctor.class2:
+        archetype_invoking_ctor.MakeClass2<constructor>()
+    X.Value1 = true
+    X.AnotherString = "AnotherString" 
+
+ConstructorsAndInterfaces := module:
+    i1<public> := interface:
+        X<public>:int = 3
+    c1<public> := class(i1):
+        X<override>:int = 5
+        Y<public>:int
+    MakeC1<public><constructor>(Y:int) := c1:
+        Y := 8 * Y
+
+    # Delegating to a superclass constructor should:
+    #   1) finish the current class
+    #   2) run the super constructor
+    #   3) run interface constructors
+    i2<public> := interface:
+        Z<public>:int = 13
+    c2<public> := class(c1, i1, i2):
+        W<public>:int
+        V<public>:int = 21
+    MakeC2<public><constructor>(Y:int, W:int) := c2:
+        W := 34 * W
+        MakeC1<constructor>(55 * Y)
+
+    # Delegating to a same-class constructor just calls it
+    MakeC2Alt<public><constructor>() := c2:
+        V := 233
+        MakeC2<constructor>(377, 610)
+
+assert:
+    C2 := ConstructorsAndInterfaces.MakeC2(89, 144)
+    C2.X = 5 # Uses c1's override, not c2's inherited default
+    C2.Y = 8 * 55 * 89 # Uses the value set by MakeC1
+    C2.Z = 13 # Uses c2's inherited default
+    C2.W = 34 * 144 # Uses the value set by MakeC2
+    C2.V = 21 # Uses c2's default
+
+    C2A := ConstructorsAndInterfaces.MakeC2Alt()
+    C2A.X = 5
+    C2A.Y = 8 * 55 * 377
+    C2A.Z = 13
+    C2A.W = 34 * 610
+    C2A.V = 233

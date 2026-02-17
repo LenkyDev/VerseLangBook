@@ -1,0 +1,18 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+e := enum:
+    E
+
+Equal(A:comparable, B:comparable)<computes><decides>:void = (A = B)
+
+assert{ Equal[e.E, e.E] }
+assert{ not Equal[e.E, array{1}] }
+assert{ not Equal[array{1}, e.E] }
+assert{ not Equal[42, e.E] }
+assert{ not Equal[e.E, 42] }
+assert{ not Equal[42.42, e.E] }
+assert{ not Equal[e.E, 42.42] }
+assert{ not Equal[e.E, "foo"] }
+assert{ not Equal["foo", e.E] }
+assert{ not Equal['f', e.E] }
+assert{ not Equal[e.E, 'f'] }

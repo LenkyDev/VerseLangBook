@@ -1,0 +1,739 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+LogCheck(Expected:string):void =
+    Actual := CoroUtils.GetEventLogString()
+    if (Actual <> Expected):
+        Err("Expected: '{Expected}' but got '{Actual}'")
+
+### incorrect patterns
+assert_semantic_error<depends_on_library>(3523, 3523) {
+    a := class:
+        var X<getter(GetX)><setter(SetX)>:int = external{}
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+    b := class(a):
+        var X<override>:int = 7                                                 # overrides not allowed
+
+    c := class:
+        var X<getter(GetX)><setter(SetX)>:int = external{}
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+    d := class(c):
+        GetX<override>()<transacts>:int = 0                                     # overrides not allowed
+}
+
+assert_semantic_error<depends_on_library>(3553, 3553, 3553, 3558, 3558, 3558) {
+    a := class:
+        var X<getter(GetX)><setter(SetX)><getter(GetX)>:int = external{}        # more than one <getter(...)>
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+
+    b := class:
+        var X<getter(GetX)><setter(SetX)><setter(SetX)>:int = external{}        # more than one <setter(...)>
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+
+    c := class:
+        var X<getter(GetX)>:int = external{}                                    # missing <setter(...)>
+        GetX(:accessor)<transacts>:int = 0
+}
+
+assert_semantic_error<depends_on_library>(3600) {
+    a := class:
+        var X<getter(GetX)><setter(SetX)>:int = 4                               # wrong default value (should be `= external{}` or none)
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+}
+
+assert_semantic_error<depends_on_library>(3600) {
+    a := class:
+        var X<getter(GetX)><setter(SetX)>:int
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+
+    b := class:
+        var WrongA:a = a{}                                                      # missing archetype initializer for X
+}
+
+assert_semantic_error<depends_on_library>(3553, 3558) {
+    GetX(:accessor)<transacts>:int = 0
+    SetX(:accessor, :int)<transacts>:void = 0
+    a := class:
+        X<getter(GetX)><setter(SetX)>:int = external{}                          # must be a var
+}
+
+assert_semantic_error<depends_on_library>(3671, 3671, 3558, 3558) {
+    a := class:
+        var X<getter(GetX)><setter(SetX)>:int = external{}
+        GetX()<transacts>:logic = false                                         # wrong getter type
+        SetX(:accessor, :int)<transacts>:void = false
+
+    b := class:
+        var X<getter(GetX)><setter(SetX)>:int = external{}
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:int)<transacts>:int = 4                                           # wrong setter type
+}
+
+assert_semantic_error<depends_on_library>(3593, 3593, 3593, 3593) {
+    vpackage(Localhost,/localhost,?Dependencies:=("Verse/Verse"),?Scope:=PublicAPI):
+        snippet:
+            class1<public> := class:
+                var X<getter(GetX)><setter(SetX)>:int = external{}              # only allowed in epic_internal scopes
+                GetX(:accessor)<transacts>:int = 4
+                SetX(:accessor, :int)<transacts>:void = false
+}
+
+assert_semantic_error<depends_on_library>(3502, 3558) {         # not all types are supported
+    c := class:
+        var X<getter(GetX)><setter(SetX)>:tuple(string, float) = external{}
+        GetX(:accessor)<transacts>:tuple(string, float) = ("", 0.0)
+        SetX(:accessor, :tuple(string, float))<transacts>:void = false
+}
+
+assert_semantic_error<depends_on_library>(3553, 3558) {
+    c<native> := class:
+        var X<native><getter(GetX)><setter(SetX)>:int = external{}              # <native> cannot be used here (has no effect)
+
+        GetX(:accessor)<transacts>:int = 0
+        SetX(:accessor, :int)<transacts>:void = false
+}
+
+assert_semantic_error<depends_on_library>(3688, 3688) {
+GetX<epic_internal>(:accessor)<transacts>:int = 0
+SetX<epic_internal>(:accessor, N:int)<transacts>:void = return
+
+c := class:
+    var X<getter(GetX)><setter(SetX)>:int #ensure getters/setters must be defined on a class/interface
+}
+
+assert_semantic_error<depends_on_library>(3687, 3558) {
+    classZ := class:
+        GetX<public>(:accessor)<transacts>:[]int = XData
+        GetX<public>(:accessor, Pos:int)<transacts><decides>:int = XData[Pos]
+        var XData<private>:[]int = array{2}
+        
+    interfaceZ := interface:
+        SetX<public>(:accessor, N:[]int)<transacts>:void = set XData = N
+        SetX<public>(:accessor, Pos:int, N:int)<transacts><decides>:void = set XData[Pos] = N
+        var XData<private>:[]int = array{2}
+
+    classZZ := class(interfaceZ){}
+
+    a := class:
+        MyGetClass:classZ = classZ{}
+        MySetClass:classZZ = classZZ{}
+        var XFail<getter(MyGetClass.GetX)><setter(MySetClass.SetX)>:[]int = external{}  # getters/setters must be 'bare' identifiers
+}
+
+### make sure getters/setters actually get called
+### by appending to a shared log string to keep
+### track of getter/setter calls, and then verifying
+### that the right ones happened in the right order:
+some_iface := interface:
+    PickANumber():int
+implements_some_iface := class(some_iface):
+    PickANumber<override>():int = N
+
+    var N<getter(GetN)><setter(SetN)>:int = external{}
+    GetN(:accessor)<transacts>:int = NData
+    SetN(:accessor, V:int)<transacts>:void = (set NData = V)
+
+    var NData<private>:int = 3
+
+a := class:
+    var X<getter(GetX)><setter(SetX)>:int = external{}
+    var Y:int = 0
+    var MaybeInt<getter(GetMaybeInt)><setter(SetMaybeInt)>:?int = external{}
+    var SomeInterface<getter(GetSomeInterface)><setter(SetSomeInterface)>:some_iface = external{}
+
+    GetMaybeInt(:accessor)<transacts>:?int = MaybeIntData
+    SetMaybeInt(:accessor, V:?int)<transacts>:void = (set MaybeIntData = V)
+
+    GetX(:accessor)<transacts>:int =
+        CoroUtils.LogEvent("XG")
+        return XData
+    SetX(:accessor, N:int)<transacts>:void =
+        CoroUtils.LogEvent("XS")
+        set XData = N
+
+    CheckLog(N:string):logic =
+        LastLog := CoroUtils.GetEventLogString()
+        CoroUtils.Reset()
+        if (LastLog = N):
+            return true
+        DebugPrint("Expected: {N} but got {LastLog}")
+        return false
+
+    ModifyP()<transacts>:float =
+        set P = 66.0
+
+    var P<private><getter(GetP)><setter(SetP)>:float = external{}
+
+    GetP<private>(:accessor)<transacts>:float =
+        CoroUtils.LogEvent("PG")
+        return PData
+    SetP<private>(:accessor, N:float)<transacts>:void =
+        CoroUtils.LogEvent("PS")
+        set PData = N
+
+    GetSomeInterface(:accessor)<transacts>:some_iface =
+        CoroUtils.LogEvent("GetSomeInterface")
+        SomeInterfaceData
+    SetSomeInterface(:accessor, V:some_iface)<transacts>:void =
+        CoroUtils.LogEvent("SetSomeInterface")
+        set SomeInterfaceData = V
+
+    var XData<private>:int = 1
+    var PData<private>:float = 0.0
+    var MaybeIntData<private>:?int = false
+    var SomeInterfaceData<private>:some_iface = implements_some_iface{}
+
+assert:
+    A:a = a{}
+    A.X = 1
+    A.CheckLog("XG")?             # getter called
+    set A.X = 1
+    A.CheckLog("XS")?             # setter called
+    A.X = 1
+    A.CheckLog("XG")?
+
+    A.ModifyP()
+    A.CheckLog("PS")?
+
+    not A.MaybeInt?
+    set A.MaybeInt = option{42}
+    A.MaybeInt? = 42
+
+    T := implements_some_iface{ N := 42 }
+    set A.SomeInterface = T
+    A.CheckLog("SetSomeInterface")?
+    A.SomeInterface.PickANumber() = 42
+    A.CheckLog("GetSomeInterface")?
+
+### assign-op cases of 'set'
+assert:
+    A:a = a{}
+    set A.X = 5
+    A.X = 5
+    set A.X *= 10
+    A.X = 50
+
+### archetype construction
+assert:
+    A := a{X := 111, Y := 222}
+    A.X = 111
+    A.Y = 222
+
+### constructor functions
+CtorA<constructor>() := a:
+    X := 111
+    Y := 222
+
+assert:
+    A := CtorA()
+    A.X = 111
+    A.Y = 222
+
+### delegate constructor functions
+CtorB<constructor>() := a:
+    X := 999
+    CtorA<constructor>()
+
+assert:
+    var A:a = CtorB()
+    A.X = 999
+    A.Y = 222
+
+### assign a getter/setter from super
+d := class:
+    GetX(:accessor)<transacts>:int = XStorage
+    SetX(:accessor, N:int)<transacts>:void =
+        set XStorage = N
+
+    var<private> XStorage<private>:int = 0
+
+e := class(d):
+    var X<getter(GetX)><setter(SetX)>:int = external{}
+
+assert:
+    var E:e = e{X := 33}
+    E.X = 33
+
+    set E = e{}
+    set E.X = 34
+    E.X = 34
+
+### nested vars
+n1 := class:
+    var X<getter(GetX)><setter(SetX)>:int = external{}
+
+    GetX(:accessor)<transacts>:int = XS
+    SetX(:accessor, N:int)<transacts>:void = set XS = N
+    var XS<private>:int = -3
+
+n2 := class:
+    var N1:n1 = n1{}
+
+n3 := class:
+    var N2:n2 = n2{}
+
+assert:
+    var N3:n3 = n3{}
+    N3.N2.N1.X = -3
+    set N3.N2.N1.X = 44
+    N3.N2.N1.X = 44
+
+### rollback
+r1 := class:
+    var X:int = 44
+assert:
+    R := r1{}
+    OldRDotX := R.X
+    if (set R.X = 45; 1 = 2):
+    R.X = OldRDotX
+
+### let block in archetype instantiation
+f := class:
+    var Prop:int = 5
+assert:
+    F:f = f:
+        let:
+            X := 1
+        Prop := X + 1
+    F.Prop = 2
+
+Negative(N:int):int = -N
+
+### compound RHS
+assert:
+    A := a{X := (8 * Negative(3 + 4 + 5 + 6))}
+    A.X = 8 * Negative(3 + 4 + 5 + 6)
+
+### return value of `set`
+assert:
+    A := a{X := 2}
+    Y := set A.X = 3
+    Y = 3
+
+### return value of assign-op
+assert:
+    A := a{}
+    Y := set A.X += 3
+    Y = 4
+
+### pass block expression in archetype ctor
+Get44():int = 44
+
+assert:
+    A := a:
+        X := block:
+            Get44()
+    A.X = 44
+
+### side-effect ordering between lhs-context/rhs/setter call
+g := class:
+    var X<getter(GetX)><setter(SetX)>:int = external{}
+    var Y:int = 77
+    var Z<getter(GetZ)><setter(SetZ)>:int = external{}
+
+
+    GetX(:accessor)<transacts>:int = XData
+    SetX(:accessor, N:int)<transacts>:void =
+        CoroUtils.LogEvent("S")
+        set XData = N
+
+    GetZ(:accessor)<transacts>:int =
+        CoroUtils.LogEvent("G")
+        ZData
+    SetZ(:accessor, N:int)<transacts>:void =
+        CoroUtils.LogEvent("S")
+        set ZData = N
+
+    var XData<private>:int = 0
+    var ZData<private>:int = 0
+
+MakeG(S:string):g =
+    CoroUtils.LogEvent(S)
+    g{}
+
+GetAnInt(S:string, V:int):int =
+    CoroUtils.LogEvent(S)
+    V
+
+assert:
+    Y := set MakeG("B").X = GetAnInt("C", 5)
+    Y = 5
+    LogCheck("BCS")
+assert:
+    Z := set MakeG("B").Y = GetAnInt("C", 5)
+    Z = 5
+    LogCheck("BC")
+assert:
+    Y := set MakeG("B").X *= GetAnInt("C", 5)
+    Y = 0
+    LogCheck("BCS")
+assert:
+    Z := set MakeG("B").Y *= GetAnInt("C", 5)
+    Z = 385
+    LogCheck("BC")
+assert:
+    GetAnInt("A", 5) = (set MakeG("B").X = GetAnInt("C", 5))
+    LogCheck("ABCS")
+assert:
+    GetAnInt("A", 0) = (set MakeG("B").X *= GetAnInt("C", 5))
+    LogCheck("ABCS")
+assert:
+    GetAnInt("A", 5) = (set MakeG("B").Y = GetAnInt("C", 5))
+    LogCheck("ABC") # no "S" at the end, because `Y` is not a proxy var
+assert:
+    GetAnInt("A", 385) = (set MakeG("B").Y *= GetAnInt("C", 5))
+    LogCheck("ABC")
+assert:
+    G := g:
+        block:
+            CoroUtils.LogEvent("B")
+        X := GetAnInt("A", 5)
+    LogCheck("BAS")
+assert:
+    G := g:
+        X := GetAnInt("A", 5)
+        block:
+            CoroUtils.LogEvent("B")
+    bp_vm_only{LogCheck("ABS")}
+    # (Jay C.) the VerseVM runs the 'setter' from the 'InitializeVar' opcode emitted when compiling X in the archetype.
+    # I'm unsure why the BPVM is ordered the way it is but since the VerseVM ordering seems more correct just case-ing the differences
+    verse_vm_only{LogCheck("ASB")}
+assert:
+    G := g:
+        block:
+            CoroUtils.LogEvent("B")
+        Y := GetAnInt("A", 5)
+    LogCheck("BA")
+assert:
+    G := g:
+        Y := GetAnInt("A", 5)
+        block:
+            CoroUtils.LogEvent("B")
+    LogCheck("AB")
+assert:
+    Y := MakeG("A").Z
+    LogCheck("AG")
+
+### inherited getters/setters
+a_sub := class(a) {}
+
+assert:
+    T := a_sub{}
+    set T.X = 666
+    T.CheckLog("XS")?
+    T.X = 666
+    T.CheckLog("XG")?
+
+### mixed struct/class access
+mixed_c3 := class:
+    var X<getter(GetX)><setter(SetX)>:int = external{}
+    GetX(:accessor)<transacts>:int = XData
+    SetX(:accessor, N:int)<transacts>:void = set XData = N
+    var XData:int = 4
+
+mixed_s2 := struct:
+    C3:mixed_c3 = mixed_c3{}
+
+mixed_c2 := class:
+    var Y:mixed_s2 = mixed_s2{}
+
+mixed_c1 := class:
+    var C2<getter(GetC2)><setter(SetC2)>:mixed_c2 = external{}
+    GetC2(:accessor)<transacts>:mixed_c2 = C2Storage
+    SetC2(:accessor, N:mixed_c2)<transacts>:void = set C2Storage = N
+
+    var C2Storage:mixed_c2 = mixed_c2{}
+
+mixed_s1 := struct:
+    C1:mixed_c1 = mixed_c1{}
+
+assert:
+    S := mixed_s1{}
+    set S.C1.C2.Y.C3.X = 44
+    S.C1.C2.Y.C3.X = 44
+
+### "external" class with getters/setters test;
+### CustomClassVarAccessors is defined in VerseTestScriptCmd.
+### when the compiler is run with `--incremental`, the below code
+### only sees a *digest* of `accessors_test`, which tests
+### whether or not the getter/setter is called properly in spite
+### of the fact that the getter/setter attributes are not
+### included in the digest.
+assert:
+    T := accessors_test{}
+    set T.X = 44
+    LogCheck("G044")
+    Unused := T.X
+    LogCheck("G044G")
+
+### inherited getters/setters that are also declared in an interface
+i1 := interface:
+    GetX(:accessor)<transacts>:int
+    SetX(:accessor, :int)<transacts>:void
+
+h := class(i1):
+    GetX<override>(:accessor)<transacts>:int = XData
+    SetX<override>(:accessor, N:int)<transacts>:void = set XData = N
+    var XData<private>:int = 0
+
+hsub := class(h):
+    var X<getter(GetX)><setter(SetX)>:int = external{}
+
+assert:
+    X:hsub = hsub{}
+    set X.X = 55
+    X.X = 55
+
+### this is testing a previously encountered edge case where successful
+### execution of an if-statement condition would cause the program to jump
+### past code that properly passes "Self" to [Read/Write]ClassVar-ish intrinsics
+### when accessing a member variable via implicit Self
+iffy_member := class:
+    var Y:int = 5
+
+iffy := class:
+    var M:iffy_member = iffy_member{}
+
+    Method1():void =
+        # this previously generated incorrect code
+        set M.Y = if (2 = 2) then 1 else 2
+
+    Method2():void =
+        set M.Y = if (2 = 3) then 1 else 2
+
+assert:
+    T := iffy{}
+    T.Method1()
+    T.M.Y = 1
+    T.Method2()
+    T.M.Y = 2
+
+### whenever a class var `A` is an object and backed by another
+### class var `B`, we have to test that `B` properly gets excluded
+### from the enclosing class' subobject initialization list
+### whenever `B` is written during archetype initialization:
+some_class := class:
+    I:int = 22
+
+has_object_var := class:
+    var Obj<getter(GetObj)><setter(SetObj)>:some_class = external{}
+
+    var ObjData<private>:some_class = some_class{}
+    GetObj(:accessor)<transacts>:some_class = ObjData
+    SetObj(:accessor, N:some_class)<transacts>:void = (set ObjData = N)
+
+assert:
+    T := has_object_var{Obj := some_class{I := 88}}
+    T.Obj.I = 88
+assert:
+    T := has_object_var{}
+    T.Obj.I = 22
+
+
+no_initializer := class:
+    var X<getter(GetX)><setter(SetX)>:int     # no initializer
+
+    var SomeInt:int = 100
+    var XData<private>:int = 0
+
+    GetX(:accessor)<transacts>:int =
+        set SomeInt = 99
+        XData
+    SetX(:accessor, N:int)<transacts>:void = (set XData = N)
+
+assert:
+    T := no_initializer{X := 5}
+    T.X = 5
+    T.SomeInt = 99
+
+uses_no_initializer := class:
+    var M:no_initializer = no_initializer{X := 6}
+
+assert:
+    T1 := uses_no_initializer{}
+    T1.M.X = 6
+
+    T2 := uses_no_initializer{M := no_initializer{X := 7}}
+    T2.M.X = 7
+
+CallMemberFunctionFromSetterDuringConstruction := module:
+    a_test<public> := class:
+        block:
+            set ValueOfADuringBlock = A
+
+        A<public>:int
+        var X<public><getter(GetX)><setter(SetX)>:int
+        B<public>:int
+        var Y<public>:int = 44
+
+        var XData:int = -1
+        GetX(:accessor)<transacts>:int = XData
+        SetX(:accessor, N:int)<transacts>:void =
+            set XData = N
+            MemberFunc()
+
+        MemberFunc()<transacts>:void =
+            set Y = 33
+
+        var ValueOfADuringBlock<public>:int = -1
+
+assert:
+    T := CallMemberFunctionFromSetterDuringConstruction.a_test{ A := 1, X := 55, B := 2 }
+    T.Y = 33
+    T.ValueOfADuringBlock = 1
+
+### accessing arrays via implicit self
+array_via_implicit_self := class:
+    var AI<getter(GetAI)><setter(SetAI)>:[]int = external{}
+
+    var AIData:[]int = array{22}
+    GetAI(:accessor)<transacts>:[]int = AIData
+    SetAI(:accessor, N:[]int)<transacts>:void =
+        set AIData = N
+    GetAI(:accessor, J:int)<transacts><decides>:int = AIData[J]
+    SetAI(:accessor, J:int, N:int)<transacts><decides>:void =
+        set AIData[J] = N
+
+    Func()<decides>:void =
+        set AI = array{33}
+        AI[0] = 33
+        set AI[0] = 44
+        AI[0] = 44
+
+assert:
+    T := array_via_implicit_self{}
+    T.Func[]
+
+### calling things inside a loop condition
+assert:
+    T := array_via_implicit_self{ AI := array{1, 2, 3, 4, 5, 6} }
+    for (I := 0 .. T.AI.Length, set T.AI[I + 1] = I + 1):
+        T.AI[I + 1] = I + 1
+
+### writing a var in the tail-end of an access expr that contains
+### an infix of non-mutable object identifiers
+non_mutable_infix3 := class:
+    var X:int = 4
+
+non_mutable_infix2 := class:
+    NonMutable3:non_mutable_infix3 = non_mutable_infix3{}
+
+non_mutable_infix1 := class:
+    NonMutable2:non_mutable_infix2 = non_mutable_infix2{}
+
+non_mutable_infix := class:
+    NonMutable1:non_mutable_infix1 = non_mutable_infix1{}
+
+assert:
+    T := non_mutable_infix{}
+    set T.NonMutable1.NonMutable2.NonMutable3.X = 5
+    5 = T.NonMutable1.NonMutable2.NonMutable3.X
+
+### introducing a new identifier in the RHS of an assign-op expr:
+assign_op_new_binding := class:
+    var X:int = 2
+
+assert:
+    T := assign_op_new_binding{}
+    set T.X += (Y := 4) + (Z := 5)
+    T.X = 11
+    Y = 4
+    Z = 5
+
+### assign-op write through a map lookup
+has_an_int := class:
+    var X:int = 44
+
+assert:
+    var M:[int]has_an_int = map{3 => has_an_int{X := 45}}
+    # this previously triggered a glitch where an incorrect subtree
+    # was being synthesized for the fresh var temporary that holds the
+    # result of `M[3]`
+    set M[3].X += 1
+    M[3].X = 46
+
+### Test archetype init's and ctors have the same outcome for var VS proxy
+archetype_init := class:
+    var X<public><getter(GetX)><setter(SetX)>:int = external{}
+    var XData:int = 0
+    GetX(:accessor)<transacts>:int = XData
+    SetX(:accessor, N:int)<transacts>:void = set XData = N
+
+    var Y<public>:int = 0
+
+ctor_init := class(archetype_init):
+    block:
+        set X = 10
+        set Y = 10
+
+assert:
+    A := archetype_init{X := 5, Y := 5}
+    A.X = 5
+    A.Y = 5
+    C := ctor_init{X := 5, Y := 5}
+    C.X = 10
+    C.Y = 10
+
+### fields of parametric class type
+my_parametric(t:type) := class:
+    Y:t
+
+has_my_parametric_member := class:
+    var X<getter(GetX)><setter(SetX)>:my_parametric(int) = external{}
+    var XData:my_parametric(int) = my_parametric(int){Y := 3}
+
+    GetX(:accessor)<transacts>:my_parametric(int) = XData
+    SetX(:accessor, N:my_parametric(int))<transacts>:void = (set XData = N)
+assert:
+    T := has_my_parametric_member{X := my_parametric(int){Y := 34}}
+    T.X.Y = 34
+    set T.X = my_parametric(int){Y := 42}
+    T.X.Y = 42
+
+assert_semantic_error<depends_on_library>(3671, 3558):
+    sup := class {}
+    sub := class(sup) {}
+    a := class:
+        var X<getter(GetX)><setter(SetX)>:sup = external{}
+        GetX(:accessor)<transacts>:sup = Err("")
+        SetX(:accessor, Y:sub)<transacts>:void = {}
+
+assert_semantic_error<depends_on_library>(3671, 3558):
+    sup := class {}
+    sub := class(sup) {}
+    a := class:
+        var X<getter(GetX)><setter(SetX)>:sub = external{}
+        GetX(:accessor)<transacts>:sup = Err("")
+        SetX(:accessor, Y:sub)<transacts>:void = {}
+
+### Runtime errors in getters/setters
+runtime_error := class:
+    var X<public><getter(GetX)><setter(SetX)>:int = external{}
+    var XData:int = 0
+    GetX(:accessor)<transacts>:int = 
+        Err("getter err")
+        XData
+    SetX(:accessor, N:int)<transacts>:void =
+        Err("setter err")
+        set XData = N
+
+assert_runtime_error:
+    Obj:runtime_error = runtime_error{}
+    Obj.X = 0
+
+assert_runtime_error:
+    Obj:runtime_error = runtime_error{}
+    set Obj.X = 10
+
+assert_runtime_error:
+    Obj:accessors_test_runtime_error = accessors_test_runtime_error{}
+    Obj.X = 0
+
+assert_runtime_error:
+    Obj:accessors_test_runtime_error = accessors_test_runtime_error{}
+    set Obj.X = 10

@@ -1,0 +1,835 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+#################################################
+# Helper functions
+#################################################
+# Named parameters - and use in body
+
+# Once a named parameter is introduced, all following parameters must be named
+assert_semantic_error(3629):
+    Named(?Named1:int, NonNamed2:int): int = Named1 * NonNamed2
+
+# Duplicate names
+assert_semantic_error(3629, 3532):
+    Named(?Param1:int, Param1:int): int = 42
+
+assert_semantic_error(3532):
+    Named(Param1:int, ?Param1:int): int = 42
+
+assert_semantic_error(3532):
+    Named(?Named1:int, ?Named1:int): int = 42
+        
+# Named parameter in body does not require `?`
+assert_semantic_error(3630):
+    Named(?Named1:int): int = 2 * ?Named1
+
+# Local variable in body does not require `?`
+assert_semantic_error(3630):
+    Func(): int =
+         LocalVar := 42
+         2 * ?LocalVar
+
+# Function with one unnamed parameter
+Quintuple(Param1:int): int = Param1 * 5
+
+# Function with one named parameter
+Triple(?Named1:int): int = Named1 * 3
+
+# Function with two named parameters
+Stitch(?Named1:string, ?Named2:string): string = Named1 + Named2
+
+# Function with both named and unamed parameters
+MixedNamed(Param1:int, ?Named2:int): int = Param1 - Named2
+
+# Qualified named parameters aren't yet supported.
+assert_semantic_error(3552):
+    Named(?(local:)Named1:int):void={}
+
+# TODO: (local:) is not correct for a named parameter
+# Need version guard when fixed
+should_not_work_but_does:= class:
+    Named(Named1:int):int=(local:)Named1
+
+#################################################
+# Calls with named arguments
+
+# Calls without specifying a named argument
+
+# Argument must be named if param is named
+assert_semantic_error(3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(123)
+
+# Calls without specifying a :=Value
+
+# Mismatched named argument without `:=Value` for unnamed parameter - treated as optional type error
+assert_semantic_error(3506, 3509):
+    Quadruple(Param1:int): int = Param1 * 4
+    TestNamed():void = Quadruple(?BadName)
+
+# Specified a named argument `?Param1` without a `:=Value` though its matching parameter does not require a named argument
+assert_semantic_error(3506, 3509):
+    Quadruple(Param1:int): int = Param1 * 4
+    TestNamed():void = Quadruple(?Param1)
+
+# Named argument `?Named1` missing `:=Value`
+assert_semantic_error(3506, 3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(?Named1)
+
+# Named argument `?BadName` does not match named parameter `?Named1` and is missing `:=Value`
+assert_semantic_error(3506, 3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(?BadName)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Calls with named arg / value pairs
+
+# Specified a named argument `?Param1`, though its matching parameter does not require a named argument. Just use the value as the argument
+assert_semantic_error(3509):
+    Quadruple(Param1:int): int = Param1 * 4
+    TestNamed():void = Quadruple(?Param1:=123)
+
+# Parameter #0 `Param1` does not expect named argument, but named argument `?BadName` is specified. Just use the value as the argument
+assert_semantic_error(3509):
+    Quadruple(Param1:int): int = Param1 * 4
+    TestNamed():void = Quadruple(?BadName:=123)
+
+# Parameter #0 expected named argument `?Named1:=Value` but value given without specifying a name.
+assert_semantic_error(3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(Named1:=123)
+
+# Parameter #0 expected named argument `?Named1:=Value` but value given without specifying a name.
+assert_semantic_error(3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(BadName:=123)
+
+# Named parameter #0 `?Named1` expected matching named argument but given `?BadName`.
+assert_semantic_error(3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(?BadName:=123)
+
+# Named argument not under invocation
+assert_semantic_error(3640):
+    Main():void =
+        ?Named := 1
+
+# Must specify any unnamed/ordered args before any named args
+assert_semantic_error(3629, 3509):
+    Subtr(Param1:int, ?Named2:int): int = Param1 - Named2
+    TestNamed():void = Subtr(?Named2:=123, 42)
+
+# Named arguments in arbitrary order
+assert_valid:
+    Subtr(?Named1:int, ?Named2:int): int = Named1 - Named2
+    TestNamed():void = Subtr(?Named2:=3, ?Named1:=6)
+
+# May not specify the same named arg more than once 
+assert_semantic_error(3628, 3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(?Named1:=123, ?Named1:=321)
+
+# May not specify the same named arg more than once
+assert_semantic_error(3628, 3509):
+    Multi(?Named1:int, ?Named2:int): int = Named1 * Named2
+    TestNamed():void = Multi(?Named1:=3, ?Named1:=6)
+
+# Named argument with unexpected type
+assert_semantic_error(3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple(?Named1:="hello")
+
+# All named arguments must be specified
+assert_semantic_error(3509):
+    Quadruple(?Named1:int): int = Named1 * 4
+    TestNamed():void = Quadruple()
+
+
+# Variable definition passes straight through to unnamed parameter
+assert:
+    Quintuple(Param1:=4) = 20
+
+# Variable definition passes straight through to unnamed parameter
+# - even if name does not match
+assert:
+    Quintuple(BadName:=4) = 20
+
+# Call with named argument
+assert:
+    Triple(?Named1:=4) = 12
+
+
+#################################################
+# Default Parameters
+
+# Function with one default parameter
+FuncDef(?Named1:int = 42): int = Named1 * 2
+
+# Function with two default parameters
+StitchDef(?Named1:string="Param1", ?Named2:string="Param2"): string =
+    Named1 + Named2
+
+# Function with mixed ordered and default parameters
+StitchDef7(A1:string, A2:string, ?D3:string="d3", ?D4:string="d4", ?D5:string="d5", ?D6:string="d6", ?D7:string="d7"): string =
+    A1 + A2 + D3 + D4 + D5 + D6 + D7
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Default arguments
+
+# Is scope of default expression:
+#   a) the routine? [So could use earlier params and members of nesting class / module]
+#      [Useful and easy to do semantic analysis - though might be hard to implement with BP VM.
+#      Probably would need to generate overloaded calls with defaults baked in.]
+#   b) the call site? [So could use local variables and routines available at call scope]
+#      [Interesting though not easy to do semantic analysis (might have to check per call site).
+#      Would be easy to implement with BP VM]
+#   c) top level scope only?
+#      [Least useful and most limited - probably easiest to implement]
+
+# Call using default
+assert:
+    FuncDef() = 84
+
+# Call replacing default
+assert:
+    FuncDef(?Named1:=4) = 8
+
+# Multiple defaults
+assert:
+    StitchDef() = "Param1Param2"
+
+assert:
+    StitchDef(?Named1:="One") = "OneParam2"
+
+assert:
+    StitchDef(?Named2:="Two") = "Param1Two"
+
+assert:
+    StitchDef(?Named1:="One", ?Named2:="Two") = "OneTwo"
+
+# Mixed ordered and default arguments
+
+# Use all defaults
+assert:
+    StitchDef7("A1", "A2") = "A1A2d3d4d5d6d7"
+
+# Supply and omit some defaults
+assert:
+    StitchDef7("A1", "A2", ?D3:="D3", ?D5:="D5", ?D6:="D6") = "A1A2D3d4D5D6d7"
+
+# Supply all defaults
+assert:
+    StitchDef7("A1", "A2", ?D3:="D3", ?D4:="D4", ?D5:="D5", ?D6:="D6", ?D7:="D7") = "A1A2D3D4D5D6D7"
+
+# Different order
+assert_valid:
+    StitchDef7(A1:string, A2:string, ?D3:string="d3", ?D4:string="d4", ?D5:string="d5", ?D6:string="d6", ?D7:string="d7"): string =
+        A1 + A2 + D3 + D4 + D5 + D6 + D7
+    TestDef():void = StitchDef7("A1", "A2", ?D5:="D5", ?D3:="D3")
+
+assert_valid:
+    StitchDef7(A1:string, A2:string, ?D3:string="d3", ?D4:string="d4", ?D5:string="d5", ?D6:string="d6", ?D7:string="d7"): string =
+        A1 + A2 + D3 + D4 + D5 + D6 + D7
+    TestDef():void = StitchDef7("A1", "A2", ?D4:="D4a", ?D5:="D5", ?D3:="D4b")
+
+# Default value referencing instance member
+class1 := class:
+    DefaultName:string = "world"
+    Greeting(?Name:string = DefaultName):string = "hello, " + Name
+
+assert:
+    X := class1{}
+    X.Greeting() = "hello, world"
+
+assert:
+    X := class1{}
+    X.Greeting(?Name := "local group") = "hello, local group"
+
+assert:
+    X := class1{DefaultName := "galaxy"}
+    X.Greeting() = "hello, galaxy"
+
+class2 := class(class1):
+    DefaultName<override>:string = "universe"
+
+assert:
+    X := class2{}
+    X.Greeting() = "hello, universe"
+
+DefaultInt:int = 13
+
+class3 := class:
+    Method(?Arg:int = DefaultInt):int = Arg
+
+assert:
+    X := class3{}
+    X.Method() = 13
+
+# Tuple plus named params
+TupleArityTestFn(a:int, b:int, ?c:int=3):int = a + b + c
+assert:
+	Args : tuple(int, int) = (1, 2);
+	TupleArityTestFn(1, 2) = 1 + 2 + 3;
+	TupleArityTestFn(1, 2, ?c:=4) = 1 + 2 + 4;
+	TupleArityTestFn(Args) = 1 + 2 + 3;
+
+assert_semantic_error(3560):
+	Args : tuple(int, int) = (1, 2);
+	TupleArityTestFn(Args, ?c:=4) = 1 + 2 + 4;
+
+
+# Default value referencing definition elided by digest generation
+assert_valid:
+    module1 := module:
+        DefaultValue:int = 0
+        F<public>(?Arg:int = DefaultValue):void = {}
+
+assert_valid:
+    module1 := module:
+        class1 := class<computes>:
+            Property:int = 0
+        F<public>(?Arg:int = class1{}.Property):void = {}
+
+assert_valid:
+    module1 := module:
+        class1(t:type) := class<computes>:
+            Property:t
+        F<public>(?Arg:int = class1(int){Property := 0}.Property):void = {}
+
+assert_valid:
+    module1 := module:
+        G()<computes>:int = 0
+        F<public>(?Arg:int = G()):void = {}
+
+assert_valid:
+    module1 := module:
+        G(:int)<computes>:int = 0
+        G(:char)<computes>:int = 1
+        F<public>(?Arg:int = G('a')):void = {}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Default function parameters
+
+HelloFunc():string = "Hello"
+HiFunc():string = "Hi"
+
+FuncFuncDef(?NamedFunc():string = HelloFunc):string =
+    NamedFunc()
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Default function arguments
+
+assert:
+    FuncFuncDef() = "Hello"
+
+assert:
+    FuncFuncDef(?NamedFunc:=HiFunc) = "Hi"
+
+assert_semantic_error(3560):
+    ?X := 1
+
+#################################################
+# Call argument evaluation order:
+# - ordered/unnamed arguments (left to right)
+# - *named arguments evaluated in call encountered order (left to right)
+# - *interleaving omitted default arguments as soon as all preceding params are filled (left to
+#   right parameter order)
+#
+# If any named arguments are in a different order than is expected by the call then logically/
+# internally all argument expressions must be assigned to temporary variables in the order
+# specified/encountered within the call (as described above) and the variables are then used by the
+# call in the expected call argument order.
+#
+# Evaluation order examples:
+#   Call to function with 2 ordered and 5 default args
+#   - All args specified and in order
+#     (a1, a2, d3, d4, d5, d6, d7)                                 -> a1, a2, d3,  d4,  d5, d6,  d7
+#   - Named args specified in order with omitted default gaps
+#     (a1, a2, d3, d5, d6)                                         -> a1, a2, d3, [d4], d5, d6, [d7]
+#   - Named args specified not in order with omitted default gaps (not yet supported - needs temp vars to preserve eval and param order)
+#     (a1, a2, d5, d3, d6)  -> V = a1, a2, d5, d3, [d4], d6, [d7]  -> v1, v2, v3,  v4,  v5, v6,  v7
+
+# UNTESTED - Allow calls in any order and ensure evaluation order is left to right as called (not necessarily parameter order)
+#assert:
+#    Log(Stitch(?Named2:=do{Log("First"); "Back"}, ?Named1:=do{Log("Second"); "Front"}))
+#    LogResult = "FirstSecondFrontBack"
+
+#################################################
+# Digest with named/default params
+
+assert_valid:
+    F(?Arg:int = 1):void = {}
+
+assert_valid:
+    F(?Arg:float = 1.0):void = {}
+
+assert_valid:
+    F(?Arg:char = 'a'):void = {}
+
+assert_valid:
+    F(?Arg:string = "hello"):void = {}
+
+assert_valid:
+    letters := enum:
+        A
+        B
+        C
+    F(?Arg:letters = letters.A):void = {}
+
+assert_valid:
+    class1 := class<computes>:
+        Property:int
+    F(?Arg:class1 = class1{Property := 1}):void = {}
+
+assert_valid:
+    module1 := module:
+        X<public>:int = 1
+    F(?Arg:int = module1.X):void = {}
+
+assert_valid:
+    G(X:int):int = X
+    F(?Arg:type{_(:int):int} = G):void = {}
+
+assert_valid:
+    F(?Arg:[]int = array{1, 2, 3}):void = {}
+
+assert_valid:
+    F(?Arg:[int]int = map{1 => 2}):void = {}
+
+assert_valid:
+    F(?Arg:int = 1 + 2):void = {}
+
+assert:
+    TestNamedParams.Log("hello", ?Level := 1) = ("hello", 1, "yellow")
+
+assert:
+    TestNamedParams.Log("hello", ?Level := 2, ?InColor := "red") = ("hello", 2, "red")
+
+assert:
+    TestNamedParams.Int1() = 1
+    TestNamedParams.Int1(?Arg := 2) = 2
+    TestNamedParams.Int2() = 1
+    TestNamedParams.Int2(?Arg := 2) = 2
+    TestNamedParams.Int3() = 3
+    TestNamedParams.Int3(?Arg := 2) = 2
+
+assert:
+    TestNamedParams.Float1() = 1.0
+    TestNamedParams.Float1(?Arg := 2.0) = 2.0
+    TestNamedParams.Float2() = 1.0
+    TestNamedParams.Float2(?Arg := 2.0) = 2.0
+    TestNamedParams.Float3() = 3.0
+    TestNamedParams.Float3(?Arg := 2.0) = 2.0
+    test_named_params{}.Float4() = 4.0
+    test_named_params{}.Float4(?Arg := 2.0) = 2.0
+
+assert:
+    TestNamedParams.String1() = "hello"
+    TestNamedParams.String1(?Arg := "world") = "world"
+    TestNamedParams.String2() = "hello"
+    TestNamedParams.String2(?Arg := "world") = "world"
+
+assert:
+    TestNamedParams.Logic1() = false
+    TestNamedParams.Logic1(?Arg := true) = true
+    TestNamedParams.Logic2() = false
+    TestNamedParams.Logic2(?Arg := true) = true
+
+assert:
+    TestNamedParams.Class1().Property = 1
+    TestNamedParams.Class1(?Arg := test_named_params_class1{Property := 2}).Property = 2
+
+assert:
+    TestNamedParams.Enum1() = test_named_params_enum1.A
+    TestNamedParams.Enum1(?Arg := test_named_params_enum1.B) = test_named_params_enum1.B
+
+assert:
+    TestNamedParams.Function1() = 1
+    TestNamedParams.Function1(?Arg := Incr) = 2
+
+#################################################
+# Parametric function default value
+Incr(X:int):int = X + 1
+Identity(X:t where t:type):t = X
+
+ParametricFunctionDefaultValue(?Arg:type{_(:int):int} = Identity):int = Arg(1)
+
+assert:
+    ParametricFunctionDefaultValue() = 1
+    ParametricFunctionDefaultValue(?Arg := Incr) = 2
+
+#################################################
+# Coroutine with named/default params/args
+
+# Should just work
+
+
+#################################################
+# Native (VNI) Named/Default Parameters and Arguments
+
+# Should just work
+
+#################################################
+# Mismatched order
+
+MismatchedOrder := module:
+    F<public>(A:int, ?B:int, ?C:int = 0, ?D:int):int = A - B + C - D 
+
+assert:
+    MismatchedOrder.F(2, ?B := 1, ?D := 3) = 2 - 1 + 0 - 3
+
+assert:
+    MismatchedOrder.F(1, ?D := 2, ?C := 3, ?B := 4) = 1 - 4 + 3 - 2
+
+#################################################
+# Named type tuple element access
+
+assert_semantic_error(3640, 3640, 3509):
+    Main():void =
+        X := (0, ?A := 1, ?B := 2)
+        Y := X(1)
+
+assert_semantic_error(3640, 3640, 3509):
+    Second(:any, X:t where t:type):t = X
+    Main():void =
+        X := (0, ?A := 1, ?B := 2)
+        Y := Second(X)
+        
+#################################################
+# First-class functions
+
+FirstClass := module:
+    F1<public>(A:int, ?B:int = 0, ?C:int):int = A + B - C
+    F2<public>(?A:int):int = A
+    F3<public>(A:[]int):[]int = A
+    Apply<public>(F(:t):u, X:t where t:type, u:type):u = F(X)
+    RevApply<public>(X:t, F(:t):u where t:type, u:type):u = F(X)
+
+assert:
+    F := FirstClass.F1
+    F(1, ?C := 2) = 1 + 0 - 2
+
+assert:
+    F := FirstClass.F1
+    F(1, ?C := 2, ?B := 3) = 1 + 3 - 2
+
+assert_semantic_error(3509):
+    FirstClass := module:
+        F2<public>(?A:int):int = A
+        Apply<public>(F(:t):u, X:t where t:type, u:type):u = F(X)
+
+    Main()<decides>:void =
+        FirstClass.Apply(FirstClass.F2, ?A := 42) = 42
+
+assert_semantic_error(3509):
+    F1(?A:int = 1):int = A
+    Main():void =
+        F:type{_(?A:int = 'a'):int} = F1
+
+assert_semantic_error(3509):
+    F1(F(?A:int = 'a'):int):int = F(?A := 2)
+
+# Bug: the following three assert in the VM due to a general issue related to how coercions are inserted.
+
+# assert:
+#     FirstClass.Apply(FirstClass.F1, (2, ?C := 1)) = 2 + 0 - 1
+
+# assert:
+#     FirstClass.Apply(FirstClass.F1, (2, ?C := 1, ?B := 3)) = 2 + 3 - 1
+
+# assert:
+#     FirstClass.Apply(FirstClass.F3, (1, 2, 3)) = (1, 2, 3)
+
+#################################################
+# Subtype
+
+Subtype := module:
+    F1<public>(?A:int):int = A
+    F2<public>(?A:int = 2):int = A
+    F4<public>(A:int, ?B:int = 4):int = A + B
+
+assert:
+    F:type{_():int} = Subtype.F2
+    F() = 2
+
+assert:
+    F:type{_(?A:int):int} = Subtype.F2
+    F(?A := 1) = 1
+
+assert:
+    F:type{_(:int):int} = Subtype.F4
+    F(5) = 4 + 5
+
+assert:
+    F:type{_(:int, ?B:int):int} = Subtype.F4
+    F(5, ?B := 3) = 3 + 5
+
+assert_semantic_error(3509):
+    Subtype := module:
+        F2<public>(?A:int = 2):int = A
+    
+    Main()<decides>:void =
+        F:type{_(?B:int):int} = Subtype.F2
+
+assert_semantic_error(3509):
+    Subtype := module:
+        F2<public>(?A:int = 2):int = A
+    
+    Main()<decides>:void =
+        F:type{_(?B:int = 0):int} = Subtype.F2
+
+assert_semantic_error(3509):
+    Subtype := module:
+        F1<public>(?A:int):int = A
+    
+    Main()<decides>:void =
+        F:type{_(?A:int = 0):int} = Subtype.F1
+
+assert_semantic_error(3509):
+    Subtype := module:
+        F4<public>(A:int, ?B:int = 4):int = A + B
+    
+    Main()<decides>:void =
+        F:type{_(:int, ?A:int):int} = Subtype.F4
+
+assert_semantic_error(3509):
+    Subtype := module:
+        F4<public>(A:int, ?B:int = 4):int = A + B
+    
+    Main()<decides>:void =
+        F:type{_(:int, ?A:int = 0):int} = Subtype.F4
+
+assert_semantic_error(3509):
+    Subtype := module:
+        F3<public>(A:int, ?B:int):int = A + B
+    
+    Main()<decides>:void =
+        F:type{_(:int, ?A:int = 0):int} = Subtype.F3
+
+#################################################
+# Meet
+
+Meet := module:
+    F1<public>(?A:int):int = A
+    F2<public>(?A:int = 2):int = A
+    F3<public>(?B:int):int = B
+    F4<public>(?B:int = 4):int = B
+
+assert:
+    F:type{_(?A:int):int} = if (true?) { Meet.F1 } else { Meet.F2 }
+    F(?A := 1) = 1
+
+bp_vm_only
+{
+assert_ir_error(3502, 3502):
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main()<decides>:void =
+        F:type{_():int} = if (true?) { Meet.F2 } else { Meet.F4 }
+        F() = 2
+
+assert_ir_error(3502, 3502):
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main()<decides>:void =
+        F:type{_():int} = if (false?) { Meet.F2 } else { Meet.F4 }
+        F() = 4
+}
+verse_vm_only
+{
+assert_valid:
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main()<decides>:void =
+        F:type{_():int} = if (true?) { Meet.F2 } else { Meet.F4 }
+        F() = 2
+
+assert_valid:
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main()<decides>:void =
+        F:type{_():int} = if (false?) { Meet.F2 } else { Meet.F4 }
+        F() = 4
+}
+
+verse_vm_only
+{
+assert:
+	F:type{_():int} = if (true?) { Meet.F2 } else { Meet.F4 }
+	F() = 2
+
+assert:
+	F:type{_():int} = if (false?) { Meet.F2 } else { Meet.F4 }
+	F() = 4
+} #verse_vm_only
+
+assert_semantic_error(3509):
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main():void =
+        F:type{_(?A:int = 0):int} = if (true?) { Meet.F1 } else { Meet.F2 }
+
+assert_semantic_error(3509):
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main():void =
+        F:type{_(?A:int, ?B:int):int} = if (true?) { Meet.F1 } else { Meet.F3 }
+
+assert_semantic_error(3509):
+    Meet := module:
+        F1<public>(?A:int):int = A
+        F2<public>(?A:int = 2):int = A
+        F3<public>(?B:int):int = B
+        F4<public>(?B:int = 4):int = B
+
+    Main():void =
+        F:type{_(?A:int, ?B:int):int} = if (true?) { Meet.F1 } else { Meet.F3 }
+
+#################################################
+# JoinTest
+
+JoinTest := module:
+    F1<public>(F(?A:int):int):int = F(?A := 1)
+    F2<public>(F(?A:int = 0):int):int = F() + F(?A := 2)
+    F3<public>(F(?B:int):int):int = F(?B := 3)
+    F4<public>(F(?B:int = 0):int):int = F() + F(?B := 4)
+    F5<public>(?A:int):int = A
+    F6<public>(?A:int = 6):int = A
+    F7<public>(?B:int):int = B
+    F8<public>(?B:int = 8):int = B
+    F9<public>(?A:int = 9, ?B:int = 10):int = A + B
+
+assert:
+    F:type{_(G(?A:int = 0):int):int} = if (true?) { JoinTest.F1 } else { JoinTest.F2 }
+    F(JoinTest.F6) = 1
+
+assert:
+    F:type{_(G(?A:int = 0):int):int} = if (false?) { JoinTest.F1 } else { JoinTest.F2 }
+    F(JoinTest.F6) = 6 + 2
+
+bp_vm_only
+{
+assert_ir_error(3502, 3502):
+    JoinTest := module:
+        F1<public>(F(?A:int):int):int = F(?A := 1)
+        F3<public>(F(?B:int):int):int = F(?B := 3)
+        F9<public>(?A:int = 9, ?B:int = 10):int = A + B
+    
+    Main()<decides>:void =
+        F:type{_(G(?A:int = 0, ?B:int = 0):int):int} = if (true?) { JoinTest.F1 } else { JoinTest.F3 }
+        F(JoinTest.F9) = 1 + 10
+
+assert_ir_error(3502, 3502):
+    JoinTest := module:
+        F1<public>(F(?A:int):int):int = F(?A := 1)
+        F3<public>(F(?B:int):int):int = F(?B := 3)
+        F9<public>(?A:int = 9, ?B:int = 10):int = A + B
+    
+    Main()<decides>:void =
+        F:type{_(G(?A:int = 0, ?B:int = 0):int):int} = if (false?) { JoinTest.F1 } else { JoinTest.F3 }
+        F(JoinTest.F9) = 9 + 3
+}
+
+verse_vm_only
+{
+assert:
+	F:type{_(G(?A:int = 0, ?B:int = 0):int):int} = if (true?) { JoinTest.F1 } else { JoinTest.F3 }
+	F(JoinTest.F9) = 1 + 10
+	
+assert:
+	F:type{_(G(?A:int = 0, ?B:int = 0):int):int} = if (false?) { JoinTest.F1 } else { JoinTest.F3 }
+	F(JoinTest.F9) = 9 + 3
+}
+
+#################################################
+# Overloaded
+
+Overloaded := module:
+    F<public>(A:int):int = A
+    F<public>(A:int, ?B:int):int = A + B
+    F<public>(A:int, ?B:int, ?C:int, ?D:int = 0):int = A + B + C + D
+
+assert:
+    Overloaded.F(42) = 42
+
+assert:
+    Overloaded.F(42, ?B := 13) = 42 + 13
+
+assert:
+    Overloaded.F(42, ?C := 19, ?B := 13) = 42 + 13 + 19 + 0
+
+#################################################
+# Array coercion
+
+ArrayCoercion := module:
+    F<public>(A:[]int, ?B:int = 2):[]int =
+        for (X:A):
+            X + B
+
+assert:
+    # Ensure a coercion from array to tuple isn't inserted
+    ArrayCoercion.F(array{1, 2}) = (3, 4)
+
+assert:
+    G:type{_(:[]int):[]int} = ArrayCoercion.F
+    G(1, 2) = (3, 4)
+
+#################################################
+# `decides`
+Decides := module:
+    F1<public>(A:int, B:int, ?C:int = 42)<computes><decides>:int = A + B <= C
+
+assert:
+    Decides.F1[1, 2] = 1 + 2
+
+assert:
+    Decides.F1[1, 2, ?C := 3] = 1 + 2
+
+assert:
+    not Decides.F1[1, 2, ?C := 2]
+
+#################################################
+# `suspends`
+Suspends := module:
+    int_ref<public> := class:
+        var Contents<public>:int = 0
+    F1<public>()<suspends>:void = {}
+    F2<public>(A:int, B:int, Result:int_ref, ?C:int = 3)<suspends>:void =
+        F1()
+        set Result.Contents = A + B + C
+
+assert:
+    X := Suspends.int_ref{}
+    spawn{Suspends.F2(1, 2, X)}
+    CoroUtils.Tick(1)
+    X.Contents = 1 + 2 + 3
+

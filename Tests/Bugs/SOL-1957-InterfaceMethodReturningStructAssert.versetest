@@ -1,0 +1,8 @@
+a := struct{X:int}
+b := interface{A():a}
+c := class(b):
+    A<override>():a=return a{X:=5}
+assert:
+    C := c{}
+    A:a := C.A()
+    A.X=5

@@ -1,0 +1,210 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+A := class:
+    x:float=0.0
+    y:string=""
+    z:logic=false
+    getX():float= { return(x) }
+    getZ()<transacts>:logic= { return(z) }
+
+AModule := module:
+    w:float = 0.0
+    
+    getW<public>():float= { return(w) }
+
+B := class(A):
+    u:int=1
+    v:string=" "
+    getU():int= { return(u) }
+
+C := class(B):
+    b:?B=false
+
+# Default initialization
+assert{c := C{}; not c.b?}
+# Full initialization
+assert{b := B{}; c := C{x:=42.0, y:="42", z:=false, u:=1337, v:="l33t", b:=option{b}}; c.getX() = 42.0 and not c.getZ()? and c.getU() = 1337}
+# Partial, ordered initialization
+assert{c := C{x:=AModule.getW()}; c.getX() = AModule.getW()}
+assert{c := C{x:=86.75, y:="309"}; c.getX() = 86.75}
+# Sparse initialization
+assert{c := C{x:=22.1, y:="B Baker", v:="St."}; c.getX() = 22.1}
+assert{b := B{}; c := C{b:=option{b}}; c.b?}
+# Out of order initialization
+assert{c := C{z:=true, x:=1.0, u:=0}; c.getX() = 1.0 and c.getZ()? and c.getU() = 0}
+
+o := class:
+    X:int
+    Y:int
+
+# Same set of fields in a different order
+assert:
+    O1 := o{X := 1, Y := 2}
+    O2 := o{Y := 1, X := 2}
+    O1.X = 1
+    O1.Y = 2
+    O2.X = 2
+    O2.Y = 1
+
+# Unsupported type for construction
+assert_semantic_error(3545):
+    f():void={ int{42} }
+assert_semantic_error(3571):
+    abstract_class := class<abstract>{}
+    f():void={ abstract_class{} }
+# Unrecognized, non-instance data-member named in argument list
+assert_semantic_error(3506):
+    A := class { x:float=0.0, y:string="", z:logic=false,
+        f():A= { return( A{w:=48.879} ) }
+    }
+# Unnamed argument
+assert_semantic_error(3552):
+    A := class { x:float=0.0, y:string="", z:logic=false }
+    B := class(A) { u:int=0, v:string="" }
+    C := class(B) { b:?B=false,
+        f():C= { return ( C{22.1} ) }
+    }
+# Duplicate argument definition
+assert_semantic_error(3532):
+    A := class { x:float=0.0, y:string="", z:logic=false,
+        f():A= { return( A{x:=57.005, x:=48.879} ) }
+    }
+# Incompatible argument types
+assert_semantic_error(3509):
+    A := class { x:float=0.0, y:string="", z:logic=false,
+        f():A={return( A{x:=90.2, y:=1.0} )}
+    }
+assert_semantic_error(3509):
+    A := class { x:float=0.0, y:string="", z:logic=false }
+    AModule := module:
+        
+        getPi<public>():float= 3.14
+    B := class(A) { u:int=0, v:string="",
+        f():B={return( B{u:=AModule.getPi()} )}
+    }
+assert_semantic_error(3509):
+    A := class { x:float=0.0, y:string="", z:logic=false,
+        getSelf():A= { return(Self) }
+    }
+    B := class(A) { u:int=0, v:string="" }
+    C := class(B) { b:?B,
+        f(a:A):C= {return( C{y:="Y", b:=a.getSelf()} )}
+    }
+
+# Missing data member initializer
+assert_valid               { A := class { x:int  , y:int }; AModule := module { make():A = A{x:=1, y:=2} } }
+assert_semantic_error(3600){ A := class { x:int  , y:int }; AModule := module { make():A = A{x:=3} } }
+assert_semantic_error(3600){ A := class { x:int  , y:int }; AModule := module { make():A = A{y:=4} } }
+assert_semantic_error(3600){ A := class { x:float, y:float }; AModule := module { make():A = A{x:=5.0} } }
+
+assert_valid               { A := class {}; B := class { x:A, y:A }; BObject := module { make():B = B{x:=A{}, y:=A{}} } }
+assert_semantic_error(3600){ A := class {}; B := class { x:A, y:A }; BObject := module { make():B = B{x:=A{}} } }
+assert_semantic_error(3600){ A := class {}; B := class { x:?A, y:?A }; BObject := module { make():B = B{x:=option{A{}}} } }
+
+assert_valid               { A := class { x:int, y:int }; B := class(A) {}; BObject := module { make():B = B{x:=1, y:=2} } }
+assert_semantic_error(3600){ A := class { x:int, y:int }; B := class(A) {}; BObject := module { make():B = B{x:=3} } }
+
+# Ensure a particular class (rather than a bound)
+assert_semantic_error(3502):
+    class1 := class {}
+    class2 := class(class1) {}
+    Main():void =
+        t := if (false?) {class1} else {class2}
+        t{}
+
+# Ensure no `suspends` calls in the body of the archetype instantiation
+assert_semantic_error(3512):
+    class1 := class {}
+    F()<suspends>:void = {}
+    Main():void =
+        class1:
+            block:
+                F()
+
+assert_semantic_error(3512):
+    class1 := class {}
+    F()<suspends>:int = 0
+    Main():void =
+        class1:
+            let:
+                X := F()
+
+assert_semantic_error(3512):
+    class1 := class:
+        Property:int
+    F()<suspends>:int = 0
+    Main():void =
+        class1:
+            Property := F()
+
+# Ensure archetype instantiation inside a `suspends` function works
+archetype_in_suspends := module:
+    class1<public> := class:
+        Property<public>:string = "A"
+    F1<public>()<suspends>:class1 = class1 {}
+    F2<public>()<suspends>:class1 = class1:
+        Property := "B"
+    Test1<public>()<suspends>:void =
+        CoroUtils.LogEvent(F1().Property)
+    Test2<public>()<suspends>:void =
+        CoroUtils.LogEvent(F2().Property)
+
+assert:
+    spawn{archetype_in_suspends.Test1()}
+    CoroUtils.GetEventLogString() = "A"
+
+assert:
+    spawn{archetype_in_suspends.Test2()}
+    CoroUtils.GetEventLogString() = "B"
+
+# Test archetype arguments that are definitions without a value.
+assert_semantic_error(3577,3560){c:=class{X:int=0}; F():void=c{X:int}}
+assert_semantic_error(3577,3560){c:=class{X:int=0}; F():void=c{X:float}}
+assert_semantic_error(3577,3506){c:=class{X:int=0}; F():void=c{Y:float}}
+assert_semantic_error(3577,3560){c:=class{X:string="WOW"}; F():void=c{X:"WEE"}}
+
+test_basic_archetype_instantiation := module:
+    c1<public> := class:
+        var A1<public>:int
+        B1<public>:int = 128
+        var C1<public>:string = "test"
+        var D1<public>:float = 1.92
+        E1<public>:int
+
+    c2<public> := class(c1):
+        F2<public>:string
+        var G2<public>:int
+        H2<public>:int = 444
+# Test basic overriding of fields and that non-overridden fields work.
+assert:
+    O := test_basic_archetype_instantiation.c1{A1:=3, B1:= 222, C1:= "testoverride", E1:= 5000}
+    O.A1 = 3
+    O.B1 = 222
+    O.C1 = "testoverride"
+    O.D1 = 1.92
+    O.E1 = 5000
+
+# Basic test that creating the object and unifying fields work.
+assert:
+    O := test_basic_archetype_instantiation.c1{ A1 := 0, E1 := 15 }
+    set O.A1 = 3
+    O.A1 = 3
+    O.E1 = 15
+
+# Test that sub-classing works.
+assert:
+    O := test_basic_archetype_instantiation.c2{A1 := 111, E1 := 222, F2 := "testsubclass", G2 := 333}
+    O.A1 = 111
+    O.B1 = 128
+    O.C1 = "test"
+    O.D1 = 1.92
+    O.E1 = 222
+    O.F2 = "testsubclass"
+    O.G2 = 333
+    O.H2 = 444
+
+#Test loading native func from super
+assert:
+    O := class_a_interface_a{}
+    O.GetInt(true) = -1
+    O.GetInt(false) = 1

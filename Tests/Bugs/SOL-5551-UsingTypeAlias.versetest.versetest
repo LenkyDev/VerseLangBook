@@ -1,0 +1,5 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3502):
+    my_ints := []int
+    using{my_ints} # Using a type alias here is unimplemented.

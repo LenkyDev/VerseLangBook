@@ -1,0 +1,30 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test basic calls to strings.
+assert{not "abcdef"[-1]}
+assert{    "abcdef"[0]='a'}
+assert{    "abcdef"[1]='b'}
+assert{    "abcdef"[2]='c'}
+assert{    "abcdef"[3]='d'}
+assert{    "abcdef"[4]='e'}
+assert{    "abcdef"[5]='f'}
+assert{not "abcdef"[6]}
+
+# Test indexing string coerced to array.
+GetArrayAtIndex(Array:[]t, Index:int where t:type)<computes><decides>:t=Array[Index]
+assert{not GetArrayAtIndex["abcdef", -1]}
+assert{    GetArrayAtIndex["abcdef", 0]='a'}
+assert{    GetArrayAtIndex["abcdef", 1]='b'}
+assert{    GetArrayAtIndex["abcdef", 2]='c'}
+assert{    GetArrayAtIndex["abcdef", 3]='d'}
+assert{    GetArrayAtIndex["abcdef", 4]='e'}
+assert{    GetArrayAtIndex["abcdef", 5]='f'}
+assert{not GetArrayAtIndex["abcdef", 6]}
+
+# Test indexing array coerced to string.
+MakeArrayFromElements(A:t, B:t, C:t where t:type)<computes>:[]t=array{A,B,C}
+assert{not MakeArrayFromElements('a','b','c')[-1]}
+assert{    MakeArrayFromElements('a','b','c')[0]='a'}
+assert{    MakeArrayFromElements('a','b','c')[1]='b'}
+assert{    MakeArrayFromElements('a','b','c')[2]='c'}
+assert{not MakeArrayFromElements('a','b','c')[3]}

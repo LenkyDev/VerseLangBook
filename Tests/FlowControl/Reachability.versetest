@@ -1,0 +1,113 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test that a warning is produced for unreachable code following a return.
+assert_valid               { F():int={return 0} }
+assert_semantic_error(2000){ F():int={return 0; 1+2} }
+
+# If an 'if' has a return in both branches, code following it should produce an unreachable warning.
+assert_valid                    { F():int={if(true?     ) {0       } else {1       }; 1+2} }
+assert_valid                    { F():int={if(true?     ) {0       } else {return 1}; 1+2} }
+assert_valid                    { F():int={if(true?     ) {return 0} else {1       }; 1+2} }
+assert_semantic_error(2000)     { F():int={if(true?     ) {return 0} else {return 1}; 1+2} }
+assert_semantic_error(3535,2000){ F():int={if(return 0=1) {0       } else {1       }; 1+2} } # Explicit return out of a failure context is not allowed
+assert_semantic_error(3535,2000){ F():int={if(return 0=1) {0       } else {return 1}; 1+2} } # Explicit return out of a failure context is not allowed
+assert_semantic_error(3535,2000){ F():int={if(return 0=1) {return 0} else {1       }; 1+2} } # Explicit return out of a failure context is not allowed
+assert_semantic_error(3535,2000){ F():int={if(return 0=1) {return 0} else {return 1}; 1+2} } # Explicit return out of a failure context is not allowed
+
+# Code following a return in a for body should *not* produce an unreachable error.
+assert_valid { F():int={for(x:=0..10){return x}; 1+2} }
+
+
+############################################
+# Treat unreachable expressions after break as warning not error
+assert_semantic_error(2000):
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    methodFlow():void=
+        loop:
+            print("loop begin")
+            if (isEarlyExit[]):
+                print("loop break")
+                break
+                # Unreachable code
+                print("expr after break")
+            print("loop end")
+
+
+############################################
+assert_semantic_error(2000):
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    methodFlow():void=
+        loop:
+            print("loop begin")
+            if (isEarlyExit[]):
+                print("loop break")
+                break
+            else:
+                print("loop break")
+                break
+            # Unreachable code - all prior paths exit
+            print("loop end")
+
+
+############################################
+assert_semantic_error(2000):
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    methodFlow() : int =
+        loop:
+            block:
+                print("loop begin")
+                if (isEarlyExit[]):
+                    print("loop break")
+                    break
+                print("loop inner")
+                return (42)
+            # Unreachable code
+            print("loop end")
+        123
+
+
+############################################
+assert_semantic_error(2000):
+    print(msg:string):void={}
+    isEarlyExit()<transacts><decides>:void={}
+
+    methodFlow() : int =
+        loop:
+            print("loop begin")
+            if (isEarlyExit[]):
+                print("loop break")
+                return (42)
+            print("loop end")
+        # Unreachable code - the only exit from loop above is return
+        123
+
+# Return used as a subexpression can produce unreachable code.
+assert_semantic_error(2000){ F(X:int):void=F(return) }
+
+# The ignore_unreachable attribute can be used on a break/return to suppress unreachable warnings in subsequent code.
+assert_valid               { F(X:int):void=F(@ignore_unreachable return) }
+
+# A jump out of a sync subexpression is treated as unconditionally occurring before the expressions
+# after the sync.
+assert_valid               {F(X:int)<suspends>:void={sync{F(0)               , F(1)            }; F(2)}}
+assert_semantic_error(2000){F(X:int)<suspends>:void={sync{block{F(0); return}, F(1)            }; F(2)}}
+assert_semantic_error(2000){F(X:int)<suspends>:void={sync{F(0)               , block{F(1); return}}; F(2)}}
+
+# A jump out of a race/rush subexpression is treated as conditional outside the race/rush, unless
+# every subexpression of the race/rush jumps out of the race/rush.
+assert_valid               {F(X:int)<suspends>:void={race{block{F(0); return}, F(1)            }; F(2)}}
+assert_valid               {F(X:int)<suspends>:void={rush{block{F(0); return}, F(1)            }; F(2)}}
+
+assert_semantic_error(2000){F(X:int)<suspends>:void={race{block{F(0); return}, block{F(1); return}}; F(2)}}
+assert_semantic_error(2000){F(X:int)<suspends>:void={rush{block{F(0); return}, block{F(1); return}}; F(2)}}
+
+# The body of a function nested inside another (e.g. a parametric class method) shouldn't affect the reachability analysis of the outer function.
+assert_valid:
+    c(t:type) := class:
+        F(X:c(t)):c(t) = return X

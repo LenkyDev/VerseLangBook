@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{/Verse.org/Tests/VerseTestScriptCmd}
+
+# Test that order of evaluation is correct for int arguments.
+LogEventAndReturnOne(Event:string):int=
+    CoroUtils.LogEvent(Event)
+    1
+IntFunction(A:int, B:int):void={}
+assert:
+    IntFunction(if(true?){LogEventAndReturnOne("a")} else {0}, if(true?){LogEventAndReturnOne("b")} else {0})
+    CoroUtils.GetEventLogString() = "ab"
+
+
+# Test that order of evaluation is correct for []int arguments.
+LogEventAndReturnArrayOfOne(Event:string):[]int=
+    CoroUtils.LogEvent(Event)
+    array{1}
+ArrayOfIntFunction(A:[]int, B:[]int):void={}
+assert:
+    ArrayOfIntFunction(LogEventAndReturnArrayOfOne("a"), LogEventAndReturnArrayOfOne("b"))
+    CoroUtils.GetEventLogString() = "ab"

@@ -1,0 +1,16 @@
+using { /Verse.org/Verse }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert:
+    # Repeat calls within a transaction return the same timestamp.
+    A := GetSecondsSinceEpoch()
+    B := GetSecondsSinceEpoch()
+    A = B
+
+assert:
+    # When the test was written
+    GetSecondsSinceEpoch() > 1716411409.0
+
+assert:
+    # It exists at the right path
+    (/Verse.org/Verse:)GetSecondsSinceEpoch() > 1716411409.0

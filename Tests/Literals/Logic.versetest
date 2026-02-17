@@ -1,0 +1,64 @@
+assert{false = false}
+assert{false <> true}
+assert{true = true}
+
+assert{false = logic{0 = 1}}
+assert{true = logic{0 = 0}}
+assert{false = logic{not true?}}
+assert{true = logic{not false?}}
+
+# The logic predicate clause allows semicolon or comma separated subexpressions.
+assert{false = logic{false?; false?}}
+assert{false = logic{false?; true?}}
+assert{true = logic{true?; true?}}
+
+assert{false = logic{false?, false?}}
+assert{false = logic{false?, true?}}
+assert{true = logic{true?, true?}}
+
+assert{false = logic{0, false?}}
+assert{true = logic{0, true?}}
+
+assert{false = logic{0; false?}}
+assert{true = logic{0; true?}}
+
+assert{false = logic{false?, 0}}
+assert{true = logic{true?, 0}}
+
+assert{false = logic{false?; 0}}
+assert{true = logic{true?; 0}}
+
+# The logic predicate clause must have at least have a superficial possibility of failure.
+assert_semantic_error(3660){F():logic=logic{}}
+assert_semantic_error(3513){F():logic=logic{0}}
+assert_semantic_error(3513){F():logic=logic{false}}
+assert_semantic_error(3513){F():logic=logic{0;false}}
+assert_semantic_error(3513){F():logic=logic{false;0}}
+assert_semantic_error(3513){F():logic=logic{0,false}}
+assert_semantic_error(3513){F():logic=logic{false,0}}
+
+
+DecidesFunc(L:logic)<decides><transacts>:void=
+    L?
+
+assert{DecidesFunc[true]}
+
+ReturnLogicFunc(L:logic)<transacts>:logic=
+    R:=logic{not L?}
+    R
+
+assert{ReturnLogicFunc(false)?}
+
+Foo:=class:
+	var I:int = 0
+
+	WithRollback()<decides><transacts>:void=
+		set I -= 13
+		false?
+
+DecidesAbortsEarly()<decides><transacts>:void =
+	F:=Foo{I:=42}
+
+	B:=(not F.WithRollback[])?
+
+assert{not DecidesAbortsEarly[]}

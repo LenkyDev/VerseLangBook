@@ -1,0 +1,9 @@
+Foo(x:int):int =
+    var y:int = 0
+    loop:
+        if (y * y = x):
+             return y
+        set y = y + 1
+
+assert:
+    Foo(9) = 3

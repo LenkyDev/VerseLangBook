@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3506, 3598):
+    a:=b:=c(d:int):e of:1

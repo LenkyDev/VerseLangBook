@@ -1,0 +1,37 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+base_class := class() {}
+ok_class1 := class(base_class):
+    Entity:base_class = base_class{} 
+
+# The jira contained an optional, include it here as regression test
+ok_class2 := class(base_class):
+    Entity:?base_class = option { base_class{} } 
+
+
+# Not ok to use the a class while defining it
+assert_semantic_error(3502):
+    fail_class := class:
+        Entity:fail_class = fail_class{}
+
+# Ok without instansiation ... 
+ok_class3 := class:
+    Entity:ok_class3
+
+#  ... or using an empty optional
+ok_class4 := class:
+    Entity:?ok_class4 = false
+
+# ... but not an non-empty optional
+assert_semantic_error(3502):
+    fail_class := class:
+        Entity:?fail_class = option { fail_class{} }
+
+assert_semantic_error(3502):
+    base_class := class() {}
+    fail_class := class(base_class):
+        Entity:base_class = fail_class{} 
+
+
+
+

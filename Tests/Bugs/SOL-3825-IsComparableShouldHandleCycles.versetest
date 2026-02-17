@@ -1,0 +1,5 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3601, 3560, 3549, 3512, 3552, 3512):
+    X: 0<> c{}
+    c:=class{}

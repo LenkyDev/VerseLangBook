@@ -1,0 +1,48 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Verse }
+
+struct_same_name(T:type) := struct:
+     (/Verse.org/VerseTests/struct_same_name:)Value:?T = false
+struct_same_name() := struct_same_name(void)
+
+assert:
+    S := struct_same_name(){}
+    S.Value = false
+    SInt := struct_same_name(int){}
+    SInt.Value = false
+
+
+class_same_name(T:type) := class:
+     (/Verse.org/VerseTests/class_same_name:)Value:?T = false
+     (/Verse.org/VerseTests/class_same_name:)Method(X:T):T= X
+class_same_name() := class_same_name(void)
+
+assert:
+    C := class_same_name(){}
+    C.Value = false
+    C.Method(void)
+    CInt := class_same_name(int){}
+    CInt.Value = false
+
+
+interface_same_name(T:type) := interface:
+    (/Verse.org/VerseTests/interface_same_name:)Value:?T = false
+    (/Verse.org/VerseTests/interface_same_name:)Method(X:T):T= X
+interface_same_name() := interface_same_name(void)
+
+c := class(interface_same_name()) {} 
+c_int := class(interface_same_name(int)) {} 
+    
+assert:
+    C := c{}
+    # C.Value = false       # SOL-7849
+    C.Method(void)
+    CInt := c_int{}
+    # CInt.Value = false    # SOL-7849
+    CInt.Method(10) = 10
+
+e := enum:
+     (/Verse.org/VerseTests/e:)E
+

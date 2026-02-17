@@ -1,0 +1,31 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Check that the fix still allow (local:) where it should.
+parametric_class(t:type) := class:
+  X:int = 42
+  block:
+    (local:)X:int = 99
+  F((local:)X:int):int= (local:)X
+
+parametric_interface(t:type) := class:
+  X:int = 42
+  block:
+    (local:)X:int = 99
+  F((local:)X:int):int= (local:)X
+
+# Verify that the code uploaded before this fix still work ...
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3600, ?Scope:=PublicAPI):
+        snippet:
+            parametric_class(t:type) := class { (local:)X:int; (local:)F():void={} }
+            parametric_interface(t:type) := class { (local:)X:int; (local:)F():void={} }
+
+# ... and that later code failes. 
+assert_semantic_error(3612, 3612, 3612, 3612):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3700, ?Scope:=PublicAPI):
+        snippet:
+            parametric_class(t:type) := class { (local:)X:int; (local:)F():void={} }
+            parametric_interface(t:type) := class { (local:)X:int; (local:)F():void={} }
+

@@ -1,0 +1,297 @@
+# --- Public ---
+assert_valid
+{
+    A := interface:
+        
+        myMember<public>:int
+
+    B := class(A):
+        myFunction(param:A):int=
+            param.myMember
+}
+
+assert_valid
+{
+    A := interface:
+        
+        myMember<public>:int
+
+    B := class:
+        myFunction(param:A):int=
+            param.myMember
+}
+
+assert_valid
+{
+    A := interface:
+        
+        myFunction<public>():int=
+            5
+
+    B := class(A):
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+assert_valid
+{
+    A := interface:
+        
+        myFunction<public>():int=
+            5
+
+    B := class:
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+# --- Private ---
+# Disabled to work around UE-234933
+<# 
+verse_vm_todo
+{
+assert_semantic_error(3593)
+{
+    A := interface:
+        
+        myMember<private>:int = 7
+
+    B := class(A):
+        myFunction():int=
+            myMember
+}
+
+assert_semantic_error(3593)
+{
+    A := interface:
+        
+        myMember<private>:int = 8
+
+    B := class:
+        myFunction(param:A):int=
+            param.myMember
+}
+}
+#>
+
+assert_semantic_error(3593)
+{
+    A := interface:
+        
+        myFunction<private>():int=
+            5
+
+    B := class(A):
+        myOtherFunction():int=
+            myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    A := interface:
+        
+        myFunction<private>():int=
+            5
+    
+    B := class:
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+# --- Protected ---
+# Disabled to work around UE-234933
+<# 
+verse_vm_todo
+{
+assert_valid
+{
+    A := interface:
+        
+        myMember<protected>:int = 7
+
+    B := class(A):
+        myFunction():int=
+            myMember
+}
+
+assert_semantic_error(3593)
+{
+    A := interface:
+        
+        myMember<protected>:int = 8
+
+    B := class:
+        myFunction(param:A):int=
+            param.myMember
+}
+}
+#>
+
+assert_valid
+{
+    A := interface:
+        
+        myFunction<protected>():int=
+            5
+
+    B := class(A):
+        myOtherFunction():int=
+            myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    A := interface:
+        
+        myFunction<protected>():int=
+            5
+    
+    B := class:
+        myOtherFunction(param:A):int=
+            param.myFunction()
+}
+
+# --- Internal ---
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := interface:
+                # default access := internal
+                myMember:int
+
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := interface:
+                
+                myMember<internal>:int
+
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := interface<internal>:
+                
+                myMember<internal>:int
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class:
+                myFunction(a:A):int=
+                    a.myMember
+}
+
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := interface:
+                # default access := internal
+                myFunction():int=
+                    5
+
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_valid
+{
+    vmodule(X):
+        snippet:
+            A := interface:
+                
+                myFunction<internal>():int=
+                    5
+
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := interface:
+                # default access := internal
+                myFunction():int=
+                    5
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+assert_semantic_error(3593)
+{
+    vmodule(X):
+        snippet:
+            
+            A<public> := interface:
+                
+                myFunction<internal>():int=
+                    5
+
+    vmodule(Y):
+        snippet:
+            using{X}
+            B := class(A):
+                myOtherFunction():int=
+                    myFunction()
+}
+
+
+# --- Ensure single access level ---
+
+assert_semantic_error(3543):
+    A := interface:
+        myFunction<public><internal>():int=
+            return (42)
+
+# Disabled to work around UE-234933
+<# 
+verse_vm_todo
+{
+assert_semantic_error(3543):
+    A := interface:
+        myData<public><private><protected><internal>:int = 42
+}
+#>
+
+# Allow ambiguity as long as only one choice is accessible
+<#   
+# Doesn't work for types
+assert_valid:
+    vmodule(X):
+        snippet:
+            A<public> := interface{}
+    vmodule(Y):
+        snippet:
+            A<internal> := interface{}
+    vmodule(Z):
+        snippet:        
+            using{ X }
+            using{ Y }
+            B := class(A){} # Should not be ambiguous and refer to X.A since Y.A is inaccessible
+#>
+

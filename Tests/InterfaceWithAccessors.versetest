@@ -1,0 +1,84 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Accessors on field defined in interface
+
+interface_with_var1<public> := interface:
+    var Value<getter(ValueGetter)><setter(ValueSetter)>:int = external{}
+
+    var SecretValue:int = 567
+    ValueGetter(:accessor)<transacts>:int = SecretValue
+    ValueSetter(:accessor, V:int)<transacts>:void = set SecretValue = V
+
+class_with_accessors1 := class(interface_with_var1):
+
+assert:
+    Object:class_with_accessors1 = class_with_accessors1{}
+
+    Object.Value = 567
+    set Object.Value = 678
+    Object.Value = 678
+
+
+# Accessor on override of field defined (without accessors) in interface
+
+interface_with_var2<public> := interface:
+    var Value:int = 123
+
+class_with_accessors2 := class(interface_with_var2):
+    var Value<override><getter(ValueGetter)><setter(ValueSetter)>:int = external{}
+
+    var SecretValue:int = 567
+    ValueGetter(:accessor)<transacts>:int = SecretValue
+    ValueSetter(:accessor, V:int)<transacts>:void = set SecretValue = V
+
+assert:
+    Object:class_with_accessors2 = class_with_accessors2{}
+    567 = Object.Value
+    set Object.Value = 678
+    678 = Object.Value
+
+
+# A field with accessors can not be overridden.
+# Not by a value field, ...
+
+assert_semantic_error<depends_on_library>(3523):
+    interface_with_var3<public> := interface:
+        var Value<getter(ValueGetter)><setter(ValueSetter)>:int = external{}
+
+        var SecretValue:int = 567
+        ValueGetter(:accessor)<transacts>:int = SecretValue
+        ValueSetter(:accessor, V:int)<transacts>:void = set SecretValue = V
+
+    class_with_accessors3 := class(interface_with_var3):
+        var Value<override>:int = 678
+
+# ... another field with accessors, ...
+assert_semantic_error<depends_on_library>(3523):
+    interface_with_var4<public> := interface:
+        var Value<getter(ValueGetter)><setter(ValueSetter)>:int = external{}
+
+        var SecretValue:int = 567
+        ValueGetter(:accessor)<transacts>:int = SecretValue
+        ValueSetter(:accessor, V:int)<transacts>:void = set SecretValue = V
+
+    class_with_accessors4 := class(interface_with_var4):
+        var Value<override><getter(ClassValueGetter)><setter(ClassValueSetter)>:int = external{}
+
+        var ClassSecretValue:int = 5678
+        ClassValueGetter(:accessor)<transacts>:int = ClassSecretValue
+        ClassValueSetter(:accessor, V:int)<transacts>:void = set ClassSecretValue = V
+
+# ... nor by overriding the accessors.
+assert_semantic_error<depends_on_library>(3523, 3523):
+    interface_with_var5<public> := interface:
+        var Value<getter(ValueGetter)><setter(ValueSetter)>:int = external{}
+
+        var SecretValue:int = 567
+        ValueGetter(:accessor)<transacts>:int = SecretValue
+        ValueSetter(:accessor, V:int)<transacts>:void = set SecretValue = V
+
+    class_with_accessors5 := class(interface_with_var5):
+        var ClassSecretValue:int = 5678
+        ValueGetter<override>(:accessor)<transacts>:int = ClassSecretValue
+        ValueSetter<override>(:accessor, V:int)<transacts>:void = set ClassSecretValue = V
+

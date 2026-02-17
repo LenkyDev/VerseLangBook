@@ -1,0 +1,8 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd/TestUtils }
+
+initialize_var_misses_def_dest := class:
+    MyField<public>:?native_class = option{native_class:
+        NativeGetterSetter := 42
+    }

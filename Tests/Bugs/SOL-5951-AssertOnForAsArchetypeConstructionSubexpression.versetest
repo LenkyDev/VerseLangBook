@@ -1,0 +1,17 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test case originally from forum post:
+# https://forums.unrealengine.com/t/error-ensure-condition-failed-isinfailurecontext-trying-to-emit-a-failure-jump-outside-of-a-failure-context/1629399
+
+c:=class{X:[]int}
+
+F1(Z:logic):c=c{X := for(Y:=0..1, Z?) {1}}
+
+assert{F1(false).X=array{}}
+assert{F1(true).X=array{1,1}}
+
+# Test that unhandled failure in the body of the for escapes the archetype instantiation expression.
+F2(Z:int)<transacts><decides>:c=c{X := for(Y:=0..1, true?) {Z=1}}
+assert{not F2[0]}
+assert{    F2[1].X=array{1,1}}
+assert{not F2[2]}

@@ -1,0 +1,2 @@
+# Test that this produces a syntax error instead of a parser assertion.
+assert_syntax_error(3101){"*0"}

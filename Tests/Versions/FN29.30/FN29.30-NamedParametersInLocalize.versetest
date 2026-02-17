@@ -1,0 +1,24 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# When localize got named parameters then many previously ignored errors were no longer ignored.
+# These examples are taken from code in the wild. No errors were detected since the code was never called.
+
+assert_valid<depends_on_library>:
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=2920):
+    snippet:
+      NamedMessage<localizes>(Agent:?int, Extra: string):message = "{Agent} {Extra}"
+
+assert_semantic_error<depends_on_library>(3509):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=2930):
+    snippet:
+      NamedMessage<localizes>(Agent:?int, Extra: string):message = "{Agent} {Extra}"
+
+assert_valid<depends_on_library>:
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=2920):
+    snippet:
+      ComplexMessage<localizes>(title, string, [agent]int : players, splitter: string, end: string):message =  ""
+
+assert_semantic_error<depends_on_library>(3540, 3540, 3540, 3506):
+  vpackage(P0, /A, ?Dependencies:=("Verse/Verse"), ?UploadedAtFNVersion:=2930):
+    snippet:
+      ComplexMessage<localizes>(title, string, [agent]int : players, splitter: string, end: string):message =  ""

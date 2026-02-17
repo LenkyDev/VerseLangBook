@@ -1,0 +1,9 @@
+assert_semantic_error(3547):
+    while := 42
+
+assert_semantic_error(3514):
+    Main():void =
+        while := 42
+
+assert_semantic_error(3514):
+    Main(while:string):void = {}

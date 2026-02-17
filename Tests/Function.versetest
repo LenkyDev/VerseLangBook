@@ -1,0 +1,306 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+f0():int = { return(42) }
+f1():int = { return(1138) }
+f2(which:logic):int = { return(if (which?) { 4711 } else { 1984 }) }
+
+assert{ f0() = 42 }
+assert{ f1() = 1138 }
+assert{ f2(true) = 4711 }
+assert{ f2(false) = 1984 }
+
+# Test that you can't declare a function named like the construction script
+assert_syntax_error(<#S84#>3100){"$SolarisConstructionScript():void=\{\}"}
+# dangling ':=' followed by comment
+assert_syntax_error(3104){"f():void=\n# comment is not a function body"}
+# dangling ':=' followed by another class
+assert_syntax_error(3104){"f():void=\nC2:=class\{\}"}
+# dangling ':=' followed by empty line
+assert_syntax_error(3104){"f():void=\n"}
+# explicit type with dangling ':=' followed by comment
+assert_syntax_error(3104){"C := class:\n    f():void=\n    # comment is not a function body"}
+# explicit type with dangling ':=' followed by another class
+assert_syntax_error(3104){"C := class:\n    f():void=\n    C2:=class\{\}"}
+# explicit type with dangling ':=' followed by empty line
+assert_syntax_error(3104){"C := class:\n    f():void=\n    "}
+
+
+# Test that you can't declare two parameters with the same name.
+assert_semantic_error(3532){f(a:int,a:int):void={}}
+
+# Tests that declare two locals with the same name.
+assert_semantic_error(3532){f():void={a:int=0;a:int=0}}
+assert_semantic_error(3588,3532){f():void={a:int=0;for(a:=0..0){a}}}
+
+# Test that native functions (and native class functions) are plain declarations with a return type but not a body.
+assert_valid               {f<native>():void}
+assert_semantic_error(3585){f<native>()}
+assert_semantic_error(3597){f<native>():void={}}
+assert_semantic_error(3597){f<native>():void={}}
+assert_valid               {C<native> := class{f<native>():void}}
+assert_semantic_error(3585){C<native> := class{f<native>()}}
+assert_semantic_error(3597){C<native> := class{f<native>():void={}}}
+assert_semantic_error(3597){C<native> := class{f<native>():void={}}}
+
+# missing function type
+assert_semantic_error(3585):
+    f()
+    # comment is not a function body"
+
+# missing function type followed by another class
+assert_semantic_error(3585):
+    f()
+    C2:=class{}
+
+# missing function type followed by empty line
+assert_semantic_error(3585):
+    f() 
+
+assert_semantic_error(3597){f<native>():void={}}
+assert_semantic_error(3597):
+    
+    f<native>():void={}
+
+# Test that abstract functions are plain declarations without bodies or empty assignments
+assert_valid{C := class<abstract>{f():void}}
+assert_semantic_error(3585){C := class<abstract>{f()}}
+
+# Test declaring functions as parameters.
+assert_valid{f(g():void):void={}}
+assert_semantic_error(3540){f(g()):void={}} # Parameter function type needs an explicit return type.
+
+# Test declaring functions with parameters as parameters.
+assert_valid{f(g(x:int):void):void={}}
+assert_valid{f(g(:int):void):void={}}
+
+# Test declaring functions with functions with parameters as parameters.
+assert_valid{f(g(h(:int):void):void):void={}}
+
+# Test declaring fallible functions as parameters.
+assert_valid{f(g()<transacts><decides>:void):void={}}
+assert_valid{f(g()<transacts><decides>:void):logic=logic{g[]}}
+
+# Test declaring async functions as parameters.
+assert_valid{f(g()<suspends>:void):void={}}
+
+# Test calling async function parameters
+C0 := class:
+    x:int
+    var y:int
+
+	
+	f4(g()<suspends>:int)<suspends>:void=
+		set y += g()
+	
+	
+	f19()<suspends>:int=return x
+assert:
+	c0 := C0{x:=42, y:=1}
+	spawn{c0.f4(c0.f19)}
+	CoroUtils.Tick(1)
+	c0.y = 43
+
+# Test that attributes on parameters are not allowed.
+assert_semantic_error(3596){@attribscope_data @attribscope_name attr:=class(attribute){}; F(A<attr>:int):void={}}
+assert_semantic_error(3596){@attribscope_data @attribscope_name attr:=class(attribute){}; F(A:int, B<attr>:int):void={}}
+assert_semantic_error(3596){@attribscope_data @attribscope_name attr:=class(attribute){}; F(G<attr>():int):void={}}
+assert_semantic_error(3596){@attribscope_data @attribscope_name attr:=class(attribute){}; F(A:t where t<attr>:type):void={}}
+
+assert_semantic_error(3596){@attribscope_data                   attr:=class(attribute){}; F(@attr A:int):void={}}
+assert_semantic_error(3596){@attribscope_data                   attr:=class(attribute){}; F(A:int, @attr B:int):void={}}
+assert_semantic_error(3596){@attribscope_data                   attr:=class(attribute){}; F(@attr G():int):void={}}
+assert_semantic_error(3596){@attribscope_data                   attr:=class(attribute){}; F(A:t where (@attr t:type)):void={}}
+
+# Test referencing functions as values.
+assert_valid{f():void=f}
+assert_valid{f(g():void):void={}; ff():void=f(ff)}
+assert_valid{f(g()<suspends>:void):void={}; ff()<suspends>:void=f(ff) }
+
+C1 := class:
+    f():int=return 2
+
+assert{g:=C1{}.f; g() = 2}     # taking a reference to an instance method
+
+C1Module := module:
+    
+    f<public>():int=return 1
+
+f3(g():int):int=return 101
+
+f5(g(:int):int):int=return g(20)
+f6(x:int):int=return x+1
+f7():int=return f3(f7)
+
+assert{g:=C1Module.f; g() = 1} # taking a reference to a module method
+assert{f5(f6)=21}             # taking a reference to a module-scoped function
+assert{f7() = 101}            # taking a reference to the current function
+
+f8(g(i:int, f:float):string):string = { return g(42, 13.37) }
+f9(i:int, f:float):string = { return "Moo" }
+f10(g(h(i:int, f:float):string):string):string = { return g(f9) }
+assert{f8(f9) = "Moo"}
+assert{f10(f8) = "Moo"}
+
+# Test declaring mutable function module variables with var f():void=...
+assert_semantic_error(3502):
+    var f11():int=return 21
+
+# Test declaring mutable function instance variables with var f():void=...
+assert_semantic_error(3502):
+    C2 := class:
+        var f13():int=return 23
+        f14():int=return 24
+
+# Test declaring mutable function modules variables with f():void=...
+assert_semantic_error(3502):
+    C3 := module:
+        
+        var f15<public>():int=return 25
+        
+        f16<public>():int=return 26
+
+# Test declaring overriding mutable function instance variables defined with var f():...
+assert_semantic_error(3502, 3591):
+    C4 := class:
+        var f17():int
+    C5 := class(C4):
+        f17<override>():int=return 27
+        f18():int=return 28
+
+# Test that mutable function variables can't be declared in interfaces.
+assert_semantic_error(3502){ T := interface { var f():int } }
+
+# Test that function mutable class variables declared with var f():void=... can't be marked native (not yet implemented).
+assert_semantic_error(3502){ C<native> := class { var f<native>():int } }
+
+# Test capturing a reference to a native function, and calling the reference.
+assert:
+    f := TestUtils.BitcastFloatToInt
+    f(0.0) = 0
+    f(1.0) = 0x3ff0000000000000
+    f(2.0) = 0x4000000000000000
+
+# Test taking a reference to a inner module coroutine, an instance coroutine, and a outer module coroutine.
+C6 := class:
+    ClassCoro()<suspends>:void={CoroUtils.WaitTicks(1); CoroUtils.LogEvent("2")}
+
+C6Module := module:
+    
+    ModuleCoro<public>()<suspends>:void={CoroUtils.WaitTicks(1); CoroUtils.LogEvent("1")}
+
+TopCoro()<suspends>:void={CoroUtils.WaitTicks(1); CoroUtils.LogEvent("3")}
+
+assert{g:=C6Module.ModuleCoro; spawn{g()}; CoroUtils.Tick(1); CoroUtils.GetEventLogString() = ",1"}
+assert{g:=C6{}.ClassCoro; spawn{g()}; CoroUtils.Tick(1); CoroUtils.GetEventLogString() = ",2"}
+assert{g:=TopCoro; spawn{g()}; CoroUtils.Tick(1); CoroUtils.GetEventLogString() = ",3"}
+
+# Test two functions calling each other
+test1(param:int):int = return if (param < 3) { param } else { test2(param - 1) }
+test2(param:int):int = return if (param < 3) { param } else { test1(param - 1) }
+assert{test1(11) = 2}
+assert{test2(11) = 2}
+
+assert_semantic_error(3621, 3512):
+    Foo[X:int]:int := X = 1
+
+assert_semantic_error(3512):
+    Foo(X:int):int := X = 1
+
+assert_valid:
+    Foo(X:int)<decides>:int := X = 1
+
+Identity(X:t where t:type)<computes>:t = X
+
+# Add effects
+assert:
+    F:type{_(:int)<computes><decides>:int} = Identity
+    F[1] = 1
+
+DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+
+# Add effects
+assert:
+    F:type{_(:int)<decides><transacts>:int} = DecidesIdentity
+    F[1] = 1
+
+TransactsIdentity(X:t where t:type)<transacts>:t = X
+
+# Add effects
+assert:
+    F:type{_(:int)<decides><transacts>:int} = TransactsIdentity
+    F[1] = 1
+
+# Join effects
+bp_vm_only
+{
+assert_ir_error(3502):
+    Identity(X:t where t:type)<computes>:t = X
+    DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+    TransactsIdentity(X:t where t:type)<transacts>:t = X
+    Main()<decides>:void =
+        X := true
+        F:type{_(:int)<computes><decides>:int} := if (X?) { Identity } else { DecidesIdentity }
+        F[1] = 1
+}
+verse_vm_only
+{
+assert_valid:
+    Identity(X:t where t:type)<computes>:t = X
+    DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+    TransactsIdentity(X:t where t:type)<transacts>:t = X
+    Main()<decides>:void =
+        X := true
+        F:type{_(:int)<computes><decides>:int} := if (X?) { Identity } else { DecidesIdentity }
+        F[1] = 1
+}
+
+# Join effects.  Attempt to remove effects.
+assert_semantic_error(3509):
+    Identity(X:t where t:type)<computes>:t = X
+    DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+    Main()<decides>:void =
+        X := true
+        F:type{_(:int)<computes>:int} := if (X?) { Identity } else { DecidesIdentity }
+        F(1) = 1
+
+# Join effects
+bp_vm_only
+{
+assert_ir_error(3502, 3502):
+    DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+    TransactsIdentity(X:t where t:type)<transacts>:t = X
+    Main()<decides>:void =
+        X := true
+        F:type{_(:int)<decides><transacts>:int} := if (X?) { DecidesIdentity } else { TransactsIdentity }
+        F[1] = 1
+}
+verse_vm_only
+{
+    assert_valid
+    {
+        DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+        TransactsIdentity(X:t where t:type)<transacts>:t = X
+        Main()<decides>:void =
+            X := true
+            F:type{_(:int)<decides><transacts>:int} := if (X?) { DecidesIdentity } else { TransactsIdentity }
+            F[1] = 1
+    }
+}
+
+# Join effects.  Attempt to remove effects.
+assert_semantic_error(3509):
+    DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+    TransactsIdentity(X:t where t:type)<transacts>:t = X
+    Main()<decides>:void =
+        X := true
+        F:type{_(:int)<computes><decides>:int} := if (X?) { DecidesIdentity } else { TransactsIdentity }
+        F[1] = 1
+
+# Join effects.  Attempt to remove effects.
+assert_semantic_error(3509):
+    DecidesIdentity(X:t where t:type)<computes><decides>:t = X
+    TransactsIdentity(X:t where t:type)<transacts>:t = X
+    Main()<decides>:void =
+        X := true
+        F:type{_(:int)<transacts>:int} := if (X?) { DecidesIdentity } else { TransactsIdentity }
+        F(1) = 1

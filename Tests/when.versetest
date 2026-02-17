@@ -1,0 +1,113 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Concurrency }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+verse_vm_only {
+assert_valid:
+    Main():void =
+        when(1){2}
+
+assert_valid:
+    F()<computes><reads><decides>:void = {}
+    Main():void =
+        when(F[]){}
+
+assert_semantic_error(3512):
+    F()<computes><reads><suspends>:void = {}
+    Main():void =
+        when(F()){}
+
+assert_semantic_error(3512):
+    F()<computes><writes>:void = {}
+    Main():void =
+        when(F()){}
+
+assert_semantic_error(3512):
+    F()<computes><allocates>:void = {}
+    Main():void =
+        when(F()){}
+
+assert_semantic_error(3552):
+    Main():void =
+        loop:
+            when(1):
+                break
+            break
+
+assert_semantic_error(3683):
+    Main():void =
+        when(1):
+            return
+
+int_ref := class:
+    var Contents:int = 0
+
+assert:
+    var X:int = 0
+    var Y:int = 1
+    when(X):
+        set Y = X
+    Y = 0
+    set X = 2
+    Y = 2
+    set X = 3
+    Y = 3
+
+assert:
+    var X:int = 0
+    var Y:int = 1
+    when(X > 2):
+        set Y = Y + 1
+    Y = 1
+    set X = 1
+    Y = 1
+    set X = 3
+    Y = 2
+    set X = 2
+    Y = 2
+    set X = 3
+    Y = 3
+
+Cancel := module:
+    F<public>(Y:int_ref)<suspends>:int =
+        var X:int = 0
+        Task := when(X):
+            set Y.Contents = X
+        Task.Cancel()
+        set X = 1
+
+assert:
+    X:int_ref = int_ref{}
+    spawn:
+        Cancel.F(X)
+    X.Contents = 0
+
+assert_semantic_error(3509):
+    using { /Verse.org/Concurrency }
+    Main():void =
+        Task:task(int) = when(1):
+            2
+
+assert:
+    var X:int = 0
+    var Y:int = 0
+    Task:task(void) = when(X):
+        set Y = X
+    set X = 1
+    Y = 1
+
+assert:
+    var X:int = 2
+    var Y:int = 2
+    when(Y):
+        Z := if (Y < 0) then 0 else Y - 1
+        if (Z <> X):
+            set X = Z
+    when(X):
+        Z := if (X < 0) then 0 else X - 1
+        if (Z <> Y):
+            set Y = Z
+    X = -1
+    Y = 0
+}

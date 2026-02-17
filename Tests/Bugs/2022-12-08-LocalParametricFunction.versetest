@@ -1,0 +1,19 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error<depends_on_library>(3518, 3518, 3624, 3588, 3588, 3502, 3509, 3509, 3588, 3503, 3506, 3509, 3506, 3509, 3506, 3506, 3510, 3532, 3532):
+    Concatenate<public>(Arrays:[][]t where t:type)<computes>:[]t=
+        if (Arrays.Length=1; Result:=Arrays[0]) then Result
+        else if (Arrays.Length=2; A0:=Arrays[0]; A1:=Arrays[1]) then A0+A1
+        else if (Arrays.Length=3; A0:=Arrays[0]; A1:=Arrays[1]; A2:=Arrays[2]) then A0+A1+A2
+        else if (Arrays.Length>3; Midpoint:=Floor(Arrays.Length/2); A0:=Arrays.Slice[0, Midpoint]; A1:=Arrays.Slice[Midpoint, Arrays.Length]) then Concatenate(A0)+Concatenate(A1)
+        else:
+            #assert{Array.Length=0}
+            array{}
+            
+            InsertAt(Array:[N]t, Index:int, Value:t where N:int, t:type, 0<=Index<=N):[N+1]t=
+                if (Index=0; Rest:=Slice(Array, 1, N)) then array{Value}+Rest
+                else if (Index=N; Front:=Slice(Array, 0, N-1)) then Front+array{Value}
+                else if (0<Index<N; Front:=Slice(Array, 0, Index); Rest:=Slice(Array, Index, N)) then Front+array{Value}+Rest
+                else:
+                    Array
+            

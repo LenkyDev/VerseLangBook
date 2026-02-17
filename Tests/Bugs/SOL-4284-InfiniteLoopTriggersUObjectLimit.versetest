@@ -1,0 +1,44 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+
+using { /Verse.org/Tests/VerseTestScriptCmd/CoroUtils }
+
+# Test code that will definitely end up allocating too many `UObject`s should hit the limit and throw a runtime error
+# rather than triggering the `UObject` limit assert. This ensures that we don't crash servers.
+FakeSuspend()<suspends>:void={}
+InfiniteLoopWithFakeSuspend()<suspends>:void=loop{FakeSuspend()}
+
+a := class:
+    x:int
+
+assert_runtime_error("LoopIterationLimit", "HangTimeLimit"):
+    spawn{InfiniteLoopWithFakeSuspend()}
+
+InfiniteLoopWithSubtasks()<suspends>:void=
+    loop:
+        race:
+            WaitTicks(1)
+            FakeSuspend()
+
+assert_runtime_error("LoopIterationLimit", "HangTimeLimit"):
+    spawn{InfiniteLoopWithSubtasks()}
+
+TestA()<transacts>:a=a{x:=200}
+FooTestA()<transacts><suspends>:a=TestA()
+
+InfiniteLoopWithSubtasksAndClassInstantiations()<suspends>:void=
+    loop:
+        race:
+            FooTestA()
+            WaitTicks(1)
+            FakeSuspend()
+        sync:
+            FooTestA()
+            FakeSuspend()
+
+assert_runtime_error("LoopIterationLimit", "HangTimeLimit"):
+    spawn{InfiniteLoopWithSubtasksAndClassInstantiations()}
+    
+}

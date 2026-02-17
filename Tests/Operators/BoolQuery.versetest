@@ -1,0 +1,11 @@
+assert{true?=false}
+assert{not true??}
+assert{not false?}
+assert{logic{1 = 1}?}
+
+# Test that member variable Bools can be queried the same as any others.
+assert_valid:
+    C := class:
+        memberBool:logic
+        f1():void={logic{memberBool?}}
+        f2(b:logic):void={logic{b?}}

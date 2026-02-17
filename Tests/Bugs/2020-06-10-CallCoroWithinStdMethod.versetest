@@ -1,0 +1,6 @@
+assert_semantic_error(3512):
+    C := class:
+        
+        myCoro()<suspends>:void={}
+        myStdFunc():void=
+            myCoro()

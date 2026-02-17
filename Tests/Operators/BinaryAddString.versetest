@@ -1,0 +1,25 @@
+assert{"" + "" = ""}
+assert{"a" + "" = "a"}
+assert{"" + "a" = "a"}
+assert{"a" + "b" = "ab"}
+assert{"abc" + "d" = "abcd"}
+assert{"😀" + "🚀" = "😀🚀"}
+assert{"😀" + "🚀" + "😀" = "😀🚀😀"}
+
+# Test the += operator.
+assert:
+    var a:string="ab"
+    set a += "c"
+    a="abc"
+    
+# Test that you can't use += on non-pointer string types.
+assert_semantic_error(3509){ f():void={a:string := ""; set a += ""} }
+
+# Test adding string and []char
+assert{""+array{}=""}
+assert{""+array{}=array{}}
+assert{array{}+""=""}
+assert{array{}+""=array{}}
+assert{"a"+array{}="a"}
+assert{array{'a'}+""="a"}
+assert{array{'a'}+""=array{'a'}}

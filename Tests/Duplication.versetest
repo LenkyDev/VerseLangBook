@@ -1,0 +1,28 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+C:= class(duplication_test_inner_base):
+    var X<override>:int = 10
+D:= class(duplication_test_outer_base):
+    Inner<override>:duplication_test_inner_base := C{}
+    block:
+        set Inner.X = Inner.X + 10
+
+# Native duplication is not intended to be exposed directly, but native APIs might internally rely on native duplication
+# and return the copy to Verse. This is validating that the object graph is duplicated correctly using native duplication.
+# Note that native construction is used for instantiation here as native duplication requires native construction semantics.
+# While we could directly instantiate using Verse semantics (i.e. DO := D{}), that isn't compatible with native duplication.
+assert:
+    D0 := duplication_test_module.NativeConstruct(D)
+    D1 := duplication_test_module.NativeDuplicate(D0)
+    D1 <> D0
+    D1.Inner <> D0.Inner
+    D1.Inner.X = D0.Inner.X
+
+# Regression test for native duplication leading to unexpected mutation of default data by a block initializer (UE-305340).
+assert:
+    D0 := duplication_test_module.NativeConstruct(D)
+    D1 := duplication_test_module.NativeDuplicate(D0)
+    D2 := duplication_test_module.NativeConstruct(D)
+    D2.Inner.X = D0.Inner.X

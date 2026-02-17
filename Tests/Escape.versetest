@@ -1,0 +1,6 @@
+# Paths are not yet supported, but test that they get through the parser at least.
+assert_semantic_error(3552){ f():void = { x:=&1 } }
+assert_semantic_error(3552){ f():void = { x:=&f } }
+assert_semantic_error(3552){ f():void = { x:=&self } }
+assert_semantic_error(3552){ f():void = { x:=&C } }
+assert_semantic_error(3552){ f():void = { x:=&(1+2) } }

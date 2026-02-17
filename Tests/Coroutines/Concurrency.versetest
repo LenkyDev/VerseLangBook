@@ -1,0 +1,1512 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+############################################
+# Helper functions
+Log(Msg:string): void             = {CoroUtils.LogEvent(Msg)}
+GetLogStr(): string               = {return CoroUtils.GetEventLogString()}
+Wait(Ticks:int)<suspends>: void   = {CoroUtils.WaitTicks(Ticks)}
+Tick(Ticks:int): void             = {CoroUtils.Tick(Ticks)}
+
+############################################
+
+int_result := class:
+    var Num:int = 0
+
+# Sync with one suspend point per timeline
+
+_testSync1(S:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    syncResults := sync:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("C")
+            1
+
+        block:
+            CoroUtils.LogEvent("D")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("E")
+            2
+
+        block:
+            CoroUtils.LogEvent("F")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("G")
+            4
+
+    CoroUtils.LogEvent("H")
+
+    # Sum results
+    set S.Num = 100 * syncResults(0) + 10 * syncResults(1) + syncResults(2)
+
+# Sync with two suspend points per timeline
+
+_testSync2(S:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    syncResults := sync:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("C")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("D")
+            11
+
+        block:
+            CoroUtils.LogEvent("E")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("F")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("G")
+            22
+
+    CoroUtils.LogEvent("H")
+
+    # Sum results
+    set S.Num = 100 * syncResults(0) + syncResults(1)
+
+
+# Sync that completes immediately
+
+_testSync3(S:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    syncResults := sync:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("C")
+            111
+
+        block:
+            CoroUtils.LogEvent("D")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("E")
+            222
+
+    CoroUtils.LogEvent("F")
+
+    # Sum results
+    set S.Num = 1000 * syncResults(0) + syncResults(1)
+
+
+# Race with one suspend point per timeline
+
+_testRace1(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("a")
+    set R.Num = race:
+        block:
+            CoroUtils.LogEvent("b")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("c")
+            99
+
+        block:
+            CoroUtils.LogEvent("d")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("e")
+            66
+
+        block:
+            CoroUtils.LogEvent("f")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("g")
+            33
+
+    CoroUtils.LogEvent("h")
+    CoroUtils.WaitTicks(3)
+
+
+# Race with two suspend points per timeline
+
+_testRace2(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("a")
+    set R.Num = race:
+        block:
+            CoroUtils.LogEvent("b")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("c")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("d")
+            11
+
+        block:
+            CoroUtils.LogEvent("e")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("f")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("g")
+            22
+
+    CoroUtils.LogEvent("h")
+    CoroUtils.WaitTicks(3)
+
+
+# Race that completes immediately #1
+
+_testRace3(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("a")
+    set R.Num = race:
+        block:
+            CoroUtils.LogEvent("b")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("c")
+            77
+
+        block:
+            CoroUtils.LogEvent("d")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("e")
+            88
+
+    CoroUtils.LogEvent("f")
+
+
+# Race that completes immediately #2
+
+_testRace4(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("a")
+    set R.Num = race:
+        block:
+            CoroUtils.LogEvent("b")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("c")
+            44
+
+        block:
+            CoroUtils.LogEvent("d")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("e")
+            55
+
+    CoroUtils.LogEvent("f")
+
+
+# Rush with one suspend point per timeline
+
+_testRush1(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    set R.Num = rush:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("C")
+            9000
+
+        block:
+            CoroUtils.LogEvent("D")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("E")
+            8000
+
+        block:
+            CoroUtils.LogEvent("F")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("G")
+            7000
+
+    CoroUtils.LogEvent("H")
+    CoroUtils.WaitTicks(3)
+
+
+# Rush with two suspend points per timeline
+
+_testRush2(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    set R.Num = rush:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("C")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("D")
+            6000
+
+        block:
+            CoroUtils.LogEvent("E")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("F")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("G")
+            5000
+
+    CoroUtils.LogEvent("H")
+    CoroUtils.WaitTicks(2)
+
+
+# Rush with one immediately completing timeline
+
+_testRush3(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    set R.Num = rush:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("C")
+            4000
+
+        block:
+            CoroUtils.LogEvent("D")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("E")
+            3000
+
+    CoroUtils.LogEvent("F")
+    CoroUtils.WaitTicks(3)
+
+
+# Rush with two immediately completing timelines
+
+_testRush4(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    set R.Num = rush:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("C")
+            2000
+
+        block:
+            CoroUtils.LogEvent("D")
+            CoroUtils.WaitTicks(0)
+            CoroUtils.LogEvent("E")
+            1000
+
+    CoroUtils.LogEvent("F")
+    CoroUtils.WaitTicks(1)
+
+
+############################################
+# Nesting tests
+
+TestyCoroSyncSync1(Wait1:int, Wait2:int, Wait3:int)<suspends>:void =
+    Log("a")
+    sync:
+        sync:
+            block:
+                Log("b")
+                Wait(Wait1)
+                Log("B")
+            block:
+                Log("c")
+                Wait(Wait2)
+                Log("C")
+        block:
+            Log("d")
+            Wait(Wait3)
+            Log("D")
+    Log("A")
+
+assert:
+    spawn{TestyCoroSyncSync1(1, 2, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,B,C,DA,"
+
+assert:
+    spawn{TestyCoroSyncSync1(1, 3, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,B,D,CA,"
+
+assert:
+    spawn{TestyCoroSyncSync1(2, 1, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,C,B,DA,"
+
+assert:
+    spawn{TestyCoroSyncSync1(2, 3, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,D,B,CA,"
+
+assert:
+    spawn{TestyCoroSyncSync1(3, 1, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,C,D,BA,"
+
+assert:
+    spawn{TestyCoroSyncSync1(3, 2, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,D,C,BA,"
+
+
+TestyCoroRaceSync1(Wait1:int, Wait2:int, Wait3:int)<suspends>:void =
+    Log("a")
+    race:
+        sync:
+            block:
+                Log("b")
+                Wait(Wait1)
+                Log("B")
+            block:
+                Log("c")
+                Wait(Wait2)
+                Log("C")
+        block:
+            Log("d")
+            Wait(Wait3)
+            Log("D")
+    Log("A")
+
+assert:
+    spawn{TestyCoroRaceSync1(1, 2, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,B,CA,,"
+
+assert:
+    spawn{TestyCoroRaceSync1(1, 3, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,B,DA,,"
+
+assert:
+    spawn{TestyCoroRaceSync1(2, 1, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,C,BA,,"
+
+assert:
+    spawn{TestyCoroRaceSync1(2, 3, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,DA,,,"
+
+assert:
+    spawn{TestyCoroRaceSync1(3, 1, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,C,DA,,"
+
+assert:
+    spawn{TestyCoroRaceSync1(3, 2, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,DA,,,"
+
+
+TestyCoroSyncRace1(Wait1:int, Wait2:int, Wait3:int)<suspends>:void =
+    Log("a")
+    sync:
+        race:
+            block:
+                Log("b")
+                Wait(Wait1)
+                Log("B")
+            block:
+                Log("c")
+                Wait(Wait2)
+                Log("C")
+        block:
+            Log("d")
+            Wait(Wait3)
+            Log("D")
+    Log("A")
+
+assert:
+    spawn{TestyCoroSyncRace1(1, 2, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,B,,DA,"
+
+assert:
+    spawn{TestyCoroSyncRace1(1, 3, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,B,DA,,"
+
+assert:
+    spawn{TestyCoroSyncRace1(2, 1, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,C,,DA,"
+
+assert:
+    spawn{TestyCoroSyncRace1(2, 3, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,D,BA,,"
+
+assert:
+    spawn{TestyCoroSyncRace1(3, 1, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,C,DA,,"
+
+assert:
+    spawn{TestyCoroSyncRace1(3, 2, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,D,CA,,"
+
+
+TestyCoroRaceRace1(Wait1:int, Wait2:int, Wait3:int)<suspends>:void =
+    Log("a")
+    race:
+        race:
+            block:
+                Log("b")
+                Wait(Wait1)
+                Log("B")
+            block:
+                Log("c")
+                Wait(Wait2)
+                Log("C")
+        block:
+            Log("d")
+            Wait(Wait3)
+            Log("D")
+    Log("A")
+
+assert:
+    spawn{TestyCoroRaceRace1(1, 2, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,BA,,,"
+
+assert:
+    spawn{TestyCoroRaceRace1(1, 3, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,BA,,,"
+
+assert:
+    spawn{TestyCoroRaceRace1(2, 1, 3)}
+    Tick(4)
+    GetLogStr() = "abcd,CA,,,"
+
+assert:
+    spawn{TestyCoroRaceRace1(2, 3, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,DA,,,"
+
+assert:
+    spawn{TestyCoroRaceRace1(3, 1, 2)}
+    Tick(4)
+    GetLogStr() = "abcd,CA,,,"
+
+assert:
+    spawn{TestyCoroRaceRace1(3, 2, 1)}
+    Tick(4)
+    GetLogStr() = "abcd,DA,,,"
+
+
+_testNestedConcurrency(R:int_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    syncResults := sync:
+        block: # sync1
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("C")
+            race:
+                block:
+                    CoroUtils.LogEvent("D")
+                    CoroUtils.WaitTicks(0)
+                    CoroUtils.LogEvent("E")
+                    CoroUtils.WaitTicks(2)
+                    CoroUtils.LogEvent("F")
+                    1
+
+                block:
+                    CoroUtils.LogEvent("G")
+                    CoroUtils.WaitTicks(4)
+                    CoroUtils.LogEvent("H")
+                    2
+
+        block: # sync2
+            CoroUtils.LogEvent("I")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("J")
+            30
+
+    CoroUtils.LogEvent("K")
+
+    # Sum results
+    set R.Num = 100 * syncResults(0) + syncResults(1)
+
+
+<#
+    Results in following output:
+
+    LogVerseCore: Default: _testEvent() - entered
+    LogVerseCore: Default: Timeline A - begin
+    LogVerseCore: Default: Timeline A - suspending (immediate)
+    LogVerseCore: Default: Timeline B - begin
+    LogVerseCore: Default: Timeline C - begin
+    LogVerseCore: Default: Timeline event control - begin
+    LogVerseCore: Default: Timeline C - suspending (after .5)
+    LogVerseCore: Default: Timeline B - suspending (after 1.5)
+    LogVerseCore: Default: Timeline event control - signal (after 2)
+    LogVerseCore: Default: Timeline A - resumed
+    LogVerseCore: Default: Timeline A - completed (immediate post signal)
+    LogVerseCore: Default: Timeline C - resumed
+    LogVerseCore: Default: Timeline B - resumed
+    LogVerseCore: Default: Timeline event control - continuing
+    LogVerseCore: Default: Timeline C - complete (after 1.5 post signal)
+    LogVerseCore: Default: Timeline B - complete (after 2 post signal)
+    LogVerseCore: Default: Timeline event control - complete (after 3 post signal)
+    LogVerseCore: Default: _testEvent() - exited
+
+
+_testEvent()<suspends>:void=
+    CoroUtils.LogEvent("X")
+
+    # Create event
+    Event := event(){}
+
+    # Run 4 timelines simultaneously
+    sync:
+        block: # Timeline A
+            CoroUtils.LogEvent("A1")
+            event._wait()
+            CoroUtils.LogEvent("A2")
+
+        block: # Timeline B
+            CoroUtils.LogEvent("B1")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("B2")
+            event._wait()
+            CoroUtils.LogEvent("B3")
+            CoroUtils.WaitTicks(4)
+            CoroUtils.LogEvent("B4")
+
+        block: # Timeline C
+            CoroUtils.LogEvent("C1")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("C2")
+            event._wait()
+            CoroUtils.LogEvent("C3")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("C4")
+
+        block: # Timeline event control
+            CoroUtils.LogEvent("E1")
+            CoroUtils.WaitTicks(4)
+            CoroUtils.LogEvent("E2")
+            event.signal()
+            CoroUtils.LogEvent("E3")
+            # Complete timeline after 3 seconds
+            CoroUtils.WaitTicks(6)
+            CoroUtils.LogEvent("E4")
+
+    CoroUtils.LogEvent("Z")
+#>
+
+# Test sync1
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testSync1(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(4)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 4 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 124 and CoroUtils.GetEventLogString() = "ABDF,E,C,GH,"
+
+# Test sync1 with early exit
+assert:
+    R:int_result = int_result{}
+    set R.Num = 4711
+    spawn { _testSync1(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(1)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 4 and numCorosInTheEnd = 3 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd > 0
+    R.Num = 4711 and CoroUtils.GetEventLogString() = "ABDF,E"
+
+# Test sync2
+assert:
+    R:int_result = int_result{}
+    set R.Num = 0
+    spawn { _testSync2(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(4)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 3 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 1122 and CoroUtils.GetEventLogString() = "ABE,F,C,G,DH"
+
+# Test sync3
+assert:
+    R:int_result = int_result{}
+    set R.Num = 0
+    spawn { _testSync3(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(1)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    numCorosAfterSpawn = 0
+    numCorosInTheEnd = 0
+    R.Num = 111222 and CoroUtils.GetEventLogString() = "ABCDEF,"
+
+# Test race1
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRace1(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(5)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 4 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 66 and CoroUtils.GetEventLogString() = "abdf,eh,,,,"
+
+# Test race2
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRace2(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(7)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 3 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 22 and CoroUtils.GetEventLogString() = "abe,f,c,gh,,,,"
+
+# Test race3
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRace3(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(5)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    numCorosAfterSpawn = 0
+    numCorosInTheEnd = 0
+    R.Num = 77 and CoroUtils.GetEventLogString() = "abcf,,,,,"
+
+# Test race4
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRace4(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(3)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    numCorosAfterSpawn = 0
+    numCorosInTheEnd = 0
+    R.Num = 44 and CoroUtils.GetEventLogString() = "abcf,,,"
+
+# Test rush1
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRush1(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(5)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 4 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 8000 and CoroUtils.GetEventLogString() = "ABDF,EH,C,G,,"
+
+# Test rush2
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRush2(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(5)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 3 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 5000 and CoroUtils.GetEventLogString() = "ABE,F,C,GH,D,"
+
+# Test rush3
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRush3(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(5)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 3 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 4000 and CoroUtils.GetEventLogString() = "ABCDF,,E,,,"
+
+# Test rush4
+assert:
+    R:int_result = int_result{}
+    set R.Num = 42
+    spawn { _testRush4(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(3)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 2 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 2000 and CoroUtils.GetEventLogString() = "ABCDEF,,,"
+
+# Test nested concurrency
+assert:
+    R:int_result = int_result{}
+    set R.Num = 66
+    spawn { _testNestedConcurrency(R) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(4)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 3 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    R.Num = 130 and CoroUtils.GetEventLogString() = "ABI,,CDEG,J,FK"
+
+verse_vm_todo{
+# Test returning from a concurrency macro subexpression.
+AsyncCallFunctionAndLogReturnedString(F(ATicks:int, BTicks:int)<suspends>:string, ATicks:int, BTicks:int)<suspends>:void=
+    Result := F(ATicks, BTicks)
+    CoroUtils.LogEvent(Result)
+
+ReturnFromSync(ATicks:int, BTicks:int)<suspends>:string=
+    sync:
+        block{defer{CoroUtils.LogEvent("a")}; CoroUtils.WaitTicks(ATicks); CoroUtils.LogEvent("A"); @ignore_unreachable return "1"}
+        block{defer{CoroUtils.LogEvent("b")}; CoroUtils.WaitTicks(BTicks); CoroUtils.LogEvent("B"); @ignore_unreachable return "2"}
+    return "3"
+
+ReturnFromRace(ATicks:int, BTicks:int)<suspends>:string=
+    race:
+        block{defer{CoroUtils.LogEvent("a")}; CoroUtils.WaitTicks(ATicks); CoroUtils.LogEvent("A"); @ignore_unreachable return "1"}
+        block{defer{CoroUtils.LogEvent("b")}; CoroUtils.WaitTicks(BTicks); CoroUtils.LogEvent("B"); @ignore_unreachable return "2"}
+    return "3"
+
+ReturnFromRush(ATicks:int, BTicks:int)<suspends>:string=
+    rush:
+        block{defer{CoroUtils.LogEvent("a")}; CoroUtils.WaitTicks(ATicks); CoroUtils.LogEvent("A"); @ignore_unreachable return "1"}
+        block{defer{CoroUtils.LogEvent("b")}; CoroUtils.WaitTicks(BTicks); CoroUtils.LogEvent("B"); @ignore_unreachable return "2"}
+    return "3"
+
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromSync, 1, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromSync, 1, 2)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromSync, 2, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Bba2,"}
+
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRace, 1, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRace, 1, 2)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRace, 2, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Bba2,"}
+
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRush, 1, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRush, 1, 2)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Aab1,"}
+assert{spawn{AsyncCallFunctionAndLogReturnedString(ReturnFromRush, 2, 1)}; CoroUtils.Tick(2); CoroUtils.GetEventLogString()=",Bba2,"}
+} #verse_vm_todo
+
+
+############################################
+# Test native module coroutines
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Test call of native async nested module routine
+
+TestModuleCoro1()<suspends>:void=
+    Log("a")
+    test_vni.Immediate()
+    Log("b")
+    Wait(1)
+    Log("c")
+
+assert:
+    spawn{TestModuleCoro1()}
+    Tick(2)
+    GetLogStr() = "ab,c,"
+
+
+############################################
+# Semantic errors
+
+# Disallow coroutine invocation from a method
+assert_semantic_error(3512):
+
+    myCoro()<suspends>:void={}
+    myStdFunc():void=
+        myCoro()
+
+# Ensure concurrent macro with zero top-level expressions is an error
+assert_semantic_error(3539):
+
+    coro()<suspends>:int=
+        sync:
+        return 42
+
+assert_semantic_error(3539):
+
+    coro()<suspends>:int=
+        race:
+        return 42
+
+assert_semantic_error(3539):
+
+    coro()<suspends>:int=
+        rush:
+        return 42
+
+# Ensure concurrent macro with just one top-level expressions is an error
+assert_semantic_error(3539):
+
+    coro()<suspends>:int=
+        sync:
+            coro()
+        return 42
+
+assert_semantic_error(3539):
+
+    coro()<suspends>:int=
+        race:
+            coro()
+        return 42
+
+assert_semantic_error(3539):
+
+    coro()<suspends>:int=
+        rush:
+            coro()
+        return 42
+
+# Ensure all top-level expressions in race/rush are async
+assert_semantic_error(3538):
+
+    Coro<public>(str:string)<suspends>:void={}
+    Method(str:string):void={}
+
+    TestCoro<public>()<suspends>:int=
+        race:
+            Coro("A")
+            Method("B")
+            Coro("C")
+        return 42
+
+# Ensure at least two top-level expressions in sync are async
+assert_semantic_error(3538):
+
+    Coro<public>(str:string)<suspends>:void={}
+    Method(str:string):void={}
+
+    TestCoro<public>()<suspends>:int=
+        sync:
+            Coro("A")
+            Method("B")
+            Method("C")
+        return 42
+
+# Test module-scoped coroutines.
+_moduleCoro(x:int, R:int_result)<suspends>:void=
+    set R.Num = x
+    _testNestedConcurrency(R)
+
+assert:
+    R:int_result = int_result{}
+    spawn { _moduleCoro(66, R) }
+    CoroUtils.Tick(4)
+    R.Num = 130 and CoroUtils.GetEventLogString() = "ABI,,CDEG,J,FK"
+
+# Test class instance coroutines.
+ClassCoro := class:
+    x:int=0
+    R:int_result = int_result{}
+    _methodCoro(y:int)<suspends>:void=
+        set R.Num = x+y
+        _testNestedConcurrency(R)
+
+assert:
+    classCoro := ClassCoro{x:=7}
+    spawn { classCoro._methodCoro(66) }
+    classCoro.R.Num = 66+7
+    CoroUtils.Tick(4)
+    classCoro.R.Num = 130 and CoroUtils.GetEventLogString() = "ABI,,CDEG,J,FK"
+
+# Test interface coroutines.
+InterfaceA := interface:
+    setCoroResult((local:)result:int):void
+    interfaceCoroV(x:int)<suspends>:void
+
+ClassA := class(InterfaceA):
+    var coroResult:int = 0
+    setCoroResult<override>((local:)result:int):void = { set coroResult = (local:)result }
+    interfaceCoroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); setCoroResult(1000+x) }
+
+ClassB := class(ClassA):
+    interfaceCoroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); setCoroResult(2000+x) }
+
+assert:
+    f := ClassA{}
+    t := InterfaceA[f]
+    spawn { t.interfaceCoroV(50) }
+    f.coroResult = 1050
+
+assert:
+    f := ClassB{}
+    t := InterfaceA[f]
+    spawn { t.interfaceCoroV(50) }
+    f.coroResult = 2050
+
+
+#################################################
+# Test native callable coroutines
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Native callable module coroutines
+
+assert:
+    test_vni.CallImmediateFromNative()
+    GetLogStr() = "AB"
+
+assert:
+    test_vni.CallNativeImmediateFromNative() = "Result"
+
+assert:
+    test_vni.CallRaceFromNative()
+    Tick(3)
+    GetLogStr() = "ABD,,EF,"
+
+assert:
+    test_vni.CallRaceArgsFromNative()
+    Tick(4)
+    GetLogStr() = "ABD,,,CF,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Test native callable instance coroutines
+
+assert:
+    Callable := callable_class{}
+    test_vni.CallClassMethodFromNative(Callable, "Arg1") = "MethodArg1Data1"
+
+assert:
+    Callable := callable_class{}
+    test_vni.CallClassImmediateFromNative(Callable, "Arg1") = "ImmediateArg1Data1"
+
+assert:
+    Callable := callable_class{}
+    test_vni.CallClassNativeImmediateFromNative(Callable, "Arg1") = "NativeImmediateArg1Data1"
+
+assert:
+    Callable := callable_class{}
+    test_vni.CallClassCoroutineFromNative(Callable, "Arg1")
+    Tick(3)
+    GetLogStr() = "CoroArg1Data1UVX,,YZ,"
+
+assert:
+    Callable := callable_class{}
+    test_vni.CallClassCoroOverrideFromNative(Callable, "Arg1")
+    Tick(3)
+    GetLogStr() = "CoroArg1Data1ABD,,EF,"
+
+
+# Test native callable subclass instance coroutines
+
+assert:
+    Callable := callable_subclass{}
+    test_vni.CallClassMethodFromNative(Callable, "Arg1") = "methodArg1Data1"
+
+assert:
+    Callable := callable_subclass{}
+    test_vni.CallClassCoroutineFromNative(Callable, "Arg1")
+    Tick(3)
+    GetLogStr() = "CoroArg1Data1UVX,,YZ,"
+
+assert:
+    Callable := callable_subclass{}
+    test_vni.CallClassCoroOverrideFromNative(Callable, "Arg1")
+    Tick(3)
+    GetLogStr() = "coroArg1Data1abd,,ef,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Different return types in sync
+
+sync_result := class:
+    var Result:?tuple(int,string,float) = false
+
+_testSync4(S:sync_result)<suspends>:void=
+    CoroUtils.LogEvent("A")
+    syncResults := sync:
+        block:
+            CoroUtils.LogEvent("B")
+            CoroUtils.WaitTicks(2)
+            CoroUtils.LogEvent("C")
+            1
+
+        block:
+            CoroUtils.LogEvent("D")
+            CoroUtils.WaitTicks(1)
+            CoroUtils.LogEvent("E")
+            "2"
+
+        block:
+            CoroUtils.LogEvent("F")
+            CoroUtils.WaitTicks(3)
+            CoroUtils.LogEvent("G")
+            4.0
+
+    CoroUtils.LogEvent("H")
+
+    # Store results
+    set S.Result = option{syncResults}
+
+assert:
+    S:sync_result = sync_result{Result := false}
+    spawn { _testSync4(S) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(4)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only { numCorosAfterSpawn = 4 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    S.Result = option{(1, "2", 4.0)} and CoroUtils.GetEventLogString() = "ABDF,E,C,GH,"
+
+assert_semantic_error(3509):
+    Coro()<suspends>:void={}
+    syncFail()<suspends>:void=
+        syncResults : []int = sync:
+            block:
+                Coro()
+                1
+            block:
+                Coro()
+                2.0
+
+
+assert_semantic_error(3509):
+    Coro()<suspends>:void={}
+    syncFail()<suspends>:void=
+        syncResults : tuple(int, float, int) = sync:
+            block:
+                Coro()
+                1
+            block:
+                Coro()
+                2.0
+
+assert_semantic_error(3509):
+    Coro()<suspends>:void={}
+    syncFail()<suspends>:void=
+        syncResults : tuple(int, int) = sync:
+            block:
+                Coro()
+                1
+            block:
+                Coro()
+                2.0
+
+_testSync5(R:int_result)<suspends>:void=
+    set R.Num = (
+        sync:
+            block:
+                CoroUtils.WaitTicks(2)
+                1
+
+            block:
+                CoroUtils.WaitTicks(1)
+                "2"
+        )(0)
+
+assert:
+    R:int_result = int_result{}
+    spawn { _testSync5(R) }
+    CoroUtils.Tick(4)
+    R.Num = 1
+
+result_string := class:
+    var S:string = ""
+
+_testSync6(R:result_string)<suspends>:void=
+    set R.S = (
+        sync:
+            block:
+                CoroUtils.WaitTicks(2)
+                1
+
+            block:
+                CoroUtils.WaitTicks(1)
+                "2"
+        )(1)
+
+assert:
+    R:result_string = result_string{}
+    spawn { _testSync6(R) }
+    CoroUtils.Tick(4)
+    R.S = "2"
+
+AsyncArg(i:int)<suspends>:int=
+    CoroUtils.WaitTicks(i)
+    10 + i
+
+CombineThree(A:int, B:int, C:int):int= 10000 * A + 100 * B + C
+_testSync7(R:int_result)<suspends>:void=
+    set R.Num = CombineThree(sync {AsyncArg(1); AsyncArg(3); AsyncArg(2)})
+
+assert:
+    R:int_result = int_result{}
+    spawn { _testSync7(R) }
+    CoroUtils.Tick(4)
+    R.Num = 111312
+
+Identity(X:t where t:type)<computes>:t = X
+
+_testSync8(R:int_result)<suspends>:void=
+    set R.Num = CombineThree(Identity(sync {AsyncArg(1); AsyncArg(3); AsyncArg(2)}))
+
+assert:
+    R:int_result = int_result{}
+    spawn { _testSync8(R) }
+    CoroUtils.Tick(4)
+    R.Num = 111312
+
+
+#################################################
+# Nested iteration in async expressions tests
+
+# iteration in sync - with op codes at the time of writing (2022-06-17)
+TestyCoroSyncLoop()<suspends>:void =
+    # Label_0x00 - [SCG 120] if task.State() == 0 {Start} goto Label_0x39 ("a")
+    # Label_0x23 - {Resume} goto task.State()
+    Log("a")  # Label_0x39 - Label_0xAA
+    race:
+        sync:
+            # Label_0xB3 - Let AsyncBeginCount_3 = 1
+            # Label_0xCE - Let AsyncEndCount_4 = 0
+            loop:
+                Log("b")  # Label_0xE9 - Label_0x15A
+                Wait(2)
+                # Label_0x163 - let AsyncTaskClass_10 = WaitTicks task class
+                # Label_0x190 - let AsyncTask_9 = task instance AsyncTaskClass_10 + CallerResumeState Label_0x220 (free AsyncTask_9)
+                # Label_0x1C9 - [SCG 1165] AsyncResult_11 = AsyncTask_9.Update()
+                # Label_0x1FF - if (AsyncResult_11 != Complete(0)) goto Label_0x317 (pre "c")
+                # else completed immediately
+                # Label_0x220 - SolarisCoroutineLibrary::TaskFree(AsyncTask_9)
+                # Label_0x233 - set task property AsyncTask_9 to null
+                Log("B")  # Label_0x23E - Label_0x2AF
+                # Label_0x2B8 - goto Label_0xE9 (loop start "b")
+                # --- Never gets here ---
+                # Label_0x2BD - make unused ExprResult_5
+                # Label_0x2C6 - AsyncEndCount_4 += 1
+                # Label_0x2F4 - if task.State() >= 0xE9 goto Label_0x550 (sync expr >= 2 test)
+                # else fallthrough
+            # Label_0x317 - if not (AsyncBeginCount_3 < 2) goto Label_0x824 (suspend)
+            # Label_0x338 - AsyncBeginCount_3 = 2
+            block:
+                Log("c")  # Label_0x353 - Label_0x3C4
+                Wait(8)
+                # Label_0x3CD - let AsyncTaskClass_20 = WaitTicks task class
+                # Label_0x3FA - let AsyncTask_19 = task instance AsyncTaskClass_20 + CallerResumeState Label_0x48A (TaskFree(AsyncTask_19))
+                # Label_0x433 - [SCG 1165] AsyncResult_21 = AsyncTask_19.Update()
+                # Label_0x469 - if AsyncResult_21 != Complete(0) goto Label_0x593 (pre "d")
+                # else completed immediately
+                # Label_0x48A - SolarisCoroutineLibrary::TaskFree(AsyncTask_19)
+                # Label_0x49D - set task property AsyncTask_19 to null
+                Log("C")  # Label_0x4A8 - Label_0x519
+                # Label_0x522 - AsyncEndCount_4 += 1
+                # Label_0x550 - if AsyncEndCount_4 >= 2 goto Label_0x58E (Continue)
+                # Label_0x571 - return RetVal = Suspend(1)
+                # Label_0x58E - goto Label_0x762 (end race)
+        block:
+            Log("d")  # Label_0x593 - Label_0x604
+            Wait(5)
+            # Label_0x60D - let AsyncTaskClass_28 = WaitTicks task class
+            # Label_0x63A - let AsyncTask_27 = task instance AsyncTaskClass_28 + CallerResumeState Label_0x6ED (TaskFree(AsyncTask_27))
+            # Label_0x673 - [SCG 1165] AsyncResult_28 = AsyncTask_27.Update()
+            # Label_0x6A9 - if AsyncResult_28 != Complete(0) goto Label_0x824 (RetVal := Suspend)
+            # else completed immediately
+            # Label_0x6CA - SolarisCoroutineLibrary::TaskFree(AsyncTask_27)
+            # Label_0x6DD - set task property AsyncTask_27 to null
+            Log("D")  # Label_0x6E8 - Label_0x759
+            # Label_0x762 - if AsyncTask_27 == null goto Label_0x78D ("A")
+            # Label_0x77A - SolarisCoroutineLibrary::TaskCancel(AsyncTask_27)
+    Log("A")  # Label_0x78D - Label_0x7FE
+    # Label_0x807 - return RetVal = Complete(0)
+    # Label_0x824 - return RetVal = Suspend(1)
+
+assert:
+    spawn{TestyCoroSyncLoop()}
+    Tick(6)
+    GetLogStr() = "abcd,,Bb,,Bb,DA,"
+
+
+# Using sync /loop / break
+# Also caused a null to be passed to USolarisCoroutineLibrary::TaskFree()
+TestCoroSyncLoop2()<suspends>:void =
+    Log("A")
+    var ExitLoop:logic = false
+    sync:
+        loop:
+            Log("c")
+            Wait(1)
+            if (ExitLoop?):
+                break
+            Log("d")
+        block:
+            Log("e")
+            Wait(3)
+            set ExitLoop = true
+            Log("f")
+    Log("B")
+
+assert:
+    spawn{TestCoroSyncLoop2()}
+    Tick(4)
+    GetLogStr() = "Ace,dc,dc,dcf,B"
+
+
+# Ensuring immediate call also works
+TestyCoroSyncLoop3()<suspends>:void =
+    Log("a")
+    sync:
+        block:
+            Log("b")
+            Wait(-1)
+            Log("p")
+            Wait(2)
+            Log("B")
+        block:
+            Log("c")
+            Wait(4)
+            Log("C")
+    Log("A")
+
+assert:
+    spawn{TestyCoroSyncLoop3()}
+    Tick(4)
+    GetLogStr() = "abpc,,B,,CA"
+
+
+TestCoroRaceLoop1()<suspends>:void =
+    Log("A")
+    race:
+        loop:
+            Log("c")
+            Wait(1)
+            Log("d")
+        block:
+            Log("e")
+            Wait(3)
+            Log("f")
+            Log("B")
+
+assert:
+    spawn{TestCoroRaceLoop1()}
+    Tick(4)
+    GetLogStr() = "Ace,dc,dc,dcfB,"
+
+
+TestCoroBranchLoop2()<suspends>:void =
+    Log("a")
+    branch:
+        loop:
+            Log("c")
+            Wait(1)
+            Log("C")
+    Log("A")
+    Wait(4)
+    Log("Z")
+
+assert:
+    spawn{TestCoroBranchLoop2()}
+    Tick(5)
+    GetLogStr() = "acA,Cc,Cc,Cc,CcZ,"
+
+# Simple test that makes sure our bat signal infrastructure works as expected in the presence of `race`.
+TestBatSignalRace0()<suspends>:void =
+    race:
+        block:
+            CoroUtils.WaitForBatSignal()
+        block:
+            CoroUtils.DoSomethingThatCausesBatSignalToResume()
+
+            # This will suspend, which will cause the `NotHit` not to be hit!
+            CoroUtils.WaitTicks(1)
+
+            Err("Unreachable!")
+
+    CoroUtils.Tick(1)
+
+assert:
+    spawn{TestBatSignalRace0()}
+
+CheckThenSetOrErr(Orderer : int, Expected : int)<transacts>:int =
+    if:
+        Orderer <> Expected
+    then:
+        Err(ToString(Orderer) + " <> " + ToString(Expected))
+
+    Orderer + 1
+
+TestBatSignalRace1()<suspends>:void =
+    var Orderer:int = 0
+
+    race:
+        block:
+            # Get here first.
+            set Orderer = CheckThenSetOrErr(Orderer, 0)
+
+            # Then we wait for the bat-signal to trigger
+            CoroUtils.WaitForBatSignal()
+
+            # Get here third.
+            set Orderer = CheckThenSetOrErr(Orderer, 2)
+        block:
+            # Get here second.
+            set Orderer = CheckThenSetOrErr(Orderer, 1)
+
+            if:
+                CoroUtils.DoSomethingThatCausesBatSignalToResume()
+
+                # Just to make the compiler happy.
+                true?
+            then:
+                verse_vm_todo:
+                    # Get here fifth?!
+                    set Orderer = CheckThenSetOrErr(Orderer, 4)
+                verse_vm_only:
+                    # Get here fourth
+                    set Orderer = CheckThenSetOrErr(Orderer, 3)
+
+            # This will insta-return - its just here to make the compiler happy.
+            CoroUtils.WaitTicks(0)
+
+    verse_vm_todo:
+        # Get here fourth?!
+        set Orderer = CheckThenSetOrErr(Orderer, 3)
+    verse_vm_only:
+        # Get here fifth.
+        set Orderer = CheckThenSetOrErr(Orderer, 4)
+
+assert:
+    spawn{TestBatSignalRace1()}
+
+TestBatSignalRace2()<suspends>:void =
+    race:
+        block:
+            # Get here first.
+            CoroUtils.ResetThenLogEvent("A")
+
+            # Then we wait for the bat-signal to trigger
+            CoroUtils.WaitForBatSignal()
+
+            # Get here fourth.
+            CoroUtils.LogEvent("D")
+        block:
+            # Get here second.
+            CoroUtils.LogEvent("B")
+
+            if:
+                # Get here third.
+                CoroUtils.LogEvent("C")
+
+                CoroUtils.DoSomethingThatCausesBatSignalToResume()
+
+                # Make this fail so that the failure context is undone.
+                false?
+            then:
+                Err("Unreachable!")
+
+            CoroUtils.LogEvent("F")
+
+            # This will insta-return - its just here to make the compiler happy.
+            CoroUtils.WaitTicks(0)
+
+    CoroUtils.LogEvent("E")
+
+    CoroUtils.WaitTicks(1)
+
+    bp_vm_only:
+        if:
+            IsAutoRTFMEnabled[]
+            CoroUtils.GetEventLogString() <> "ABCDEFE,"
+        then:
+            Err(CoroUtils.GetEventLogString())
+
+        if:
+            not IsAutoRTFMEnabled[]
+            CoroUtils.GetEventLogString() <> "ABCDEF,"
+        then:
+            Err(CoroUtils.GetEventLogString())
+
+    verse_vm_only:
+        if:
+            CoroUtils.GetEventLogString() <> "ABCDFE,"
+        then:
+            Err(CoroUtils.GetEventLogString())
+
+assert:
+    spawn{TestBatSignalRace2()}
+    CoroUtils.Tick(1)
+
+    # flush out the bat-signal because we technically wouldn't have called it above!
+    CoroUtils.DoSomethingThatCausesBatSignalToResume()
+
+TestBatSignalRace3()<suspends>:void =
+    race:
+        block:
+            # Get here first.
+            CoroUtils.ResetThenLogEvent("A")
+
+            # Then we wait for the bat-signal to trigger
+            CoroUtils.WaitForBatSignal()
+
+            # Get here fourth.
+            CoroUtils.LogEvent("D")
+        block:
+            # Get here second.
+            CoroUtils.LogEvent("B")
+
+            if:
+                # Get here third.
+                CoroUtils.LogEvent("C")
+
+                CoroUtils.DoSomethingThatCausesBatSignalToResume()
+
+                # Make this fail so that the failure context is undone.
+                false?
+            then:
+                Err("Unreachable!")
+
+            CoroUtils.LogEvent("F")
+
+            # Because we should have failed to bat-signal above, we do it again now!
+            CoroUtils.DoSomethingThatCausesBatSignalToResume()
+
+            CoroUtils.LogEvent("G")
+
+            # This will insta-return - its just here to make the compiler happy.
+            CoroUtils.WaitTicks(0)
+
+    CoroUtils.LogEvent("E")
+
+    CoroUtils.WaitTicks(1)
+
+    bp_vm_only:
+        if:
+            IsAutoRTFMEnabled[]
+            # This is the *more* correct order - we execute the first race arm
+            # *twice* because the first execution happened in a failure context
+            # that failed, so it's as if the execution never happened.
+            CoroUtils.GetEventLogString() <> "ABCDEFDEG,"
+        then:
+            Err(CoroUtils.GetEventLogString())
+
+        if:
+            not IsAutoRTFMEnabled[]
+            # This is the *least* correct order - we execute the first race arm
+            # wrongly *once* because without AutoRTFM the task system being
+            # resumed from a failure context does not work correctly.
+            CoroUtils.GetEventLogString() <> "ABCDEFG,"
+        then:
+            Err(CoroUtils.GetEventLogString())
+
+    verse_vm_only:
+        if:
+            # This is the *actual* ordering we want - AutoRTFM + the NewVM does
+            # the right thing with respect to what it executes when. Note that
+            # it doesn't execute the post-race code before the race arms have
+            # completed.
+            CoroUtils.GetEventLogString() <> "ABCDFDGE,"
+        then:
+            Err(CoroUtils.GetEventLogString())
+
+assert:
+    spawn{TestBatSignalRace3()}
+    CoroUtils.Tick(1)

@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{not array{1,2,3}.Insert[-1, array{}]}
+assert{    array{1,2,3}.Insert[ 0, array{}]=array{1,2,3}}
+assert{    array{1,2,3}.Insert[ 1, array{}]=array{1,2,3}}
+assert{    array{1,2,3}.Insert[ 2, array{}]=array{1,2,3}}
+assert{    array{1,2,3}.Insert[ 3, array{}]=array{1,2,3}}
+assert{not array{1,2,3}.Insert[ 4, array{}]}
+
+assert{not array{1,2,3}.Insert[-1, array{9}]}
+assert{    array{1,2,3}.Insert[ 0, array{9}]=array{9,1,2,3}}
+assert{    array{1,2,3}.Insert[ 1, array{9}]=array{1,9,2,3}}
+assert{    array{1,2,3}.Insert[ 2, array{9}]=array{1,2,9,3}}
+assert{    array{1,2,3}.Insert[ 3, array{9}]=array{1,2,3,9}}
+assert{not array{1,2,3}.Insert[ 4, array{9}]}
+
+assert{not array{1,2,3}.Insert[-1, array{9,10}]}
+assert{    array{1,2,3}.Insert[ 0, array{9,10}]=array{9,10,1,2,3}}
+assert{    array{1,2,3}.Insert[ 1, array{9,10}]=array{1,9,10,2,3}}
+assert{    array{1,2,3}.Insert[ 2, array{9,10}]=array{1,2,9,10,3}}
+assert{    array{1,2,3}.Insert[ 3, array{9,10}]=array{1,2,3,9,10}}
+assert{not array{1,2,3}.Insert[ 4, array{9,10}]}

@@ -1,0 +1,233 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    class1 := class<concrete>:
+    Main():void =
+        X := class1{}
+
+assert_valid:
+    struct1 := struct<concrete>:
+    Main():void =
+        X := struct1{}
+
+assert_valid:
+    class1 := class<concrete>:
+        Property:int = 0
+
+assert_valid:
+    struct1 := struct<concrete>:
+        Property:int = 0
+
+assert_semantic_error(3519):
+    class1 := class<concrete>:
+        Property:int
+
+assert_semantic_error(3519):
+    struct1 := struct<concrete>:
+        Property:int
+
+assert_valid:
+    class1 := class<concrete>:
+    class2 := class(class1):
+
+assert_valid:
+    class1 := class<concrete>:
+    class2 := class(class1):
+        integer1:int = 1
+
+assert_semantic_error(3519):
+    class1 := class<concrete>:
+    class2 := class(class1):              # 3519 - integer1 needs a value
+        integer1:int
+
+assert_semantic_error(3519):
+    class1 := class:
+    class2 := class<concrete>(class1):    # 3519 - integer1 needs a value
+        integer1:int
+
+assert_semantic_error(3519):
+    class1 := class:
+        integer1:int
+    class2 := class<concrete>(class1):    # 3519 - integer1 needs a value
+
+assert_valid:
+    class1 := class:
+        integer1:int
+    class2 := class<concrete>(class1):
+        integer1<override>:int = 42
+
+assert_valid:
+    class1 := class:
+        integer1:int
+    class2 := class<concrete>(class1):
+        integer1<override>:int = 42
+    class3 := class(class2):
+        integer1<override>:int          # Is this actually valid?
+
+assert_semantic_error(3519):
+    class1 := class:
+        integer1:int
+        integer2:int
+    class2 := class<concrete>(class1):   # 3519 - value2 needs an initializer because class1 is concrete
+        integer1<override>:int = 42
+    class3 := class(class2):
+        integer1<override>:int          
+
+assert_semantic_error(3519):
+    class1 := class<concrete>:
+        value1:int = 42
+    class2 := class(class1):            # 3519 - value2 needs an initializer because class1 is concrete
+        value2:int
+    class3 := class(class2):            # No diagnostic, but value2 still needs an initializer because class1 is concrete
+        value3:int = 53
+     
+assert_semantic_error(3519):
+    class1 := class:
+        value1:int
+    class2 := class<concrete>(class1):  # 3519 - value1 needs an initializer because class2 is concrete
+        value2:int = 42
+    class3 := class(class2):            # No diagnostic, but value2 still needs an initializer because class1 is concrete
+        value3:int = 53
+
+assert_semantic_error(3519):
+    class1 := class:
+        value1:int
+    class2 := class<concrete>(class1):  # 3519 value1 needs an initializer because class2 is concrete
+        value2:int = 64
+    class3 := class(class2):
+        value3:int = 53
+        value1<override>:int = 76
+
+assert_valid:
+    class1 := class:
+        value1:int
+    class2 := class<concrete>(class1):
+        value2:int = 64
+        value1<override>:int = 76
+    class3 := class(class2):
+        value3:int = 53
+
+assert_valid:
+    class1 := class<concrete>:
+        value1:int = 42
+    class2 := class(class1):
+        value1<override>:int            # is this actually valid?
+        
+assert_semantic_error(3519, 3519):
+    class1 := class:
+        value1:int
+    class2 := class<concrete>(class1): # 3519, 3519 - both value1 and value2 require initializers in class 2
+        value2:float
+    class3 := class<concrete>(class2):  
+    class4 := class(class3):            
+
+assert_semantic_error(3632):
+    class1 := class<abstract><concrete>:
+
+assert_valid:
+    class1 := class<abstract>:
+    class2 := class<concrete>(class1):
+
+<# TODO: Errors are suppressed because both modules are epic_internal. This is currently a specific carve-out. 
+   TODO: Fixing these tests involves creating a module that is outside of the normal epic-internal roots
+assert_semantic_error(3632):
+    class1 := class<abstract>:
+    module1 := module:
+        class2 := class<concrete>(class1):
+
+assert_semantic_error(3632):
+    module1 := module:
+        class1<public> := class<abstract>:
+    class2 := class<concrete>(module1.class1):
+
+assert_semantic_error(3632):
+    class1 := class<abstract>:
+    module1 := module:
+        module2 := module:
+            class2 := class<concrete>(class1):
+
+assert_semantic_error(3632):
+    module1 := module:
+        module2<public> := module:
+            class1<public> := class<abstract>:
+    class2 := class<concrete>(module1.module2.class1):
+
+assert_semantic_error(3632):
+    module1 := module:
+        class1<public> := class<abstract>:
+    module2 := module:
+        class2 := class<concrete>(module1.class1):
+
+assert_semantic_error(3632):
+    module1 := module:
+        class1<public> := class<abstract>:
+    module2 := module:
+        class2 := class(module1.class1):
+        class3 := class<concrete>(class2):
+#>
+
+assert_valid:
+    class1 := class<abstract>:
+    class2 := class(class1):
+    class3 := class<concrete>(class2):
+
+assert_valid:
+    module1 := module:
+        class2<public> := class(module2.class1):
+    module2 := module:
+        class1<public> := class<abstract>:
+        class3 := class<concrete>(module1.class2):
+
+assert_valid:
+    module1 := module:
+        class1 := class<abstract>:
+        class2<public> := class<concrete>(class1):
+    module2 := module:
+        class3 := class<concrete>(module1.class2):
+
+assert_valid:
+    class1 := class:
+        Property1:int = 0
+    class2 := class<concrete>(class1):
+
+assert_semantic_error(3519):
+    class1 := class:
+        Property1:int
+    class2 := class<concrete>(class1):
+
+assert_valid:
+    class1 := class:
+        Property1:int = 0
+    class2 := class<concrete>(class1):
+        Property2:int = 0
+
+assert_semantic_error(3519):
+    class1 := class:
+        Property1:int
+    class2 := class<concrete>(class1):
+        Property2:int = 0
+
+assert_semantic_error(3545):
+    class1 := class<concrete>:
+    F(X:t where t:subtype(class1)):t = t{}
+
+assert_valid:
+    class1 := class:
+        Property:int
+    class2 := class<concrete>(class1):
+        Property<override>:int = 0
+
+assert_valid:
+    class1 := class:
+        Property:int
+    class2 := class(class1):
+        Property<override>:int
+    class3 := class<concrete>(class2):
+        Property<override>:int = 0
+
+assert_valid:
+    class1 := class:
+        Property:int
+    class2 := class(class1):
+        Property<override>:int = 0
+    class3 := class<concrete>(class2):

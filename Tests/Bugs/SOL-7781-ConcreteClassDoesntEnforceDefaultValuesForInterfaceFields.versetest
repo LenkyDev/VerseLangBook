@@ -1,0 +1,85 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Some tests that the compiler ensures that all data fields have default values in concrete classes.
+# Including fields defined in interfaces.
+
+assert_semantic_error(3519, 3519, 3519, 3519, 3519):
+  interface_a := interface { IA:int }
+  interface_b := interface { IB:int }
+  interface_ab := interface(interface_a, interface_b) { IAB:int }
+
+  class_a := class(interface_a) { CA:int }
+  class_b := class<concrete>(class_a) { CB:int }
+  class_c := class(class_b, interface_ab) {}
+  class_d := class(class_c) {}
+
+assert_semantic_error(3519, 3519, 3519):
+  interface_a := interface { IA:int }
+  interface_b := interface { IB:int }
+  interface_ab := interface(interface_a, interface_b) { IAB:int }
+
+  class_a := class(interface_a):
+    CA:int = 1
+    IA<override>:int = 1
+  class_b := class<concrete>(class_a) { CB:int }
+  class_c := class(class_b, interface_ab) {}
+  class_d := class(class_c) {}
+
+assert_semantic_error(3519, 3519):
+  interface_a := interface { IA:int }
+  interface_b := interface { IB:int }
+  interface_ab := interface(interface_a, interface_b) { IAB:int }
+
+  class_a := class(interface_a) { CA:int }
+  class_b := class<concrete>(class_a):
+    CB:int = 1
+    CA<override>:int = 1
+    IA<override>:int = 1
+  class_c := class(class_b, interface_ab) {}
+  class_d := class(class_c) {}
+
+assert_semantic_error(3519, 3519, 3519, 3519):
+  interface_a := interface { IA:int }
+  interface_b := interface { IB:int }
+  interface_ab := interface(interface_a, interface_b) { IAB:int }
+
+  class_a := class(interface_a) { CA:int }
+  class_b := class<concrete>(class_a) { CB:int }
+  class_c := class(class_b, interface_ab):
+    CB<override>:int = 1
+    CA<override>:int = 1
+    IB<override>:int = 1
+  class_d := class(class_c) {}
+
+assert_semantic_error(3519):
+  interface_a := interface { IA:int }
+  interface_b := interface { IB:int }
+  interface_ab := interface(interface_a, interface_b) { IAB:int }
+
+  class_a := class(interface_a) { CA:int = 1 }
+  class_b := class<concrete>(class_a):
+    CB:int = 1
+    IA<override>:int = 1
+  class_c := class(class_b, interface_ab):
+    IB<override>:int = 1 
+  class_d := class(class_c) {}
+
+interface_a := interface { IA:int }
+interface_b := interface { IB:int }
+interface_ab := interface(interface_a, interface_b) { IAB:int }
+
+class_a := class(interface_a) { CA:int = 1 }
+class_b := class<concrete>(class_a):
+  CB:int = 1
+  IA<override>:int = 1
+class_c := class(class_b, interface_ab):
+  IB<override>:int = 1
+  IAB<override>:int = 1
+class_d := class(class_c) {}
+
+assert_valid:
+  vpackage(P0,/Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3410):
+      snippet:
+        interface1 := interface:
+          Value:int
+        class1 := class<concrete>(interface1) {}

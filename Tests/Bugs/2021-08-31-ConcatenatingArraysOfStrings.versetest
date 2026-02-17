@@ -1,0 +1,10 @@
+assert:
+    var A:[]string=array{}
+    set A += array{"a"}
+    A=array{"a"}
+
+assert:
+    var A:[]string=array{}
+    set A += array{"a"}
+    set A += array{"b"}
+    A=array{"a","b"}

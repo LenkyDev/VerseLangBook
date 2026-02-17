@@ -1,0 +1,96 @@
+<# 
+
+https://leetcode.com/problems/same-tree/
+
+Given the roots of two binary trees p and q, write a function to check if they are the same or not.
+
+Two binary trees are considered the same if they are structurally identical, and the nodes have the same value.
+
+Example 1:
+
+Input: p = [1,2,3], q = [1,2,3]
+Output: true
+
+Example 2:
+
+Input: p = [1,2], q = [1,null,2]
+Output: false
+
+Example 3:
+
+Input: p = [1,2,1], q = [1,1,2]
+Output: false
+
+Constraints:
+
+    The number of nodes in both trees is in the range [0, 100].
+    -104 <= Node.val <= 104
+#>
+
+VerseDataStructures<public> := module:
+    BSTNode<public>:= class:
+        var left<public>:?BSTNode = false
+        var right<public>:?BSTNode = false
+        val<public>:int = 0
+
+IsSameTree(P:?VerseDataStructures.BSTNode, Q:?VerseDataStructures.BSTNode):logic=
+    if (not (p := P?) and not (q := Q?)): # if both are null
+        return true
+    else if ((p := P?) and not (q := Q?) or not (p := P?) and (q := Q?)): # if only one is null
+        return false
+    
+    # Check recursively if p is the same at q at each level of the hierarchy.
+    if (P?.val <> Q?.val):
+        return false
+
+    var IsSame:logic = false
+    if (pLeft:= P?.left, qLeft := Q?.left):
+        set IsSame = IsSameTree(pLeft, qLeft)
+        if (IsSame <> true):
+            return false
+        if (not pLeft? and not qLeft?):
+            set IsSame = true
+    else:
+        return false
+
+    if (pRight:= P?.right, qRight := Q?.right):
+        set IsSame = IsSameTree(pRight, qRight)
+        if (IsSame <> true):
+            return false
+        if (not pRight? and not qRight?):
+            set IsSame = true
+    else:
+        return false
+    
+    return IsSame
+
+TestIsSameTree():logic=
+    a2:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=2}
+    a3:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=3}
+    a1:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1, left := option{a2}, right := option{a3}}
+
+    return IsSameTree(option{a1}, option{a1})
+
+TestIsSameTree2():logic=
+    a2:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=2}
+    a1:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1, left := option{a2}}
+    a1r:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1, right := option{a2}}
+
+    return IsSameTree(option{a1}, option{a1r})
+
+TestIsSameTree3():logic=
+    a1_1:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1}
+    a2:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=2}
+    a1:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1, left := option{a2}, right := option{a1_1} }
+    a1r:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1, left := option{a1_1}, right := option{a2} }
+
+    return IsSameTree(option{a1}, option{a1r})
+
+assert:
+    Tmp := TestIsSameTree(); Tmp = true
+    
+assert:
+    Tmp := TestIsSameTree2(); Tmp = false
+    
+assert:
+    Tmp := TestIsSameTree3(); Tmp = false

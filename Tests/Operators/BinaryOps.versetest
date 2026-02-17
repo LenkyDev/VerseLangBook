@@ -1,0 +1,2 @@
+assert_syntax_error(3101){"a|b"}
+assert_syntax_error(3101){"a&b"}

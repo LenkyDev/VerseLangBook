@@ -1,0 +1,26 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+TestCharToString(Value:char, ExpectedString:string)<reads><decides>:void=
+    String := ToString(Value)
+    if (String <> ExpectedString):
+        DebugPrint("TestCharToString expected {ExpectedString}, but got {String}")
+    String = ExpectedString
+
+TestChar32ToString(Value:char32, ExpectedString:string)<reads><decides>:void=
+    String := ToString(Value)
+    if (String <> ExpectedString):
+        DebugPrint("TestCharToString expected {ExpectedString}, but got {String}")
+    String = ExpectedString
+
+assert{TestCharToString[0o00, "{0o00}"]}
+assert{TestCharToString['a', "a"]}
+assert{TestCharToString['\t', "\t"]}
+assert{TestCharToString['\#', "\#"]}
+assert{TestCharToString[0o7f, "{0o7f}"]}
+
+assert{TestChar32ToString[0u00009, "{0u9}"]}
+assert{TestChar32ToString[0u00020, "{0u20}"]}
+assert{TestChar32ToString[0u00100, "{0u100}"]}
+assert{TestChar32ToString[0u1f600, "{0u1f600}"]}

@@ -1,0 +1,15 @@
+assert_semantic_error(3509):
+    AClass := class:
+        aMethod(aParam:logic):logic=
+        {
+            return (aParam)
+        }
+
+    TestClass := class:
+        testBody(a:AClass):void=
+        {
+            locBool:logic = true
+            locThis := Self
+            # line that causes out-of-bounds assert:
+            a.aMethod(locBool, locThis)
+        }

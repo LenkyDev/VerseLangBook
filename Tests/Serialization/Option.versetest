@@ -1,0 +1,420 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+test_struct := struct:
+    A:int=1
+    B:int=2
+
+# 64 bytes
+medium_test_struct := struct<computes>:
+    S:int=1
+    T:int=2
+    U:int=3
+    V:int=4
+    W:int=5
+    X:int=6
+    Y:int=7
+    Z:int=8
+
+# 512 bytes
+large_test_struct := struct<computes>:
+    A:medium_test_struct=medium_test_struct{}
+    B:medium_test_struct=medium_test_struct{}
+    C:medium_test_struct=medium_test_struct{}
+    D:medium_test_struct=medium_test_struct{}
+    E:medium_test_struct=medium_test_struct{}
+    F:medium_test_struct=medium_test_struct{}
+    G:medium_test_struct=medium_test_struct{}
+    H:medium_test_struct=medium_test_struct{}
+
+LargeTestStructA:large_test_struct = large_test_struct{A:=medium_test_struct{S:=-100}, B:=medium_test_struct{T:=-200}, C:=medium_test_struct{U:=-300}, D:=medium_test_struct{V:=-400}, E:=medium_test_struct{W:=-500}, F:=medium_test_struct{X:=-600}, G:=medium_test_struct{Y:=-700}, H:=medium_test_struct{Z:=-800}}
+LargeTestStructB:large_test_struct = large_test_struct{A:=medium_test_struct{S:=+100}, B:=medium_test_struct{T:=+200}, C:=medium_test_struct{U:=+300}, D:=medium_test_struct{V:=+400}, E:=medium_test_struct{W:=+500}, F:=medium_test_struct{X:=+600}, G:=medium_test_struct{Y:=+700}, H:=medium_test_struct{Z:=+800}}
+
+# Some classes that are just used to test serializing references.
+ReferenceableClasses := module:
+    a<public> := class{}
+    b<public> := class{}
+    suppress_delta_serialization<public> := class{}
+
+optional_logic := class(serializable_class):
+    Value:?logic=option{false}
+
+optional_char := class(serializable_class):
+    Value:?char=option{0o42} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_int := class(serializable_class):
+    Value:?int=option{12345} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_rational := class(serializable_class):
+    Value:?rational=option{1/2} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_type := class(serializable_class):
+    Value:?type=option{ReferenceableClasses.suppress_delta_serialization} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_array_of_int := class(serializable_class):
+    Value:?[]int=option{array{42}} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_array_of_char32 := class(serializable_class):
+    Value:?[]char32=option{array{'😀'}} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_string := class(serializable_class):
+    Value:?string=option{"blah"} # Use some arbitrary value by default so that it isn't delta serialized.
+
+optional_test_struct := class(serializable_class):
+    Value:?test_struct=option{test_struct{A:=-1,B:=-2}}
+
+optional_large_test_struct := class(serializable_class):
+    Value:?large_test_struct=option{large_test_struct{}}
+
+array_of_optional_char := class(serializable_class):
+    Value:[]?char=array{option{0o42}}
+
+array_of_optional_int := class(serializable_class):
+    Value:[]?int=array{option{12345}}
+
+# Versioned binary serialization roundtripping tests
+assert{Instance := optional_logic{Value:=false        }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_logic{Value:=option{false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_logic{Value:=option{true }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_char{Value:=false      }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_char{Value:=option{'a'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_char{Value:=option{'z'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_int{Value:=false                     }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_int{Value:=option{+0                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_int{Value:=option{+1                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_int{Value:=option{-1                }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_int{Value:=option{0x7fffffffffffffff}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_rational{Value:=false       }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_rational{Value:=option{+1/2}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_rational{Value:=option{+1/3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_rational); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_rational{Value:=option{-1/3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_rational); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_type{Value:=false                         }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type                                              ); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_type{Value:=option{ReferenceableClasses.a}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type, ?Imports:=array{any(ReferenceableClasses.a)}); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_type{Value:=option{ReferenceableClasses.b}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type, ?Imports:=array{any(ReferenceableClasses.b)}); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := optional_array_of_int{Value:=false               }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_int{Value:=option{array{0,1,2}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_int{Value:=option{array{10,20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_array_of_char32{Value:=false                  }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_char32{Value:=option{array{'🚀'    }}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_char32{Value:=option{array{'你','好'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_string{Value:=false           }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_string{Value:=option{"abcdef"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_string{Value:=option{"ghij"  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_test_struct{Value:=false                             }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_test_struct{Value:=option{test_struct{A:=+11,B:=+12}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_test_struct{Value:=option{test_struct{A:=-21,B:=-22}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := optional_large_test_struct{Value:=false                   }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_large_test_struct{Value:=option{LargeTestStructA}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_large_test_struct{Value:=option{LargeTestStructB}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := array_of_optional_int{Value:=array{false}};                           RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_int{Value:=array{option{1}}};                       RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_int{Value:=array{option{2}, option{0}, option{3}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_optional_char{Value:=array{}};                                       RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{false}};                                  RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{option{'a'}}};                            RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{option{'b'}, option{0o00}, option{'c'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char); RoundtrippedInstance.Value = Instance.Value}
+
+# Unversioned binary serialization roundtripping tests
+
+assert{Instance := optional_logic{Value:=false        }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_logic{Value:=option{false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_logic{Value:=option{true }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_char{Value:=false      }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_char{Value:=option{'a'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_char{Value:=option{'z'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_type{Value:=false                         }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type,                                               ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_type{Value:=option{ReferenceableClasses.a}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type, ?Imports:=array{any(ReferenceableClasses.a)}, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_type{Value:=option{ReferenceableClasses.b}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type, ?Imports:=array{any(ReferenceableClasses.b)}, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := optional_array_of_int{Value:=false               }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_int{Value:=option{array{0,1,2}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_int{Value:=option{array{10,20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_array_of_char32{Value:=false                  }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_char32{Value:=option{array{'🚀'    }}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_char32{Value:=option{array{'你','好'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_string{Value:=false           }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_string{Value:=option{"abcdef"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_string{Value:=option{"ghij"  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_test_struct{Value:=false                             }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_test_struct{Value:=option{test_struct{A:=+11,B:=+12}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_test_struct{Value:=option{test_struct{A:=-21,B:=-22}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := optional_large_test_struct{Value:=false                   }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_large_test_struct{Value:=option{LargeTestStructA}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_large_test_struct{Value:=option{LargeTestStructB}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct, ?Mode:=serialization_mode.UnversionedBinary); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := array_of_optional_int{Value:=array{false}};                           RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_int{Value:=array{option{1}}};                       RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_int{Value:=array{option{2}, option{0}, option{3}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_optional_char{Value:=array{}};                                       RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{false}};                                  RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{option{'a'}}};                            RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{option{'b'}, option{0o00}, option{'c'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# Text serialization roundtripping  tests
+
+assert{Instance := optional_logic{Value:=false        }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_logic{Value:=option{false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_logic{Value:=option{true }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_char{Value:=false      }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_char{Value:=option{'a'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_char{Value:=option{'z'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_type{Value:=false                         }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type,                                               ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_type{Value:=option{ReferenceableClasses.a}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type, ?Imports:=array{any(ReferenceableClasses.a)}, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_type{Value:=option{ReferenceableClasses.b}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_type, ?Imports:=array{any(ReferenceableClasses.b)}, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := optional_array_of_int{Value:=false               }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_int{Value:=option{array{0,1,2}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_int{Value:=option{array{10,20}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_array_of_char32{Value:=false                  }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_char32{Value:=option{array{'🚀'    }}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_array_of_char32{Value:=option{array{'你','好'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_char32, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_string{Value:=false           }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_string{Value:=option{"abcdef"}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := optional_string{Value:=option{"ghij"  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_string, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := optional_test_struct{Value:=false                             }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_test_struct{Value:=option{test_struct{A:=+11,B:=+12}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_test_struct{Value:=option{test_struct{A:=-21,B:=-22}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := optional_large_test_struct{Value:=false                   }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_large_test_struct{Value:=option{LargeTestStructA}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+assert{Instance := optional_large_test_struct{Value:=option{LargeTestStructB}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_large_test_struct, ?Mode:=serialization_mode.Text); ToComparable(RoundtrippedInstance.Value) = ToComparable(Instance.Value)}
+
+assert{Instance := array_of_optional_int{Value:=array{false}};                           RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_int{Value:=array{option{1}}};                       RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_int{Value:=array{option{2}, option{0}, option{3}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_optional_char{Value:=array{}};                                       RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{false}};                                  RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{option{'a'}}};                            RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_optional_char{Value:=array{option{'b'}, option{0o00}, option{'c'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+bp_vm_only{
+# Tests of UE's ConvertFromType functionality to convert between compatible types on load.
+# This behavior should not be visible to Verse users as the backward compatibility constraints should
+# prevent them from making changes to incompatible types.
+
+# ?char --> ?int
+assert{Instance := optional_char{Value:=false       }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = false}
+assert{Instance := optional_char{Value:=option{0o00}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = option{0}}
+assert{Instance := optional_char{Value:=option{0o10}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = option{0x10}}
+assert{Instance := optional_char{Value:=option{0off}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = option{-1}} # weird that FByteProperty->FInt64Property uses sign extension
+
+# ?char --> ?logic
+assert{Instance := optional_char{Value:=false       }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic); RoundtrippedInstance.Value = false}
+assert{Instance := optional_char{Value:=option{0o00}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic); RoundtrippedInstance.Value = option{false}}
+assert{Instance := optional_char{Value:=option{0o01}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_logic); RoundtrippedInstance.Value = option{true}}
+
+# ?logic --> ?int
+assert{Instance := optional_logic{Value:=false        }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = false}
+assert{Instance := optional_logic{Value:=option{false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = option{0}}
+assert{Instance := optional_logic{Value:=option{true }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int); RoundtrippedInstance.Value = option{1}}
+
+# ?[]char32 -> ?[]int
+assert{Instance := optional_array_of_char32{Value:=false                  }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int); RoundtrippedInstance.Value = false}
+assert{Instance := optional_array_of_char32{Value:=option{array{'🚀'    }}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int); RoundtrippedInstance.Value = option{array{0x1f680}}}
+assert{Instance := optional_array_of_char32{Value:=option{array{'你','好'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_array_of_int); RoundtrippedInstance.Value = option{array{0x4f60, 0x597d}}}
+
+# []?char --> []?int
+assert{Instance := array_of_optional_char{Value:=array{                       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = array{}}
+assert{Instance := array_of_optional_char{Value:=array{false                  }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = array{false}}
+assert{Instance := array_of_optional_char{Value:=array{option{'a'}            }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = array{option{0x61}}}
+assert{Instance := array_of_optional_char{Value:=array{option{'b'},option{'c'}}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_optional_int); RoundtrippedInstance.Value = array{option{0x62}, option{0x63}}}
+
+# ?logic --> ?int with delta serialization
+
+assert{Instance := optional_logic{Value:=false        }; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int, ?EnableDeltaSerialization:=true); RoundtrippedInstance.Value = false}
+assert{Instance := optional_logic{Value:=option{false}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int, ?EnableDeltaSerialization:=true); RoundtrippedInstance.Value = option{12345}}
+assert{Instance := optional_logic{Value:=option{true }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, optional_int, ?EnableDeltaSerialization:=true); RoundtrippedInstance.Value = option{1}}
+} #bp_vm_only
+
+#
+# Tests of deserializing data serialized by old versions.
+#
+
+# Mirrors the legacy FPropertyOption custom version data in Verse.
+FPropertyOptionCustomVersion := module:
+    GUID<public>:guid = guid{A:=0x68C409FC, B:=0x70954986, C:=0x8963ACD2, D:=0xC4865183}
+    FriendlyName<public>:string = "FPropertyOption"
+
+    BeforeCustomVersionWasAdded<public>:int = 0
+    ConditionalSerializeValue<public>:int = 1
+    AlwaysSavingIsSetForFObjectProperty<public>:int = 2
+    RemoveIsValueNonNullablePointerHack<public>:int = 3
+
+    LatestVersion<public>:int = 3
+
+# Creates a serialization_version structure based on a simpler set of arguments.
+MakeSerializationVersion(FPropertyOptionVersion:int)<computes>:serialization_version=
+    serialization_version:
+        UEVersion:=MakeDefaultSerializationVersion().UEVersion
+        CustomSerializationVersions:=
+            if(FPropertyOptionVersion=-1) then array{}
+            else array:
+                custom_serialization_version:
+                    GUID := FPropertyOptionCustomVersion.GUID
+                    FriendlyName := FPropertyOptionCustomVersion.FriendlyName
+                    Version := FPropertyOptionVersion
+
+# The following tests were generated in the past using this code with some minor fixup:
+DumpDifferentSerializedVersionsForOptionalInt(Value:?int):void=
+    Instance := optional_int{Value:=Value}
+    for (FPropertyOptionVersion := 0..FPropertyOptionCustomVersion.LatestVersion):
+        SerializedData := Serialize(Instance, ?Version:=MakeSerializationVersion(FPropertyOptionVersion))
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalInt[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpDifferentSerializedVersionsForOptionalType(Value:?type):void=
+    Instance := optional_type{Value:=Value}
+    Imports:[]any = array{Value?} or array{}
+    for (FPropertyOptionVersion := 0..FPropertyOptionCustomVersion.LatestVersion):
+        SerializedData := Serialize(Instance, ?Imports:=Imports, ?Version:=MakeSerializationVersion(FPropertyOptionVersion))
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalType[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Imports:=Imports, ?Mode:=serialization_mode.VersionedBinary)
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalType[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Imports:=Imports, ?Mode:=serialization_mode.UnversionedBinary)
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalType[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+    block:
+        SerializedData := Serialize(Instance, ?Imports:=Imports, ?Mode:=serialization_mode.Text)
+        DebugPrint("assert\{TestDeserializingOldVersionOfOptionalType[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+DumpSerializedOptionalLogic(Value:?logic):void=
+    Instance := optional_logic{Value:=Value}
+    SerializedData := Serialize(Instance)
+    DebugPrint("assert\{TestDeserializingOldVersionOfOptionalLogic[{DebugToString(Value)}, {DebugToString(SerializedData)}]\}")
+
+<#>assert:
+    DumpDifferentSerializedVersionsForOptionalInt(option{false?; 0})
+    DumpDifferentSerializedVersionsForOptionalInt(option{0})
+    DumpDifferentSerializedVersionsForOptionalInt(option{1})
+    DumpDifferentSerializedVersionsForOptionalInt(option{-1})
+    DumpDifferentSerializedVersionsForOptionalInt(option{0x7fffffffffffffff})
+
+<#>assert:
+    DumpDifferentSerializedVersionsForOptionalType(false)
+    DumpDifferentSerializedVersionsForOptionalType(option{ReferenceableClasses.a})
+    DumpDifferentSerializedVersionsForOptionalType(option{ReferenceableClasses.b})
+
+<#>assert:
+    DumpSerializedOptionalLogic(false)
+    DumpSerializedOptionalLogic(option{false})
+    DumpSerializedOptionalLogic(option{true})
+
+# Serializing old data into VerseVM form
+verse_vm_todo{
+TestDeserializingOldVersionOfOptionalInt(ExpectedValue:?int, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, optional_int)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected optional_int\{Value:={DebugToString(ExpectedValue)}\}, but got optional_int\{Value:={DebugToString(DeserializedInstance.Value)}")
+        false?
+
+assert{TestDeserializingOldVersionOfOptionalInt[false                      , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[false                      , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[false                      , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[false                      , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[false                      , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+assert{TestDeserializingOldVersionOfOptionalInt[option{0                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{0                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{0                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{0                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{0                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}D{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+assert{TestDeserializingOldVersionOfOptionalInt[option{1                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{1                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{1                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{1                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{1                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}D{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+assert{TestDeserializingOldVersionOfOptionalInt[option{-1                 }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{-1                 }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{-1                 }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{-1                 }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{-1                 }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}D{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+assert{TestDeserializingOldVersionOfOptionalInt[option{9223372036854775807}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{9223372036854775807}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{9223372036854775807}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{9223372036854775807}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o0c}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{9223372036854775807}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}D{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0e}{0o00}{0o00}{0o00}Int64Property{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0off}{0off}{0off}{0o7f}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+assert{TestDeserializingOldVersionOfOptionalInt[false                      , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"Int64Property\",\r\n\t\t\t\t\t\"__Value\": \{\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{0                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"Int64Property\",\r\n\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\"__Value\": 0\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{1                  }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"Int64Property\",\r\n\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\"__Value\": 1\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{-1                 }, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"Int64Property\",\r\n\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\"__Value\": -1\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingOldVersionOfOptionalInt[option{9223372036854775807}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"Int64Property\",\r\n\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\"__Type\": \"Int64Property\",\r\n\t\t\t\t\t\t\t\"__Value\": 9223372036854775807\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+TestDeserializingOldVersionOfOptionalType(ExpectedValue:?type, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, optional_type)
+    if (ToComparable(DeserializedInstance.Value) <> ToComparable(ExpectedValue)):
+        DebugPrint("Expected optional_type\{Value:={DebugToString(ExpectedValue)}\}, but got optional_type\{Value:={DebugToString(DeserializedInstance.Value)}")
+        false?
+
+# These crash due to expected size of read data vs. actual size.  This relates to the FPropertyOption Version.
+# assert{TestDeserializingOldVersionOfOptionalType[false                         , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},                                       Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+# assert{TestDeserializingOldVersionOfOptionalType[false                         , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},                                       Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[false                         , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},                                       Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[false                         , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},                                       Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[false                         , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},                                       Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0f}{0o00}{0o00}{0o00}ObjectProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+# These crash due to expected size of read data vs. actual size.  This relates to the FPropertyOption Version.
+# assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.a}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Imports:=array{ReferenceableClasses.a},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+# assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.a}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Imports:=array{ReferenceableClasses.a},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.a}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Imports:=array{ReferenceableClasses.a},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.a}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Imports:=array{ReferenceableClasses.a},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.a}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Imports:=array{ReferenceableClasses.a},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}A{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0f}{0o00}{0o00}{0o00}ObjectProperty{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}ObjectProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+# These crash due to expected size of read data vs. actual size.  This relates to the FPropertyOption Version.
+# assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.b}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=0}}},Imports:=array{ReferenceableClasses.b},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+# assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.b}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=1}}},Imports:=array{ReferenceableClasses.b},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.b}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=2}}},Imports:=array{ReferenceableClasses.b},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.b}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{custom_serialization_version{GUID:=guid{A:=1757678076,B:=1888831878,C:=2305010898,D:=3297137027},FriendlyName:="FPropertyOption",Version:=3}}},Imports:=array{ReferenceableClasses.b},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}OptionProperty{0o00}{0o08}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.b}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{                                                                                                                                            }},Imports:=array{ReferenceableClasses.b},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}A{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o0f}{0o00}{0o00}{0o00}ObjectProperty{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o0f}{0o00}{0o00}{0o00}ObjectProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0off}{0off}{0off}{0off}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+
+assert{TestDeserializingOldVersionOfOptionalType[false                         , serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,                                       Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"ObjectProperty\",\r\n\t\t\t\t\t\"__Value\": \{\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.a}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Imports:=array{ReferenceableClasses.a},Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"ObjectProperty\",\r\n\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\"__Type\": \"ObjectProperty\",\r\n\t\t\t\t\t\t\t\"__Value\": \"-1\"\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+assert{TestDeserializingOldVersionOfOptionalType[option{ReferenceableClasses.b}, serialized_data{Version:=serialization_version{UEVersion:=1009,CustomSerializationVersions:=array{}},Mode:=serialization_mode.Text,Imports:=array{ReferenceableClasses.b},Data:="\{\r\n\t\"Root\": 1,\r\n\t\"NumObjects\": 1,\r\n\t\"NumCells\": 0,\r\n\t\"Objects\": [\r\n\t\t\{\r\n\t\t\t\"Properties\": \{\r\n\t\t\t\t\"___verse_0x31A8F10C_Value\": \{\r\n\t\t\t\t\t\"__Type\": \"OptionalProperty\",\r\n\t\t\t\t\t\"__InnerType\": \"ObjectProperty\",\r\n\t\t\t\t\t\"__Value\": \{\r\n\t\t\t\t\t\t\"Value\": \{\r\n\t\t\t\t\t\t\t\"__Type\": \"ObjectProperty\",\r\n\t\t\t\t\t\t\t\"__Value\": \"-1\"\r\n\t\t\t\t\t\t\}\r\n\t\t\t\t\t\}\r\n\t\t\t\t\}\r\n\t\t\t\}\r\n\t\t\}\r\n\t]\r\n\}"}]}
+
+TestDeserializingOldVersionOfOptionalLogic(ExpectedValue:?logic, SerializedData:serialized_data)<decides>:void=
+    DeserializedInstance := Deserialize(SerializedData, optional_logic)
+    if (DeserializedInstance.Value <> ExpectedValue):
+        DebugPrint("Expected optional_logic\{Value:={DebugToString(ExpectedValue)}\}, but got optional_logic\{Value:={DebugToString(DeserializedInstance.Value)}")
+        false?
+
+assert{TestDeserializingOldVersionOfOptionalLogic[false        , serialized_data{Version:=serialization_version{UEVersion:=1011,CustomSerializationVersions:=array{}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}{0o04}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}\r{0o00}{0o00}{0o00}BoolProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalLogic[option{false}, serialized_data{Version:=serialization_version{UEVersion:=1011,CustomSerializationVersions:=array{}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}={0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}\r{0o00}{0o00}{0o00}BoolProperty{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}\r{0o00}{0o00}{0o00}BoolProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+assert{TestDeserializingOldVersionOfOptionalLogic[option{true }, serialized_data{Version:=serialization_version{UEVersion:=1011,CustomSerializationVersions:=array{}},Data:="{0o01}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}{0o11}{0o00}{0o00}{0o00}OptionalProperty{0o00}={0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}\r{0o00}{0o00}{0o00}BoolProperty{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o00}{0o19}{0o00}{0o00}{0o00}__verse_0x31A8F10C_Value{0o00}\r{0o00}{0o00}{0o00}BoolProperty{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o00}{0o01}{0o00}{0o00}{0o05}{0o00}{0o00}{0o00}None{0o00}{0o00}{0o00}{0o00}{0o00}"}]}
+} #verse_vm_todo

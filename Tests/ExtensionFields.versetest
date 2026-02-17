@@ -1,0 +1,208 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Basic definition tests.
+assert_valid{(I:int).Method()<computes>:int=I}
+assert_valid{(AB:tuple(int, int)).Method()<computes>:int=AB(0) + AB(1)}
+assert_semantic_error(3101){(A:int, B:int).Method()<computes>:int=42}
+
+# Don't allow extension data members.
+assert_semantic_error(3502){(I:int).Member:int=I}
+assert_semantic_error(3502){(A:int, B:int).Member:int=I}
+
+# Basic use tests.
+assert_valid{(I:int).Method()<computes>:int=I; F(I:int):int=I.Method()}
+
+# Don't allow directly defining or calling extension field accessors.
+assert_semantic_error(3514,3565)     {operator'.Field'(I:int)<converges>:int=I}
+assert_semantic_error(3549)          {operator'.Method'(A:int)<converges>(B:int):int=A+B}
+assert_semantic_error(3514,3565,3637){operator'.Field'(I:int)<converges>:int=I; F():int=operator'.Field'(0)}
+assert_semantic_error(3637)          {F():int=operator'.Length'(array{})}
+
+assert_semantic_error(3514):
+  (A:int).operator'.+'():int= A
+
+# Extension methods without overloading ...
+
+(A:int).IntExtension()<computes>:int=2*A 
+assert:
+  MyValue := 3
+  MyValue.IntExtension() = 6
+  3.IntExtension() = 6
+  var MyVar:int = 3
+  MyVar.IntExtension() = 6   # failed in en earlier version
+
+(AB:tuple(int,int)).TupleExtension()<computes>:int=10* AB(0) + 2*AB(1) 
+assert:
+  MyValue := (10,2)
+  MyValue.TupleExtension() = 104
+  (10, 2).TupleExtension() = 104
+
+# ... and with overloading
+
+(X:tuple()).Extension():int = 42  # _ doesn't work here!
+(A:int).Extension():int= 10* A
+(AB:tuple(int,int)).Extension():int= 10*AB(0) + 100*AB(1)
+assert:
+  ().Extension() = 42
+  1.Extension() = 10
+  (2).Extension() = 20
+  (1,2).Extension() = 210
+
+# These short forms aren't valid in ShipVerse for now
+assert_semantic_error(3101):
+  ().ExtensionX():int = 0
+assert_semantic_error(3101):
+  (A:int, B:int).ExtensionX():int= 0
+
+# Extension methods must be called 
+assert_semantic_error(3506):
+  (:int).Extension():void={}
+  F():void := (0).Extension
+
+# Extension methods with extra argument
+
+(X:tuple()).ExtensionExtra(E:int):int = 2*E  # _ doesn't work here!
+(A:int).ExtensionExtra(E:int)<computes>:int= E + 2*A 
+(AB:tuple(int,int)).ExtensionExtra(E:int)<computes>:int=E + 10*AB(0) + 100*AB(1) 
+assert:
+  ().ExtensionExtra(21) = 42
+  3.ExtensionExtra(10) = 16
+  (4,2).ExtensionExtra(8) = 248
+
+# Extension method with a default named argument
+(A:int).ExtensionTupleOptional(X:int, Y:int, ?Z:int = 0):int = Z
+
+# These short forms aren't valid in ShipVerse for now
+assert_semantic_error(3101):
+  ().ExtensionExtraX(E:int):int = 0
+assert_semantic_error(3101):
+  (A:int, B:int).ExtensionExtraX(E:int):int = 0
+
+# Extension methods on a class/interface can conflict with class method
+assert_semantic_error(3532):
+  c := class:
+    ErrorMethod():int= 1  
+  (C:c).ErrorMethod():int=2
+
+assert_semantic_error(3532):
+  c := class:
+    ErrorMethodExtra(E:int):int= E  
+  (C:c).ErrorMethodExtra(E:int):int= E
+
+assert_semantic_error(3532):
+  i := interface:
+    ErrorMethod():int
+  (I:i).ErrorMethod():int=2
+
+assert_semantic_error(3532):
+  i := interface:
+    ErrorMethodExtra(E:int):int
+  (I:i).ErrorMethodExtra(E:int):int= E
+
+
+# Test ambigious usage
+assert_semantic_error(3518):
+  ModuleClass<public> := module:
+    c<public> := class:
+        Value<public>:int
+
+  ModuleExtension<public> := module:
+    using {ModuleClass}
+    (C:c).ErrorMethodExtra<public>(E:int):int= E + C.Value
+
+  ModuleMethod := module:
+    using {ModuleClass}
+    b<public> := class(c):
+      ErrorMethodExtra<public>(E:int):int= E + 10*Value
+
+  ModuleError := module:
+    using{ModuleExtension}
+    using{ModuleMethod}
+    Test(X:int):int= b{Value:=1}.ErrorMethodExtra(100)
+
+# Compiler contains special code for map/array.Length.
+# Verify that the special code doesn't interfer with extension methods.
+
+(A:[]int).ArrayAddScalar(B:int):[]int= for ( X : A ) { X + B }
+assert:
+  array{1,2} = array{0,1}.ArrayAddScalar(1)
+
+(A:[int]int).MapAddScalar(B:int):[]int= for ( K -> X : A ) { X + B }
+assert:
+    array{1,2} = map{10=>0, 20=>1}.MapAddScalar(1)
+
+# Don't be fooled by .Length, map and array are not distinct.
+# This is here since it crashed the compiler due to missing VstNode.
+assert_semantic_error(3532):
+  (A:[]int).AddScalar(B:int):[]int= for ( X : A ) { X + B }
+  (A:[int]int).AddScalar(B:int):[]int= for ( K -> X : A ) { X + B }
+
+c := class:
+    X:int
+    (Y:int).ExtensionMethod():int=X+Y
+    Test(Y:int):int=Y.ExtensionMethod()
+    (C:c).ExtensionMethod2():int=C.X+X
+    Test2(Y:int):int=c{X:=Y}.ExtensionMethod2()
+
+assert:
+    C := c{X:=1}
+    C.Test(2) = 3
+    C.Test2(2) = 3
+
+
+# Test that digest generation work for extension methods, run with --incremental
+# The method is defined in /Verse.org/Tests/VerseTestScriptCmd.
+
+assert:
+    "abc" = "abcdef".TakeExtension(3)
+
+  
+assert:
+    X := (2, 3)
+    1.PlusTwo(X) = 6
+
+# Triggered a bug in an earlier version of the code
+with_Q := class{Q:int=10}
+without_Q := class{}
+(:without_Q).Q():int=11
+assert{with_Q{}.Q = 10}
+assert{without_Q{}.Q() = 11}
+
+# There is some special code for Length, check that it doesn't break this example
+with_Length := class{Length:int=10}
+without_Length := class{}
+(:without_Length).Length():int=11
+assert{with_Length{}.Length = 10}
+assert{without_Length{}.Length() = 11}
+
+# Test passing a single tuple for all arguments
+tuple_argument := module:
+    class1<public> := class:
+        Property<public>:int
+
+    (X:class1).Method1<public>(Y:int, Z:int):int =
+        X.Property + Y + Z
+
+    Test1<public>()<decides>:int =
+        X := class1{Property := 1}
+        Y := (2, 3)
+        X.Method1(Y) = 6
+
+    (X:class1).Method2<public>(Y:[]int):int =
+        var Result:int = X.Property
+        for (Z:Y):
+            set Result += Z
+        Result
+
+    Test2<public>()<decides>:int =
+        X := class1{Property := 1}
+        Y := (2, 3, 4)
+        X.Method2(Y) = 10
+
+assert:
+    tuple_argument.Test1[]
+
+assert:
+    tuple_argument.Test2[]

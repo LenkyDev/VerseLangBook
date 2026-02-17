@@ -1,0 +1,36 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_roundtrip{<##>1 * 2 * 3}
+assert_roundtrip{1<##> * 2 * 3}
+assert_roundtrip{1 * <##>2 * 3}
+assert_roundtrip{1 * 2<##> * 3}
+assert_roundtrip{1 * 2 * <##>3}
+assert_roundtrip{1 * 2 * 3<##>}
+
+assert_roundtrip{<##>1.0 / 2.0 / 3.0}
+assert_roundtrip{1.0<##> / 2.0 / 3.0}
+assert_roundtrip{1.0 / <##>2.0 / 3.0}
+assert_roundtrip{1.0 / 2.0<##> / 3.0}
+assert_roundtrip{1.0 / 2.0 / <##>3.0}
+assert_roundtrip{1.0 / 2.0 / 3.0<##>}
+
+assert_roundtrip{<##>1 + 2 + 3}
+assert_roundtrip{1<##> + 2 + 3}
+assert_roundtrip{1 + <##>2 + 3}
+#assert_roundtrip{1 + 2<##> + 3}
+assert_roundtrip{1 + 2 + <##>3}
+assert_roundtrip{1 + 2 + 3<##>}
+
+assert_roundtrip{<##>1 - 2 - 3}
+assert_roundtrip{1<##> - 2 - 3}
+assert_roundtrip{1 - <##>2 - 3}
+assert_roundtrip{1 - 2<##> - 3}
+assert_roundtrip{1 - 2 - <##>3}
+assert_roundtrip{1 - 2 - 3<##>}
+
+assert_roundtrip{<##>c {}.F().F()}
+assert_roundtrip{c {}<##>.F().F()}
+assert_roundtrip{c {}.F<##>().F()}
+#assert_roundtrip{c {}.F()<##>.F()}
+assert_roundtrip{c {}.F().F<##>()}
+assert_roundtrip{c {}.F().F()<##>}

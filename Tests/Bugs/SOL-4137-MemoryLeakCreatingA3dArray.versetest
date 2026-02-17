@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# This code leaked before
+c := class:
+    var Data:[][][]?int =
+        for (x := 0..1):
+            for (y := 0..2):
+                for (z := 0..2):
+                    false
+
+assert{C := c{}}
+
+
+
+Fun():[][][]?int =
+    for (x := 0..1):
+        for (y := 1..1):
+            for (z := 1..1):
+                false
+
+assert{Fun()}

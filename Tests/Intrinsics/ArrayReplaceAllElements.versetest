@@ -1,0 +1,7 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{array{1,2,3,1,2,3}.ReplaceAllElements(0, 9)=array{1,2,3,1,2,3}}
+assert{array{1,2,3,1,2,3}.ReplaceAllElements(1, 9)=array{9,2,3,9,2,3}}
+assert{array{1,2,3,1,2,3}.ReplaceAllElements(2, 9)=array{1,9,3,1,9,3}}
+assert{array{1,2,3,1,2,3}.ReplaceAllElements(3, 9)=array{1,2,9,1,2,9}}
+assert{array{1,2,3,1,2,3}.ReplaceAllElements(4, 9)=array{1,2,3,1,2,3}}

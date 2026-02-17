@@ -1,0 +1,45 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            event<public>(t:type) := class{}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3520):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            boss_identification := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                GetBossDefeatedEvent<public>():event(boss_identification) = event(boss_identification){}
+
+assert_semantic_error(3593):
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            event<public>(t:type) := class{}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            boss_identification := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                GetBossDefeatedEvent<public>():event(boss_identification) = event(boss_identification){}
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            event<public>(t:type) := class{}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3520):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            boss_identification := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                GetBossDefeatedEvent<public>():event(tuple(boss_identification, int)) = event(tuple(boss_identification, int)){}
+
+assert_semantic_error(3593):
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            event<public>(t:type) := class{}
+    vpackage(P1, /A, ?Dependencies := (P0), ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3600):
+        snippet:
+            using{/Verse.org/VerseTests/Module}
+            boss_identification := class{}
+            class_with_public_field_using_less_accessible_class<public> := class:
+                GetBossDefeatedEvent<public>():event(tuple(boss_identification, int)) = event(tuple(boss_identification, int)){}

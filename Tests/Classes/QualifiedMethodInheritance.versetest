@@ -1,0 +1,225 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+#
+# testing method inheritance that requires explicit qualification
+
+# a interface with a function without a default implementation
+t0 := interface { F(X:int) : int }
+
+# an abstract base class with a function
+b0 := class<abstract> { F(X:int) : int }
+
+# a class with a function with a default implementation
+b10 := class { F(X:int) : int = X+10 }
+b11 := class(b10) { (b10:)F<override>(X:int) : int = X+11 } # redundant qualifier is ok
+
+b100 := class<abstract>(b0) {}
+b101 := class(b10) {}
+b102 := class(b11) {}
+b103 := class<abstract>(t0) {}
+
+b200 := class<abstract>(b0,t0) {}
+b202 := class<abstract>(b10,t0) {}
+b203 := class<abstract>(b11,t0) {}
+
+# test inheriting from a single base
+b500 := class(b0)  { (b0:) F<override>(X:int) : int = X+500 } # redundant qualifier is ok
+b501 := class(b10) { (b10:)F<override>(X:int) : int = X+501 } # redundant qualifier is ok
+b502 := class(b11) { (b10:)F<override>(X:int) : int = X+502 } # redundant qualifier is ok
+b503 := class(t0)  { (t0:) F<override>(X:int) : int = X+503 } # redundant qualifier is ok
+
+assert:
+    B500:= b500{}; B500.(b0:)F(1000) = 1500  # redundant qualifier is ok
+    B501:= b501{}; B501.(b10:)F(1000) = 1501 # redundant qualifier is ok
+    B502:= b502{}; B502.(b10:)F(1000) = 1502 # redundant qualifier is ok
+    B503:= b503{}; B503.(t0:)F(1000) = 1503  # redundant qualifier is ok
+
+# b0 and t0 have no default implementation
+b600 := class(b0,t0):
+     (b0:)F<override>(X:int) : int = X+6000
+     (t0:)F<override>(X:int) : int = X+6001
+
+assert:
+    B600:= b600{}; B600B0: b0 = B600; B600T0: t0 = B600
+    B600.(b0:)F(10000)   = 16000
+    B600B0.F(10000)      = 16000
+    B600B0.(b0:)F(10000) = 16000
+    B600.(t0:)F(10000)   = 16001
+    B600T0.F(10000)      = 16001
+    B600T0.(t0:)F(10000) = 16001
+
+# b10 has a default implementation, t0 does not
+b602 := class(b10,t0):
+     (b10:)F<override>(X:int) : int = X+6020
+     (t0:) F<override>(X:int) : int = X+6021
+
+assert:
+    B602:= b602{}; B602B10: b10 = B602; B602T0: t0 = B602
+    B602.(b10:)F(10000)    = 16020
+    B602B10.F(10000)       = 16020
+    B602B10.(b10:)F(10000) = 16020
+    B602.(t0:)F(10000)     = 16021
+    B602T0.F(10000)        = 16021
+    B602T0.(t0:)F(10000)   = 16021
+
+# b11 has an overridden implementation, t0 does not
+b603 := class(b11,t0):
+     (b10:)F<override>(X:int) : int = X+6030
+     (t0:) F<override>(X:int) : int = X+6031
+
+assert:
+    B603:= b603{}; B603B10: b10 = B603; B603B11: b11 = B603; B603T0: t0 = B603
+    B603.(b10:)F(10000)    = 16030
+    B603B10.F(10000)       = 16030
+    B603B10.(b10:)F(10000) = 16030
+    B603B11.F(10000)       = 16030
+    B603B11.(b10:)F(10000) = 16030
+    B603.(t0:)F(10000)     = 16031
+    B603T0.F(10000)        = 16031
+    B603T0.(t0:)F(10000)   = 16031
+
+b800 := class(b0, t0):
+     (t0:)F<override>(X:int) : int = X+8000
+     (b0:)F<override>(X:int) : int = (t0:)F(X)
+
+assert:
+    B800 := b800{}
+    B800.(t0:)F(10000) = 18000
+    B800.(b0:)F(10000) = 18000
+
+b801 := class(b0, t0):
+     (t0:)F<override>(X:int) : int = (b0:)F(X)
+     (b0:)F<override>(X:int) : int = X+8010
+
+assert:
+    B801 := b801{}
+    B801.(t0:)F(10000) = 18010
+    B801.(b0:)F(10000) = 18010
+
+b802 := class(b10, t0):
+     (t0:)F<override>(X:int) : int = 10001  # Can not use (super:), no implementation of inherited method
+     (b10:)F<override>(X:int) : int = (super:)F(X)
+
+assert:
+    B802 := b802{}
+    B802.(t0:)F(10000) = 10001
+    B802.(b10:)F(10000) = 10010
+
+# (super:) doesn't work if inherited method has no implementation 
+assert_semantic_error(3612):
+    t0 := interface { F(X:int) : int }
+    c1 := class(t0):
+        (t0:)F<override>(X:int) : int = (super:)F(X)
+
+assert_semantic_error(3591, 3612):
+    c0 := class { F(X:int) : int }
+    c1 := class(c0):
+        (c0:)F<override>(X:int) : int = (super:)F(X)
+
+assert_valid:
+    c0 := class { F(X:int) : int = { 42 } }
+    c1 := class(c0):
+        (c0:)F<override>(X:int) : int = (super:)F(X)
+
+
+# was test for subclass, but that's not legal anymore.
+d0 := class { F():int = 1 }
+d1 := class(d0) { (d0:)F<override>():int= (super:)F() + 2 }
+d2 := class(d1) {}
+d3 := class(d2) { (d0:)F<override>():int= (super:)F() + 4 }
+
+assert:
+    D0 := d0{}; D0.F() = 1
+    D1 := d1{}; D1.F() = 3
+    D2 := d2{}; D2.F() = 3
+    D3 := d3{}; D3.F() = 7
+
+# was test for subclass, but that's not legal anymore.
+d4 := class { F():int = 1 }
+d5 := class(d4) {}
+d6 := class(d5) { (d4:)F<override>():int= (super:)F() + 2 }
+d7 := class(d6) { (d4:)F<override>():int= (super:)F() + 4 }
+
+assert:
+    D4 := d4{}; D4.F() = 1
+    D5 := d5{}; D5.F() = 1
+    D6 := d6{}; D6.F() = 3
+    D7 := d7{}; D7.F() = 7
+
+# Qualify a module level function
+
+(VerseTests:)FE(X:int) : int = 10
+e0 := class { (e0:)FE(X:int) : int = 9 }
+e1 := class { (e1:)FE(X:int) : int = { 42 } }
+assert:
+    FE(1) = 10
+    Oe0 := e0{}
+    Oe0.FE(1) = 9
+    FE(1) = 10
+    Oe1 := e1{}
+    Oe1.FE(2) = 42
+
+# try to qualify a class instance function with a qualifier we don't inherit from
+assert_semantic_error(3612,3591,3523):
+    b0 := class { F(X:int) : int }
+    b1 := class:
+        # Qualifier on function `F` is invalid, `b1` doesn't inherit from or implement `b0`
+        # This function does not override a method but has an <override> attribute
+        (b0:)F<override>(X:int) : int = X+11
+
+assert_semantic_error(3612,3523):
+    b0 := class<abstract> { F(X:int) : int }
+    b1 := class:
+        # Qualifier on function `F` is invalid, `b1` doesn't inherit from or implement `b0`
+        # This function does not override a method but has an <override> attribute
+        (b0:)F<override>(X:int) : int = X+11
+
+# try to qualify a class instance function with a qualifier that isn't a class/interface
+assert_semantic_error(3612,3523):
+    b0 := class<abstract> { F(X:int) : int }
+    b1 := class:
+        # Qualifier must be a class/interface
+        # This function does not override a method but has an <override> attribute
+        (float:)F<override>(X:int) : int = X+11
+
+# try to qualify a class instance function with your own type
+assert_semantic_error(3523):
+    b0 := class:
+        # This function does not override a method but has an <override> attribute
+        (b0:)F<override>(X:int) : int = 12
+
+# valid qualifier does not need @override attribute
+assert_valid:
+    c0 := class<abstract> { F(X:int) : int }
+
+    c1 := class<abstract>(c0):
+        # This function is qualified and does not need an <override> attribute
+        (c1:)G(X:int) : int = 2
+
+# test where you try to do a qualified override with a more generic return type
+assert_semantic_error(3532, 3523, 3532):
+    c0 := class:
+        F():c0 = c0{}
+    c1 := class(c0):
+        (c0:)F<override>():c1= c1{}
+    c2 := class(c1):
+        #This function must have a distinct domain from these other functions with the same name: SolIdeDataSources.c1.F()
+        (c0:)F<override>():c0= c0{}
+
+assert_semantic_error(3523):
+    c0 := class:
+        F():c0 = c0{}
+    c1 := class(c0):
+        (c0:)F<override>():c1= c1{}
+    c2 := class(c1):
+        # Wrong qualifier, either (c2:) for a new function, or (c0:) for overiding F
+        (c1:)F<override>():c0= c0{}
+
+assert_semantic_error(3506):
+    c0 := class     { F() : int = 7 }
+    c1 := class(c0) { (c0:)F<override>() : int = 8 }
+    c2 := class(c1) { (c0:)F<override>() : int = 9 }
+
+    A()<decides> : void =
+        C1 : c1 = c1{}
+        # `c1` is not a subtype of qualifier `c2`.
+        C1.(c2:)F() = 8

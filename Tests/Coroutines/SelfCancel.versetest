@@ -1,0 +1,27 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+test_npc := class:
+    Cancel<public>:event() = event(){}
+
+    TryNavigate()<suspends>:void =
+        # 1) Set up two race arms that both suspend.
+        race:
+            block:
+                CoroUtils.WaitTicks(1)
+                SafeNavigate(test_target{Data := 3})
+            Cancel.Await()
+
+    # Array forces the BPVM to run a destructor for the SafeNavigate task's Argument FProperty.
+    # In FORT-945022, this destructor ran too early, at the beginning of task cancellation,
+    # causing the Target parameter to be de-initialized before the call to UseTarget.
+    SafeNavigate(Target:test_target, ?Array:[]event() = array{})<suspends>:void =
+        # 2) Resume the second race arm, allowing it to finish and cancel the first race arm.
+        Cancel.Signal()
+        # 3) The current task has been cancelled, but must continue to run until it reaches a
+        #    suspension point. `UseTarget` checks that `Target` is still valid.
+        UseTarget(Target)
+
+assert:
+    Npc := test_npc{}
+    spawn{Npc.TryNavigate()}
+    CoroUtils.Tick(1)

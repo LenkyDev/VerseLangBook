@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# These previously asserted because the AST for the callee of an erroneous
+# invocation was discarded, and the shadowing check for a data definition in it
+# later checked the data definition for a valid AST linkage for error reporting.
+
+assert_semantic_error(3506):
+    A:=Undefined(X:int)(1)
+
+assert_semantic_error(3606):
+    A:=module{}(X:int)(1)
+
+assert_semantic_error(3606):
+    A:=class{}(X:int)(1)

@@ -809,6 +809,5 @@ Result := if:
 then { "condition met" } else { "condition not met" }
 ```
 <!-- #> -->
-```
 
 All these forms produce the same result. The choice between them is about readability and context. Use braces when working with existing brace-heavy code, indentation for cleaner vertical layouts, and inline forms for simple expressions. This flexibility lets you write code that reads naturally.

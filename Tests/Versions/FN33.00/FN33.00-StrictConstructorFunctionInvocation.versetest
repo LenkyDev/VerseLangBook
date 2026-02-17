@@ -1,0 +1,12 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=3200):
+        snippet:
+            class1<public> := class {}
+            class2<public> := class(class1) {}
+            class3<public> := class(class2) {}
+            MakeClass1<public><constructor>() := class1 {}
+            Main()<decides>:void =
+                class3:
+                    MakeClass1<constructor>()

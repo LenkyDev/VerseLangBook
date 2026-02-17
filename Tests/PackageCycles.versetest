@@ -1,0 +1,54 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Packages can mutually depend on each other, and use each other's definitions
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1)) { snippet { using {/Verse.org/VerseTests/CycleTest1}; A<public>:int = 42;   C<public>:int = B + 1; } }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0)) { snippet { using {/Verse.org/VerseTests/CycleTest0}; B<public>:int = 4711; D<public>:int = A + 1; } }
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1)) { snippet { using {/Verse.org/VerseTests/CycleTest1}; A<public>:int = 42;   D<public>:int = B + 1; } }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P2)) { snippet { using {/Verse.org/VerseTests/CycleTest2}; B<public>:int = 4711; E<public>:int = C + 1; } }
+    vpackage(P2,/Verse.org/VerseTests/CycleTest2,?Dependencies:=(P0)) { snippet { using {/Verse.org/VerseTests/CycleTest0}; C<public>:int = 666;  F<public>:int = A + 1; } }
+
+# Packages that mutually depend on each other must have the same roles
+assert_semantic_error(3676):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?Role:=Source                 ) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?Role:=External               ) { snippet {} }
+assert_semantic_error(3676):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?Role:=GeneralCompatConstraint) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?Role:=Source                 ) { snippet {} }
+assert_semantic_error(3676):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?Role:=External               ) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?Role:=GeneralCompatConstraint) { snippet {} }
+assert_semantic_error(3676):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?Role:=External               ) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?Role:=Source                 ) { snippet {} }
+assert_semantic_error(3676,3676):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?Role:=Source                 ) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P2),?Role:=Source                 ) { snippet {} }
+    vpackage(P2,/Verse.org/VerseTests/CycleTest2,?Dependencies:=(P0),?Role:=External               ) { snippet {} }
+
+# Packages that mutually depend on each other must not allow native
+assert_semantic_error(3677):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?AllowNative:=true ) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?AllowNative:=true ) { snippet {} }
+assert_semantic_error(3677):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?AllowNative:=false) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?AllowNative:=true ) { snippet {} }
+assert_semantic_error(3677):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?AllowNative:=false) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?AllowNative:=true ) { snippet {} }
+assert_semantic_error(3677,3677):
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?AllowNative:=false) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P2),?AllowNative:=true ) { snippet {} }
+    vpackage(P2,/Verse.org/VerseTests/CycleTest2,?Dependencies:=(P0),?AllowNative:=true ) { snippet {} }
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?AllowNative:=false) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,?Dependencies:=(P0),?AllowNative:=false) { snippet {} }
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?Dependencies:=(P1),?AllowNative:=true ) { snippet {} }
+    vpackage(P1,/Verse.org/VerseTests/CycleTest1,                    ?AllowNative:=true ) { snippet {} }
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?AllowNative:=true ) { snippet {} }
+assert_valid:
+    vpackage(P0,/Verse.org/VerseTests/CycleTest0,?AllowNative:=false) { snippet {} }
+    

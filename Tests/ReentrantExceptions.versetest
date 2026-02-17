@@ -1,0 +1,31 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_runtime_error:
+    # this sequence of reentrant calls creates a call stack that
+    # intersperses verse and c++ frames such that every verse frame
+    # reenters bpvm (via an invocation of UObject::ProcessEvent). the
+    # test asserts that a verse runtime error (triggered via a
+    # blueprint exception in this case) in an inner bpvm frame
+    # prevents execution of outer frames
+    CoroUtils.ResetThenLogEvent("A")
+    CoroUtils.SuppressNextReset()
+    ReentrantExceptions.CallReentrant(3)
+    CoroUtils.LogEvent("B")
+
+assert:
+    # If we run the assert twice (EG. if the retry-transactions mode was enabled
+    # in AutoRTFM), we could purge the event log on the second invocation unless
+    # we explicitly suppress that here!
+    CoroUtils.SuppressNextReset()
+    CoroUtils.GetEventLogString() = "A"
+
+assert:
+    # This assert exists solely to consume any stray `SuppressNextReset`'s that
+    # could have happened above.
+
+}

@@ -1,0 +1,83 @@
+<#
+
+https://leetcode.com/problems/binary-tree-inorder-traversal/
+
+Given the root of a binary tree, return the inorder traversal of its nodes' values.
+
+Example 1:
+
+Input: root = [1,null,2,3]
+Output: [1,3,2]
+
+Example 2:
+
+Input: root = []
+Output: []
+
+Example 3:
+
+Input: root = [1]
+Output: [1]
+
+Constraints:
+
+    The number of nodes in the tree is in the range [0, 100].
+    -100 <= Node.val <= 100
+#>
+
+VerseDataStructures<public> := module:
+    BSTNode<public>:= class:
+        var left<public>:?BSTNode = false
+        var right<public>:?BSTNode = false
+        val<public>:int = 0
+
+Inorder(maybe_t:?VerseDataStructures.BSTNode, TraversalResult:[]int):[]int=
+    var TmpResult:[]int = TraversalResult
+    if (not (t := maybe_t?)):
+        return TmpResult
+    if (n := maybe_t?):
+        set TmpResult = Inorder(n.left, TmpResult)
+        set TmpResult += array{n.val}
+        set TmpResult = Inorder(n.right, TmpResult)
+    
+    return TmpResult
+
+InorderTraversal(maybe_t:?VerseDataStructures.BSTNode):[]int=
+    var TraversalResult:[]int = array{}
+    set TraversalResult = Inorder(maybe_t, TraversalResult)
+    return TraversalResult
+
+# Test cases
+TestInorderTraversal():logic=
+    c:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=3}
+    b:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=2, left:=option{c}}
+    a:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1, right:=option{b}}
+    Result:[]int = InorderTraversal(option{a})
+    if (Result = array{1, 3, 2}):
+        return true
+    else:
+        return false
+
+TestInorderTraversal1():logic=
+    Result:[]int = InorderTraversal(false)
+    if (Result.Length = 0):
+        return true
+    else:
+        return false
+
+TestInorderTraversal2():logic=
+    a:VerseDataStructures.BSTNode = VerseDataStructures.BSTNode{val:=1}
+    Result:[]int = InorderTraversal(option{a})
+    if (Result = array{1}):
+        return true
+    else:
+        return false
+
+assert:
+    TestInorderTraversal() = true
+    
+assert:
+    TestInorderTraversal1() = true
+    
+assert:
+    TestInorderTraversal2() = true

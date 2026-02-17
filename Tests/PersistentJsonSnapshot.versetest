@@ -1,0 +1,190 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+number := enum<persistable>:
+    One
+    Two
+    Three
+
+object := class<persistable><final><computes>:
+    Name:string
+
+record := struct<persistable><computes>:
+    Name:string
+
+A := module:
+    a_number<public> := enum<persistable>:
+        One
+        Two
+        Three
+
+    a_object<public> := class<persistable><final><computes>:
+        Name<public>:string
+
+    a_record<public> := struct<persistable><computes>:
+        Name:string
+ 
+# Note, this must be kept in sync with QAMap_VersePlayerInventory's
+# `persistent_test_object`.  See https://create.fortnite.com/44595d13-df0d-4b0f-9e99-af9b93d605d3/projects/18045abf-4393-24e7-9f4a-7692c4a96795/releases
+# If a field is added here, it must also be added to `Expected` and `Equal`.
+persistent_test_object := class<persistable><final><computes>:
+    LogicData:logic
+    CharData:char
+    Char32Data:char32
+    IntData:int
+    FloatData:float
+    StringData:string
+    OptionData:?string
+    ArrayData:[]string
+    MapData:[string]string
+    EnumData:number
+    ObjectData:object
+    StructData:record
+    NestedEnumData:A.a_number
+    NestedObjectData:A.a_object
+    NestedStructData:A.a_record
+
+Equal(Left:object, Right:object)<decides>:void =
+    Left.Name = Right.Name
+
+Equal(Left:A.a_object, Right:A.a_object)<decides>:void =
+    Left.Name = Right.Name
+
+Equal(Left:persistent_test_object, Right:persistent_test_object)<decides>:void =
+    Left.LogicData = Right.LogicData
+    Left.CharData = Right.CharData
+    Left.Char32Data = Right.Char32Data
+    Left.IntData = Right.IntData
+    Left.FloatData = Right.FloatData
+    Left.StringData = Right.StringData
+    Left.OptionData = Right.OptionData
+    Left.ArrayData = Right.ArrayData
+    Left.MapData = Right.MapData
+    Left.EnumData = Right.EnumData
+    Equal[Left.ObjectData, Right.ObjectData]
+    Left.StructData = Right.StructData
+    Left.NestedEnumData = Right.NestedEnumData
+    Equal[Left.NestedObjectData, Right.NestedObjectData]
+    Left.NestedStructData = Right.NestedStructData
+
+# Note, this must be kept in sync with QAMap_VersePlayerInventory's `Expected`.
+# See See https://create.fortnite.com/44595d13-df0d-4b0f-9e99-af9b93d605d3/projects/18045abf-4393-24e7-9f4a-7692c4a96795/releases
+Expected:persistent_test_object = persistent_test_object:
+    LogicData := true
+    CharData := 'a'
+    Char32Data := '🚀'
+    IntData := 1
+    FloatData := 2.0
+    StringData := "hello"
+    OptionData := option{"world"}
+    ArrayData := array:
+        "One"
+        "Two"
+        "Three"
+    MapData := map:
+        "One" => "1"
+        "Two" => "2"
+        "Three" => "3"
+    EnumData := number.Two
+    ObjectData := object:
+        Name := "Bean"
+    StructData := record:
+        Name := "Cauliflower"
+    NestedEnumData := A.a_number.Three
+    NestedObjectData := A.a_object:
+        Name := "Dexter"
+    NestedStructData := A.a_record:
+        Name := "Chloe"
+
+<#>assert:
+    String := Persistence.ToJson[Expected].ReplaceAll("\"", "\\\"").ReplaceAll("\{", "\\\{").ReplaceAll("\}", "\\\}")
+    DebugPrint("\n{
+    }assert:\n{
+    }    Actual := Persistence.FromJson[\"{String}\", persistent_test_object]\n{
+    }    Equal[Expected, Actual]\n")
+
+<#>
+    To generate an assert snapshotting JSON representing the release of the current workspace,
+    * Uncomment the above `assert`
+    * Run
+    ```
+    "Engine/Restricted/NotForLicensees/Binaries/Win64/VerseTestScriptCmd.exe" -LogCmds="LogSolaris Error" "../../../Sandbox/SolarisTestbed/Plugins/SolarisTests/Tests/PersistentJsonSnapshot.versetest"
+    ```
+    * Copy the output and paste at the end of this file.
+    
+    To generate an assert snapshotting JSON representing the live release,
+    * Load into 0641-5546-6910 in live and exit.
+    * From a workspace root, run
+    ```
+    python FortniteGame/Build/Python/UEFN/player_inventory.py export -e live -A epicAccountId -p 18045abf-4393-24e7-9f4a-7692c4a96795 -t live -f live.json
+    ```
+    * replacing epicAccountId with your Epic account ID used to load into the island.
+    * Run
+    ```
+    python FortniteGame/Build/Python/UEFN/player_inventory_assert.py Global persistent_test_object live.json Sandbox/SolarisTestbed/Plugins/SolarisTests/Tests/PersistentJsonSnapshot.versetest
+    ```
+
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"___verse_0x0DFC89B3_LogicData\":true,\"___verse_0xF433044D_CharData\":97,\"___verse_0x6BE40C0A_Char32Data\":128640,\"___verse_0x0A6A3838_IntData\":1,\"___verse_0x17338625_FloatData\":2,\"___verse_0x5BAD1F0A_StringData\":\"hello\",\"___verse_0xFEAB8C5C_OptionData\":\{\"\":\"world\"\},\"___verse_0x006BF769_ArrayData\":[\"One\",\"Two\",\"Three\"],\"___verse_0xEE7E1793_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"___verse_0xE310C38B_EnumData\":\"number::Two\",\"___verse_0x2D9EFFFC_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"___verse_0x38D9A616_Name\":\"Bean\"\},\"___verse_0x3E41796F_StructData\":\{\"___verse_0x38D9A616_Name\":\"Cauliflower\"\},\"___verse_0x45C5920E_NestedEnumData\":\"A-a_number::Three\",\"___verse_0x74B8F2D7_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"___verse_0x38D9A616_Name\":\"Dexter\"\},\"___verse_0x67677444_NestedStructData\":\{\"___verse_0x38D9A616_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse/persistent_test_object\", \"$class_name\": \"persistent_test_object\", \"b___verse_0x0DFC89B3_LogicData\": true, \"c___verse_0xF433044D_CharData\": 97, \"i___verse_0x6BE40C0A_Char32Data\": 128640, \"i___verse_0x0A6A3838_IntData\": 1, \"d___verse_0x17338625_FloatData\": 2, \"vs___verse_0x5BAD1F0A_StringData\": \"hello\", \"op___verse_0xFEAB8C5C_OptionData\": \{\"vs___verse_0xFEAB8C5C_OptionData\": \"world\"\}, \"a[vs]___verse_0x006BF769_ArrayData\": [\"One\", \"Two\", \"Three\"], \"m[vs]vs___verse_0xEE7E1793_MapData\": [\{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"One\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"1\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Two\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"2\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Three\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"3\"\}\}], \"e___verse_0xE310C38B_EnumData\": \"Number::Two\", \"ob___verse_0x2D9EFFFC_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse/object\", \"$class_name\": \"Object\", \"vs___verse_0x38D9A616_Name\": \"Bean\"\}, \"s___verse_0x3E41796F_StructData\": \{\"vs___verse_0x38D9A616_Name\": \"Cauliflower\"\}, \"e___verse_0x45C5920E_NestedEnumData\": \"a_number::Three\", \"ob___verse_0x74B8F2D7_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse/A_a_object\", \"$class_name\": \"a_object\", \"vs___verse_0x38D9A616_Name\": \"Dexter\"\}, \"s___verse_0x67677444_NestedStructData\": \{\"vs___verse_0x38D9A616_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"persistent_test_object\", \"b___verse_0x0DFC89B3_LogicData\": true, \"c___verse_0xF433044D_CharData\": 97, \"i___verse_0x6BE40C0A_Char32Data\": 128640, \"i___verse_0x0A6A3838_IntData\": 1, \"d___verse_0x17338625_FloatData\": 2, \"vs___verse_0x5BAD1F0A_StringData\": \"hello\", \"op___verse_0xFEAB8C5C_OptionData\": \{\"vs___verse_0xFEAB8C5C_OptionData\": \"world\"\}, \"a[vs]___verse_0x006BF769_ArrayData\": [\"One\", \"Two\", \"Three\"], \"m[vs]vs___verse_0xEE7E1793_MapData\": [\{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"One\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"1\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Two\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"2\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Three\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"3\"\}\}], \"e___verse_0xE310C38B_EnumData\": \"Number::Two\", \"ob___verse_0x2D9EFFFC_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"Object\", \"vs___verse_0x38D9A616_Name\": \"Bean\"\}, \"s___verse_0x3E41796F_StructData\": \{\"vs___verse_0x38D9A616_Name\": \"Cauliflower\"\}, \"e___verse_0x45C5920E_NestedEnumData\": \"A-a_number::Three\", \"ob___verse_0x74B8F2D7_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"A-a_object\", \"vs___verse_0x38D9A616_Name\": \"Dexter\"\}, \"s___verse_0x67677444_NestedStructData\": \{\"vs___verse_0x38D9A616_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"persistent_test_object\", \"b___verse_0x0DFC89B3_LogicData\": true, \"c___verse_0xF433044D_CharData\": 97, \"i___verse_0x6BE40C0A_Char32Data\": 128640, \"i___verse_0x0A6A3838_IntData\": 1, \"d___verse_0x17338625_FloatData\": 2, \"vs___verse_0x5BAD1F0A_StringData\": \"hello\", \"op___verse_0xFEAB8C5C_OptionData\": \{\"vs___verse_0xFEAB8C5C_OptionData\": \"world\"\}, \"a[vs]___verse_0x006BF769_ArrayData\": [\"One\", \"Two\", \"Three\"], \"m[vs]vs___verse_0xEE7E1793_MapData\": [\{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"One\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"1\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Two\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"2\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Three\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"3\"\}\}], \"e___verse_0xE310C38B_EnumData\": \"Number::Two\", \"ob___verse_0x2D9EFFFC_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"Object\", \"vs___verse_0x38D9A616_Name\": \"Bean\"\}, \"s___verse_0x3E41796F_StructData\": \{\"vs___verse_0x38D9A616_Name\": \"Cauliflower\"\}, \"e___verse_0x45C5920E_NestedEnumData\": \"A-a_number::Three\", \"ob___verse_0x74B8F2D7_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"A-a_object\", \"vs___verse_0x38D9A616_Name\": \"Dexter\"\}, \"s___verse_0x67677444_NestedStructData\": \{\"vs___verse_0x38D9A616_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"persistent_test_object\", \"b___verse_0x0DFC89B3_LogicData\": true, \"c___verse_0xF433044D_CharData\": 97, \"i___verse_0x6BE40C0A_Char32Data\": 128640, \"i___verse_0x0A6A3838_IntData\": 1, \"d___verse_0x17338625_FloatData\": 2, \"vs___verse_0x5BAD1F0A_StringData\": \"hello\", \"op___verse_0xFEAB8C5C_OptionData\": \{\"vs___verse_0xFEAB8C5C_OptionData\": \"world\"\}, \"a[vs]___verse_0x006BF769_ArrayData\": [\"One\", \"Two\", \"Three\"], \"m[vs]vs___verse_0xEE7E1793_MapData\": [\{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"One\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"1\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Two\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"2\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Three\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"3\"\}\}], \"e___verse_0xE310C38B_EnumData\": \"Number::Two\", \"ob___verse_0x2D9EFFFC_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"Object\", \"vs___verse_0x38D9A616_Name\": \"Bean\"\}, \"s___verse_0x3E41796F_StructData\": \{\"vs___verse_0x38D9A616_Name\": \"Cauliflower\"\}, \"e___verse_0x45C5920E_NestedEnumData\": \"A-a_number::Three\", \"ob___verse_0x74B8F2D7_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"A-a_object\", \"vs___verse_0x38D9A616_Name\": \"Dexter\"\}, \"s___verse_0x67677444_NestedStructData\": \{\"vs___verse_0x38D9A616_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"persistent_test_object\", \"b___verse_0x0DFC89B3_LogicData\": true, \"c___verse_0xF433044D_CharData\": 97, \"i___verse_0x6BE40C0A_Char32Data\": 128640, \"i___verse_0x0A6A3838_IntData\": 1, \"d___verse_0x17338625_FloatData\": 2, \"vs___verse_0x5BAD1F0A_StringData\": \"hello\", \"op___verse_0xFEAB8C5C_OptionData\": \{\"vs___verse_0xFEAB8C5C_OptionData\": \"world\"\}, \"a[vs]___verse_0x006BF769_ArrayData\": [\"One\", \"Two\", \"Three\"], \"m[vs]vs___verse_0xEE7E1793_MapData\": [\{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"One\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"1\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Two\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"2\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Three\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"3\"\}\}], \"e___verse_0xE310C38B_EnumData\": \"Number::Two\", \"ob___verse_0x2D9EFFFC_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"Object\", \"vs___verse_0x38D9A616_Name\": \"Bean\"\}, \"s___verse_0x3E41796F_StructData\": \{\"vs___verse_0x38D9A616_Name\": \"Cauliflower\"\}, \"e___verse_0x45C5920E_NestedEnumData\": \"A-a_number::Three\", \"ob___verse_0x74B8F2D7_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"A-a_object\", \"vs___verse_0x38D9A616_Name\": \"Dexter\"\}, \"s___verse_0x67677444_NestedStructData\": \{\"vs___verse_0x38D9A616_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"persistent_test_object\", \"b___verse_0x0DFC89B3_LogicData\": true, \"c___verse_0xF433044D_CharData\": 97, \"i___verse_0x6BE40C0A_Char32Data\": 128640, \"i___verse_0x0A6A3838_IntData\": 1, \"d___verse_0x17338625_FloatData\": 2, \"vs___verse_0x5BAD1F0A_StringData\": \"hello\", \"op___verse_0xFEAB8C5C_OptionData\": \{\"vs___verse_0xFEAB8C5C_OptionData\": \"world\"\}, \"a[vs]___verse_0x006BF769_ArrayData\": [\"One\", \"Two\", \"Three\"], \"m[vs]vs___verse_0xEE7E1793_MapData\": [\{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"One\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"1\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Two\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"2\"\}\}, \{\"k\": \{\"vs___verse_0xEE7E1793_MapData\": \"Three\"\}, \"v\": \{\"vs___verse_0xEE7E1793_MapData\": \"3\"\}\}], \"e___verse_0xE310C38B_EnumData\": \"Number::Two\", \"ob___verse_0x2D9EFFFC_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"Object\", \"vs___verse_0x38D9A616_Name\": \"Bean\"\}, \"s___verse_0x3E41796F_StructData\": \{\"vs___verse_0x38D9A616_Name\": \"Cauliflower\"\}, \"e___verse_0x45C5920E_NestedEnumData\": \"A-a_number::Three\", \"ob___verse_0x74B8F2D7_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"A-a_object\", \"vs___verse_0x38D9A616_Name\": \"Dexter\"\}, \"s___verse_0x67677444_NestedStructData\": \{\"vs___verse_0x38D9A616_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"persistent_test_object\", \"x_LogicData\": true, \"x_CharData\": 97, \"x_Char32Data\": 128640, \"x_IntData\": 1, \"x_FloatData\": 2, \"x_StringData\": \"hello\", \"x_OptionData\": \{\"\": \"world\"\}, \"x_ArrayData\": [\"One\", \"Two\", \"Three\"], \"x_MapData\": [\{\"k\": \{\"\": \"One\"\}, \"v\": \{\"\": \"1\"\}\}, \{\"k\": \{\"\": \"Two\"\}, \"v\": \{\"\": \"2\"\}\}, \{\"k\": \{\"\": \"Three\"\}, \"v\": \{\"\": \"3\"\}\}], \"x_EnumData\": \"Number::Two\", \"x_ObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"Object\", \"x_Name\": \"Bean\"\}, \"x_StructData\": \{\"x_Name\": \"Cauliflower\"\}, \"x_NestedEnumData\": \"A-a_number::Three\", \"x_NestedObjectData\": \{\"$package_name\": \"/SolIdeDataSources/_Verse\", \"$class_name\": \"A-a_object\", \"x_Name\": \"Dexter\"\}, \"x_NestedStructData\": \{\"x_Name\": \"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]
+assert:
+    Actual := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"persistent_test_object\",\"x_LogicData\":true,\"x_CharData\":97,\"x_Char32Data\":128640,\"x_IntData\":1,\"x_FloatData\":2,\"x_StringData\":\"hello\",\"x_OptionData\":\{\"\":\"world\"\},\"x_ArrayData\":[\"One\",\"Two\",\"Three\"],\"x_MapData\":[\{\"k\":\{\"\":\"One\"\},\"v\":\{\"\":\"1\"\}\},\{\"k\":\{\"\":\"Two\"\},\"v\":\{\"\":\"2\"\}\},\{\"k\":\{\"\":\"Three\"\},\"v\":\{\"\":\"3\"\}\}],\"x_EnumData\":\"number::Two\",\"x_ObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"object\",\"x_Name\":\"Bean\"\},\"x_StructData\":\{\"x_Name\":\"Cauliflower\"\},\"x_NestedEnumData\":\"A-a_number::Three\",\"x_NestedObjectData\":\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-a_object\",\"x_Name\":\"Dexter\"\},\"x_NestedStructData\":\{\"x_Name\":\"Chloe\"\}\}", persistent_test_object]
+    Equal[Expected, Actual]

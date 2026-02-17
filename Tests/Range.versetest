@@ -1,0 +1,172 @@
+# Test that the side-effects of the range subexpressions are still evaluated even if the range isn't used.
+# Also test that the range LHS subexpression is evaluated before the RHS subexpression.
+C0 := class:
+    var a:int
+    f0(x:int)<transacts>:int =
+        set a = a + x
+        return(x)
+
+C0Module := module:
+    
+    f1<public>():int =
+        c:=C0{a:=0}
+        for (Z:=c.f0(1)..2):
+        return(c.a)
+    
+    f2<public>():int =
+        c:=C0{a:=0}
+        for(Z:=1..c.f0(2)):
+        return(c.a)
+    
+    f3<public>():int =
+        c:=C0{a:=0}
+        for(Z:=c.f0(1)..c.f0(2)):
+        return(c.a)
+
+    f4<public>():int =
+        c:=C0{a:=0}
+        for(Z:=c.f0(1)..c.f0(10)):
+        return(c.a)
+
+assert{C0Module.f1() = 1}
+assert{C0Module.f2() = 2}
+assert{C0Module.f3() = 3}
+assert{C0Module.f4() = 11}
+
+# Test a simple constant ranged for.
+rangetest1():int =
+    var sum:int = 0
+    for(i:=0..2):
+        set sum += i
+    return(sum)
+
+assert{rangetest1() = 3}
+
+# Test a ranged for with a range stored in variable
+assert_semantic_error(3552):
+    rangetest2():int =
+        var sum:int = 0
+        Range:=0..3
+        for(i:=Range):
+            set sum += i
+        return(sum)
+
+# Test creating an array from the result of a ranged for.
+rangetest3():int =
+    Range:=for(i:=0..2){i*2+1}
+    var sum:int = 0
+    for(j:Range):
+        set sum += j
+    return(sum)
+
+assert{rangetest3() = 9}
+
+# Test a ranged for with a variable-bounded range.
+rangetest4(min:int, max:int):int =
+    var sum:int = 0
+    for(i:=min..(max - 1)):
+        set sum += i
+    return(sum)
+
+assert{rangetest4(-1,0) = -1}
+assert{rangetest4(1,-1) = 0}
+assert{rangetest4(1,0) = 0}
+assert{rangetest4(1,1) = 0}
+assert{rangetest4(1,2) = 1}
+assert{rangetest4(1,3) = 3}
+assert{rangetest4(1,4) = 6}
+assert{rangetest4(100,101) = 100}
+
+# Test a ranged for with a member variable-bounded range.
+rangetest5 := class:
+    min:int
+    max:int
+    f():int =
+        var sum:int = 0
+        for(i:=min..(max - 1)):
+            set sum += i
+        return(sum)
+
+assert{rangetest5{min:=1,max:=0}.f() = 0}
+assert{rangetest5{min:=1,max:=4}.f() = 6}
+assert{rangetest5{min:=3,max:=4}.f() = 3}
+
+
+# Test that a range of non-integer types produces an error.
+assert_semantic_error(3552)          {f():void={ for (Z:=0.0..1) {} }}
+assert_semantic_error(3552)          {f():void={ for (Z:=0..1.0) {} }}
+assert_semantic_error(3552)          {f():void={ for (Z:=0.0..1.0) {} }}
+assert_semantic_error(3552)          {f():void={ for (Z:=false..true) {} }}
+assert_semantic_error(3670,3670,3552){f():void={ for (Z:=attribute..attribute) {} }}
+assert_semantic_error(3552)          {f():void={ for (Z:=int..int) {} }}
+assert_semantic_error(3552)          {C := class { f():void={ for (Z:=Self..Self) {} }}}
+assert_semantic_error(3552)          {C := class { f():void={ for (Z:=C..C) {} }}}
+
+assert_valid_syntax      {"1..2"}
+assert_syntax_error(3101){"..10"}
+assert_syntax_error(3100){"10.."}
+
+assert_semantic_error(3552):
+    G(:void)<transacts>:[]int=array{}
+    F():void =
+        for (I : G(1..10)):
+
+
+assert_semantic_error(3552):
+    F():void =
+        1..10
+
+assert_semantic_error(3552):
+    F():void =
+        for (I : array{1..10}):
+
+assert_semantic_error(3552,3509,3524):
+    F():void =
+        for (I := ((1..10)(1))):
+
+assert_semantic_error(3552,3506,3524):
+    F():void =
+        for (I := ((1..10).G)):
+
+assert_semantic_error(3552,3524):
+    F():void =
+        for (I : 1..10):
+
+
+GetLower()<computes>:int = 666
+GetUpper()<computes>:int = 42
+assert:
+    var X:[]int = array{42}
+    var Sum:int = 0
+    for (J:(set X = array{666}); I := GetLower()..GetUpper()):
+        set Sum += I
+    X = array{42}
+    Sum = 0
+
+counter := class:
+    Lower()<transacts>:int =
+        X = 2 or Err()
+        set X += 1
+        666
+    Upper()<transacts>:int =
+        X = 3 or Err()
+        set X += 1
+        42
+    var X<public>:int = 2
+
+assert:
+    var X:[]int = array{42, 666}
+    var Sum:int = 0
+    Counter:counter = counter{}
+    for (J:(set X = array{666, 42}); I := Counter.Lower()..Counter.Upper()):
+        set Sum += I
+    X = array{42, 666}
+    Sum = 0
+    Counter.X = 2
+
+assert:
+    (for (I:=1..4){I} = array{1,2,3,4})
+    (for (I:=42..42){I} = array{42})
+    (for (I:array{42}){I} = array{42})
+
+# See tests for concurrency iteration primitives in IteratedPrimitives.versetest

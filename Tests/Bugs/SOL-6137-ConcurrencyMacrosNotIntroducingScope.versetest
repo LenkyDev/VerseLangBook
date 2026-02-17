@@ -1,0 +1,59 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Concurrency macro introduces local scope for each branch.
+
+assert_semantic_error(3506, 3506):
+  Suspends(I:int)<suspends>:int = I
+  test := class:
+    Test()<suspends>:int =
+      race:
+        X:int = Suspends(1)
+        Y:int = Suspends(X+1)
+      Y
+
+assert_semantic_error(3506, 3506):
+  Suspends(I:int)<suspends>:int = I
+  test := class:
+    Test()<suspends>:int =
+      rush:
+        X:int = Suspends(1)
+        Y:int = Suspends(X+1)
+      Y
+
+assert_semantic_error(3506, 3506):
+  Suspends(I:int)<suspends>:int = I
+  test := class:
+    Test()<suspends>:int =
+      sync:
+        X:int = Suspends(1)
+        Y:int = Suspends(X+1)
+      Y
+
+assert_semantic_error(3506):
+  Suspends(I:int)<suspends>:int = I
+  test := class:
+    Test()<suspends>:int =
+      branch:
+        X:int = Suspends(1)
+      X
+
+# Ugly code since spawn only accept a function invocation
+assert_semantic_error(3506):
+  Suspends(I:int)<suspends>:int = I
+  test := class:
+    Test()<suspends>:int =
+      spawn:
+        Suspends(X:int = 1)
+      X
+
+# This is almost the same code as the one reported in SOL-6137
+assert_semantic_error<depends_on_library>(3506):
+  GetFalse()<suspends>:false = Err()
+  DoNothing()<suspends>:void = ()
+  test := class:
+    var X:int = 0
+    Test()<suspends>:int =
+      race:
+        DoNothing()
+        False:false = GetFalse()
+      set X = int(False(21))

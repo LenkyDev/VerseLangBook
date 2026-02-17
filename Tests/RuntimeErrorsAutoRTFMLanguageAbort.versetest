@@ -1,0 +1,82 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+ErrorIfAutoRTFMIsNotEnabled()<transacts>:void=
+    IsAutoRTFMEnabled[] or Err("AutoRTFM is not enabled")
+
+LanguageAbortImmediate()<transacts><decides>:void=
+    TestUtils.CauseAutoRTFMLanguageAbort[]
+
+LanguageAbortViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[LanguageAbortImmediate]
+
+LanguageAbortInNestedTransaction()<transacts><decides>:void=
+    if:
+        TestUtils.CauseAutoRTFMLanguageAbort[]
+
+LanguageAbortInNestedTransactionViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[LanguageAbortInNestedTransaction]
+
+# Test that triggering an AbortedByLanguage AutoRTFM error outside of a 
+# transaction is treated as a runtime error.
+verse_vm_only: # BPVM does not treat a AbortedByLanguage outside of a transaction as a runtime error
+    assert_runtime_error:
+        ErrorIfAutoRTFMIsNotEnabled()
+
+        TestUtils.CauseAutoRTFMLanguageAbort[]
+
+# Test that triggering an AbortedByLanguage AutoRTFM error inside a transaction
+# is treated as a runtime error.
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.CauseAutoRTFMLanguageAbort[]
+
+# Test that triggering an AbortedByLanguage AutoRTFM error inside a nested
+# transaction is treated as a runtime error.
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        LanguageAbortInNestedTransaction[]
+
+# Various tests for triggering an AbortedByLanguage AutoRTFM error inside
+# native callback functions (Verse -> C++ -> Verse -> ...).
+verse_vm_only: # BPVM does not treat a AbortedByLanguage outside of a transaction as a runtime error
+    assert_runtime_error:
+        ErrorIfAutoRTFMIsNotEnabled()
+
+        TestUtils.InvokeTransacts[LanguageAbortImmediate]
+
+    assert_runtime_error:
+        ErrorIfAutoRTFMIsNotEnabled()
+
+        TestUtils.InvokeTransacts[LanguageAbortViaNativeCallback]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.InvokeTransacts[LanguageAbortViaNativeCallback]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.InvokeTransacts[LanguageAbortInNestedTransaction]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.InvokeTransacts[LanguageAbortInNestedTransaction]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    TestUtils.InvokeTransacts[LanguageAbortInNestedTransactionViaNativeCallback]
+
+assert_runtime_error:
+    ErrorIfAutoRTFMIsNotEnabled()
+
+    if:
+        TestUtils.InvokeTransacts[LanguageAbortInNestedTransactionViaNativeCallback]

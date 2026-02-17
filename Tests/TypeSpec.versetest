@@ -1,0 +1,16 @@
+
+# Uninitialized locals should produce an error
+assert_semantic_error(3601):
+    f():void=Val:logic
+# Uninitialized local pointers should produce an error
+assert_semantic_error(3601):
+    f():void=var Var:string
+# Even local optionals need to be default initialized to `optional{}`
+assert_semantic_error(3601):
+    f():void=Opt:?int
+# Containers too
+assert_semantic_error(3601):
+    f():void=Arr:[]float
+
+assert_valid:
+    f(x:int):void={ g(:int):void={} }

@@ -1,0 +1,2 @@
+f(:float):int = { return(42) }
+assert{f(1.0) = 42}

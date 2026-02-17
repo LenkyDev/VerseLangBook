@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+test_object := class:
+    test_func()<transacts><decides>:void=
+        1=1
+
+NullTestObject:test_object=MakeNull(test_object)
+
+add_task()<suspends>:void=
+    CoroUtils.WaitTicks(3)
+
+spawn_and_runtime_error():void=
+    spawn{ add_task() }
+    if:
+        NullTestObject.test_func[]
+
+assert_runtime_error{spawn_and_runtime_error()}
+
+}

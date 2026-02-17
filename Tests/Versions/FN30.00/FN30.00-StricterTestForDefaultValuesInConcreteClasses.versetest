@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Stricter tests for defaults in concrete classes.
+
+assert_valid:
+  vpackage(P0, /A, ?UploadedAtFNVersion:=2940):
+    snippet:
+      test_class := class<concrete>:
+        False:false = _False:false
+
+assert_semantic_error(3519):
+  vpackage(P0, /A, ?UploadedAtFNVersion:=3000):
+    snippet:
+      test_class := class<concrete>:
+        False:false = _False:false

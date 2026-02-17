@@ -1,0 +1,62 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3502):
+    Main():void =
+        X := X
+
+assert_semantic_error(3502):
+    Main():void =
+        X:int = X
+
+assert_semantic_error(3502):
+    X:int = X
+
+assert_semantic_error(3502):
+    class1 := class:
+        X:int = X
+
+assert_semantic_error(3502):
+    struct1 := struct:
+        X:int = X
+
+assert_semantic_error(3502):
+    Main():void =
+        X := block:
+            Y := X
+
+assert_semantic_error(3506):
+    Main():void =
+        X := Y
+        Y := X
+
+assert_semantic_error(3502, 3502):
+    class1 := class:
+        X:int = Y
+        Y:int = X
+
+assert_semantic_error(3502):
+    class1 := class:
+        X:int = 1
+        Y:int = X
+
+assert_semantic_error(3502):
+    class1 := class:
+        X:int = 1
+        Y:int = block:
+            Z := X
+
+assert_semantic_error(3502, 3582):
+    class1 := class:
+        X:int = F()
+        F()<computes>:int = 1
+
+assert_semantic_error(3502, 3582):
+    class1 := class:
+        X:int = block:
+            Y := F()
+        F()<computes>:int = 1
+
+assert_semantic_error(3502):
+    class1 := class:
+        X:int = block:
+            Y := X

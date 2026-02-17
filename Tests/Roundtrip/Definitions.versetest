@@ -1,0 +1,68 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_roundtrip{x := 1}
+assert_roundtrip{x:int = 2}
+assert_roundtrip{f():void = 3}
+assert_roundtrip{f():void = {}}
+assert_roundtrip{f():void = x}
+assert_roundtrip{f():void = {x; y}}
+assert_roundtrip(f():void = {x; y;}){f():void = {x; y}}
+assert_roundtrip{f(x:int):void = x * x}
+
+assert_roundtrip{
+f(x:int, y:float, z:string):void = 
+    temp1 := x * y
+    temp2 := x + y
+    temp3 := z
+    return x * y / z
+}
+
+# Make sure that separators are preserved on array elements.
+assert_roundtrip{
+a:int = 5
+b := array {1, 2, 3}
+}
+
+assert_roundtrip(
+M := module:
+    F1():int = {1}
+    F2():int := {2}
+){
+M := module:
+    F1():int = {1}
+    F2():int = {2}
+}
+
+# Not the prettiest output, but it can be parsed
+# Warning, there are 4 spaces on the empty line between the functions!
+assert_roundtrip(
+M := module:
+    F1():int = {
+        1
+    }
+    F2():int := {
+        2
+    }
+){
+M := module:
+    F1():int = {1
+    }
+    
+    F2():int = {2
+    }
+}
+
+assert_roundtrip(
+M := module:
+    F1():int = (
+        1
+    )
+    F2():int = (2)
+){
+M := module:
+    F1():int = (
+    1
+    )
+    
+    F2():int = (2)
+}

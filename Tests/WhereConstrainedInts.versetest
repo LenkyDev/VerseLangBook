@@ -1,0 +1,242 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+uchar := type{_X:int where _X < 256, _X >= 0 }
+
+ValidUChar:int = 23
+InvalidUChar:int = -100
+
+assert:
+    # number literals should be assignable to constrained ints
+    Y:uchar = 1
+    Y = uchar[1]
+    Y <> uchar[2]
+    # We can't do a test for `Y <> uchar[-10]` because the rhs will fail and we will bail before doing the <>
+    Y = uchar[ValidUChar - 22]
+    Y <> uchar[ValidUChar - 21]
+    Y = uchar[InvalidUChar + 101]
+
+assert:
+    var Y:int = 0
+    if (uchar[2000]):
+        set Y = 1
+    Y = 0
+
+assert:
+    var Y:int = 0
+    if (uchar[-1]):
+        set Y = 1
+    Y = 0
+
+myChar := type{_X:int where -128 <= _X, _X < 127 }
+
+assert:
+    Y:myChar = -23
+    Y = myChar[-23]
+    Z:myChar = 1
+    Z = uchar[1]
+
+assert:
+    MyArray := array { 0, 2, 4 }
+    Y:uchar = 1
+    MyArray[Y] = 2
+
+assert:
+    MyMap := map { 0=>"a", 1=>"b" }
+    var Y:uchar = 0
+    MyMap[Y] = "a"
+    set Y = 1
+    MyMap[Y] = "b"
+
+assert_semantic_error(3509):
+    Y:type{_X:int where _X < 256, _X >= 0 } = 500
+
+assert_semantic_error(3509):
+    Test():void =
+        var Y:type{_X:int where _X < 256, _X >= 0 } = 5;
+        set Y = 500
+
+assert_semantic_error(3509):
+    uchar := type{_X:int where _X < 256, _X >= 0 }
+    X:uchar = 1.0
+
+assert_semantic_error(3502):
+    uchar := type{_X:int where _X < 256, _X >= 0.0 }
+
+assert_semantic_error(3502):
+    Y:int = 256
+    uchar := type{_X:int where _X < Y, _X >= 0 }
+
+assert_semantic_error(3502):
+    Y:int = 0
+    uchar := type{_X:int where _X < 256, Y <= _X }
+
+# Test INT64_MAX (9223372036854775807) and INT64_MIN (-9223372036854775808)
+uint63 := type{ _X:int where 0 <= _X, _X <= 9223372036854775807 }
+uint63Minus1 := type{ _X:int where 0 <= _X, _X < 9223372036854775807 }
+
+Myint64 := type{_X:int where -9223372036854775808 <= _X, _X <= 9223372036854775807 }
+
+assert:
+    A:uint63 = 9223372036854775807
+    B:uint63 = 5000
+    C:uint63Minus1 = 9223372036854775806
+    D:Myint64 = -9223372036854775808
+
+assert_semantic_error(3555):
+    uint63 := type{ _X:int where 0 <= _X, _X <= 9223372036854775807 }
+    Y:uint63 = 9223372036854775808
+
+assert_semantic_error(3509):
+    uint63Minus1 := type{ _X:int where 0 <= _X, _X < 9223372036854775807 }
+    Z:uint63Minus1 = 9223372036854775807
+
+assert_semantic_error(3555):
+    Myint64 := type{_X:int where -9223372036854775808 <= _X, _X <= 9223372036854775807 }
+    Z:Myint64 = -9223372036854775809
+
+assert_semantic_error(3502):
+    t := type{_X:int where _X > 9223372036854775807}
+
+assert_semantic_error(3502):
+    t := type{_X:int where _X < -9223372036854775808}
+
+C0 := class<computes>():
+    Member<public>: uchar = 1
+
+MakeC<constructor>(X:uchar)<computes> := C0:
+    Member := X
+
+assert:
+    var MyC : C0 = C0{}
+    MyC.Member = 1
+
+    set MyC = MakeC(0)
+    MyC.Member = 0
+
+    set MyC = MakeC(100)
+    MyC.Member = 100
+
+    set MyC = MakeC(255)
+    MyC.Member = 255
+
+assert_semantic_error(3502):
+    # string isn't allowed right now and this doesn't make sense
+    T := type{_X:string where _X < 100}
+
+assert_semantic_error(3502):
+    # We don't allow = inside the where
+    T := type{_X:int where _X = 1}
+
+assert_semantic_error(3502):
+    # We don't allow <> inside the where
+    T := type{_X:int where _X <> 1}
+
+assert_semantic_error(3502):
+    T := type{F():void where F < 1}
+
+assert_semantic_error(3502):
+    T := type{1 where F < 1}
+
+myUCharWithExtraOps := type{_X:int where _X < 10000, _X < 256, _X > -1}
+ExtraOpsUChar:myUCharWithExtraOps = 1
+
+assert_semantic_error(3509):
+    myUChar := type{_X:int where _X < 10000, _X < 256, _X > -1}
+    Test:myUChar = 1000
+
+assert_semantic_error(3509):
+    degenerateRange := type{_X:int where _X > 100, _X < 100 }
+    X:degenerateRange = 100
+
+degenerateRange := type{_X:int where _X > 100, _X < 100 }
+assert:
+    if (X:degenerateRange = degenerateRange[100]):
+        true = false
+
+#Test passing a more refined type into a less refined one
+uint16 := type{_X:int where 0 <= _X, _X < 65535}
+negative_int := type{_I:int where _I<0}
+
+assert:
+    X:uchar = 1
+    Y:uint16 = X
+    Y = 1
+
+assert:
+    X:uint16 = 1
+    Y:uchar = uchar[X]
+    Y = 1
+
+assert_semantic_error(3509):
+    uchar := type{_X:int where _X < 256, _X >= 0 }
+    uint16 := type{_X:int where 0 <= _X, _X < 65535}
+    X:uint16 = 1
+    Y:uchar = X
+
+F(X:uint16):int = X
+F(X:negative_int):int = X + 1
+
+assert:
+    F(-1) = 0
+    F(1) = 1
+
+# overload ambiguity
+assert_semantic_error(3532):
+    uchar := type{_X:int where _X < 256, _X >= 0 }
+    uint16 := type{_X:int where 0 <= _X, _X < 65535}
+    F(X:uchar):int = X
+    F(X:uint16):int = X
+
+assert_semantic_error(3518):
+    uchar := type{_X:int where _X < 256, _X >= 0}
+    uint16 := type{_X:int where 0 <= _X, _X < 65535}
+    A := module{F<public>(X:uchar):int=X}
+    B := module{F<public>(X:uint16):int=X}
+    C := module:
+        using{A}
+        using{B}
+        G():int=F(0) # ambiguous call to overloaded function
+
+
+MakeUChar():uchar = 100
+negative_uchar := type{ _X:int where _X <= 0, -256 < _X }
+assert:
+    var NegativeUChar:negative_uchar = -MakeUChar()
+    NegativeUChar = -100
+    UChar := 200
+    set NegativeUChar = -UChar
+    NegativeUChar = -200
+
+# Test that the i64 constrained int type isn't confused with int.
+
+i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}
+
+assert{i64[9223372036854775807]}
+assert{i64[-9223372036854775808]}
+
+verse_vm_only
+{
+assert{    int[ 9223372036854775807+1]}
+assert{    int[ 9223372036854775807  ]}
+assert{    int[-9223372036854775808  ]}
+assert{    int[-9223372036854775808-1]}
+
+assert{not i64[ 9223372036854775807+1]}
+assert{    i64[ 9223372036854775807  ]}
+assert{    i64[-9223372036854775808  ]}
+assert{not i64[-9223372036854775808-1]}
+}
+
+# Test subtyping of int vs i64
+assert_valid               {i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(X:i64):i64 = X}
+assert_valid               {i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(X:i64):int = X}
+assert_semantic_error(3510){i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(X:int):i64 = X}
+assert_valid               {i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(X:int):int = X}
+
+# Test joins of int vs i64
+assert_valid               {i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(G:tuple()->i64, H:tuple()->int, Z:logic):tuple()->int = if(Z?) then G else H}
+assert_semantic_error(3510){i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(G:tuple()->i64, H:tuple()->int, Z:logic):tuple()->i64 = if(Z?) then G else H}
+
+# Test meets of int vs i64
+assert_valid               {i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(G:i64->void, H:int->void, Z:logic):i64->void = if(Z?) then G else H}
+assert_semantic_error(3510){i64 := type{_X:int where _X >= -9223372036854775808, _X <= 9223372036854775807}; F(G:i64->void, H:int->void, Z:logic):int->void = if(Z?) then G else H}

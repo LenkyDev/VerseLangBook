@@ -1,0 +1,9 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# From the jira
+SetMessageWithVarietySym<localizes> : message = "varietysymbols123/.?!@#$%^&^&*() {0u0049} {0u1f408}"
+
+assert:
+   Localize(SetMessageWithVarietySym) = "varietysymbols123/.?!@#$%^&^&*() I {0u1f408}"
+
+# For more testing see Tests\Localization.versetest

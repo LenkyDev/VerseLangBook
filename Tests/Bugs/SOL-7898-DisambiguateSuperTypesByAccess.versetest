@@ -1,0 +1,275 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# explicit disambiguated
+assert_valid:
+    A := module:
+        super_class<public> := class{}
+    B := module:
+        super_class<public> := class{}
+    C := module:
+        using{A}
+        using{B}
+        sub_classA := class((A:)super_class){}
+        sub_classB := class((B:)super_class){}
+
+# class to class
+assert_semantic_error(3588):
+    A := module:
+        super_class<public> := class{}
+    B := module:
+        super_class<public> := class{}
+    C := module:
+        using{A}
+        using{B}
+        sub_class := class(super_class){}    # 3588 - both public types
+
+assert_valid:
+    A := module:
+        super_class<public> := class{}
+    B := module:
+        super_class<public> := class{}
+    C := module:
+        using{A}
+        using{B}
+        sub_class := class((A:)super_class){}
+
+assert_valid:
+    A := module:
+        super_class<internal> := class{}
+    B := module:
+        super_class<public> := class{}
+    C := module:
+        using{A}
+        using{B}
+        sub_class := class(super_class){}
+
+
+# interface to class
+assert_semantic_error(3588):
+    A := module:
+        super_interface<public> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        sub_class := class(super_interface){}    # 3588 - both public types
+
+assert_valid:
+    A := module:
+        super_interface<public> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        sub_class := class((A:)super_interface){}
+
+assert_valid:
+    A := module:
+        super_interface<internal> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        sub_class := class(super_interface){}
+
+# interface to interface
+assert_semantic_error(3588):
+    A := module:
+        super_interface<public> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        sub_interface := interface(super_interface){}    # 3588 - both public types
+
+assert_valid:
+    A := module:
+        super_interface<public> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        sub_interface := interface((A:)super_interface){}
+
+assert_valid:
+    A := module:
+        super_interface<internal> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        sub_interface := interface(super_interface){}
+
+# integer into a class
+assert_semantic_error(3588):
+    A := module:
+        some_int<public>:int = 42
+    B := module:
+        some_int<public>:int = 42
+    C := module:
+        using{A}
+        using{B}
+        local_int:int = some_int            # 3588 both public values, so ambiguous
+        
+assert_valid:
+    A := module:
+        some_int<public>:int = 42
+    B := module:
+        some_int<public>:int = 42
+    C := module:
+        using{A}
+        using{B}
+        local_intA:int = (A:)some_int
+        local_intB:int = (B:)some_int       # qualified, so not ambiguous anymore
+
+assert_valid:
+    A := module:
+        some_int<public>:int = 42
+    B := module:
+        some_int<internal>:int = 42
+    C := module:
+        using{A}
+        using{B}
+        local_int:int = some_int             # not ambiguous because only one is public
+
+assert_semantic_error(3588):
+    A := module:
+        super_interface<scoped{C}> := interface{}
+    B := module:
+        super_interface<scoped{C}> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        some_class := class(super_interface){}
+
+assert_valid:
+    A := module:
+        super_interface<scoped{C}> := interface{}
+    B := module:
+        super_interface<scoped{D}> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        some_class := class(super_interface){}  # B.super_interface is invisible to us
+    D := module{ <# empty #> }
+
+assert_semantic_error(3588):
+    A := module:
+        super_interface<scoped{C}> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        some_class := class(super_interface){}
+
+assert_valid:
+    A := module:
+        super_interface<scoped{C}> := interface{}
+    B := module:
+        super_interface<internal> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        some_class := class(super_interface){} 
+
+assert_valid:
+    A := module:
+        super_interface<scoped{D}> := interface{}
+    B := module:
+        super_interface<public> := interface{}
+    C := module:
+        using{A}
+        using{B}
+        some_class := class(super_interface){} 
+    D := module{ <# empty #> }
+
+<#> # TODO: We're not yet early-processing named scoped{} definitions
+    assert_semantic_error(3588):
+        ScopedToC := scoped{C}
+        A := module:
+            super_interface<ScopedToC> := interface{}
+        B := module:
+            super_interface<ScopedToC> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){}
+
+    assert_semantic_error(3588):
+        ScopedToC := scoped{C}
+        ScopedToD := scoped{D}
+        A := module:
+            super_interface<ScopedToC> := interface{}
+        B := module:
+            super_interface<ScopedToD> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){}
+        D := module{ <#empty#> }
+
+    assert_semantic_error(3588):
+        A := module:
+            super_interface<ScopedToC> := interface{}
+        B := module:
+            super_interface<ScopedToD> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){}
+        D := module{ <#empty#> }
+        ScopedToC := scoped{C}
+        ScopedToD := scoped{D}
+
+    assert_semantic_error(3588):
+        ScopedToC := scoped{C}
+        A := module:
+            super_interface<ScopedToC> := interface{}
+        B := module:
+            super_interface<public> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){} 
+
+    assert_semantic_error(3588):
+        ScopedToC := scoped{C}
+        A := module:
+            super_interface<ScopedToC> := interface{}
+        B := module:
+            super_interface<public> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){} 
+        ScopedToC := scoped{C}
+
+    assert_valid:
+        ScopedToC := scoped{C}
+        A := module:
+            super_interface<ScopedToC> := interface{}
+        B := module:
+            super_interface<internal> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){} 
+
+    assert_valid:
+        ScopedToD := scoped{D}
+        A := module:
+            super_interface<ScopedToD> := interface{}
+        B := module:
+            super_interface<public> := interface{}
+        C := module:
+            using{A}
+            using{B}
+            some_class := class(super_interface){} 
+        D := module{ <# empty #> }

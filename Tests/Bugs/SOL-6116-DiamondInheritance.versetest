@@ -1,0 +1,44 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3509):
+    Interface1 := interface:
+        Method1<public>():int
+
+    CallMethod1(Object:Interface1):int = Object.Method1()
+
+    Interface2 := interface:
+        Method1<public>():int
+
+    Class1 := class(Interface2):
+        Method1<override>():int = 42
+
+    Interface3 := interface(Interface2):
+        
+    Class2 := class(Class1, Interface3):
+
+    Main()<decides>:void =
+        Object := Class2{} 
+        CallMethod1(Object) = 42
+
+assert_valid:
+    Detailable<public>:=interface {}
+    Hostable<public>:=interface {}
+    SuperInaugurable<public>:=interface {}
+    Rebirthable<public>:=interface {}
+    SubHostable<public>:=interface {}
+    Gated<public>:=interface {}
+    StringReturnables<public>:=interface {}
+    IntegralVisuals<public>:=interface {}
+    IntegralAudibles<public>:=interface {}
+    IntegralFX<public>:=interface(IntegralVisuals, IntegralAudibles) {}
+    purchaseable<public>:=class<abstract>(Detailable, Hostable, SuperInaugurable, Rebirthable, SubHostable, IntegralFX, Gated, StringReturnables) {}
+    ExpandedVisuals<public>:=interface {}
+    ExpandedAudibles<public>:=interface {}
+    ExpandedFX<public>:=interface(IntegralFX, ExpandedVisuals, ExpandedAudibles) {}
+    # Make sure to continue searching more interfaces in `purchaseable` even if
+    # searching of `ExpandedFX` visited some of the earlier ones.
+    fxpurchaseable<public>:=class<abstract>(purchaseable, ExpandedFX) {}
+    hitable_buyable<public>:=class<concrete><final>(fxpurchaseable) {}
+    Initialize(:StringReturnables):void = {}
+    Main():void =
+        Initialize(hitable_buyable{})

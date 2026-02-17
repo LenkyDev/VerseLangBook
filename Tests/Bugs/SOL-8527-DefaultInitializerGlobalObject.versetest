@@ -1,0 +1,11 @@
+computes_class := class<computes>:
+
+GlobalObject:computes_class = computes_class{}
+
+# When initializing this CDO, MyGlobalObject is not a subobject of the CDO, so it can be a VObject.
+# UObject logic (RequireConcrete, renaming, and instancing) must allow this.
+points_to_global := class:
+    Object:computes_class = GlobalObject
+
+assert:
+    points_to_global{}

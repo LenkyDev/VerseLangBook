@@ -1,0 +1,31 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Verse maps allow any `comparable` subtype to serve as a map key. as
+# a result, we can't emit compilation errors for lookups that are
+# guaranteed to fail at runtime but compile fine, eg: map{0 => 1}["what"]
+#
+# ... so we emit warnings instead.
+
+assert_valid { F()<decides>:void = map{0 => 42.0}[0] }
+
+assert_valid { F()<decides>:void = { C:comparable = 3; map{0 => 42.0}[C] } }
+
+assert_valid:
+    # this used to crash the semantic analyzer due to the latter's lack of support
+    # for positive/negative flow types in its implementation of Meet/Join
+    F(X:t where t:subtype(comparable)):[]t = array{X}
+    G()<decides>:void =
+        M:[string]int = map{}
+        M[F('h')]
+
+assert_semantic_error(2017) { F()<decides>:void = map{}[0] }
+
+assert_semantic_error(2017) { F()<decides>:void = map{0 => 42.0}["hello"] }
+
+assert_semantic_error(2017):
+    e1 := enum { A }
+    E1FloatMap:[e1]float = map{}
+    not_e1 := enum { A, B }
+    F()<decides>:void = E1FloatMap[not_e1.A]

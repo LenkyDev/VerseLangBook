@@ -1,0 +1,40 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3509, 3509, 3509, 3509):
+    F(Arg:logic)<computes>:type =
+        if (Arg?):
+            int
+        else:
+            float
+    A:F(true) = 1
+    B:F(false) = 1
+    C:F(true) = 1.0
+    D:F(false) = 1.0
+
+assert_semantic_error(3509, 3509, 3509, 3509):
+    F(Arg:logic)<computes>:type =
+        if (Arg?):
+            int
+        else:
+            float
+    G0(Arg:F(true)):void = {}
+    G1(Arg:F(false)):void = {}
+    Main():void =
+        G0(1)
+        G1(1)
+        G0(1.0)
+        G1(1.0)
+
+assert_semantic_error(3502):
+    F(X:t, t:type):t = X
+    Main()<decides>:void =
+        F(1, int) = 1
+
+assert_valid:
+    F(t:type, X:t)<computes>:t = X
+    Int()<computes> := F(type, int)
+
+assert_semantic_error(3509, 3510):
+    F(t:type, X:t)<computes>:t = X
+    Int()<computes> := F(type, int)
+    G()<computes>:int = F(Int(), 1)

@@ -1,0 +1,126 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# This file tests interface diamond inheritence.
+
+interface_root := interface:
+    Root(X:int):int
+
+interface_a := interface(interface_root):
+    A(X:int):int
+
+interface_b := interface(interface_root):
+    B(X:int):int
+
+interface_ab := interface(interface_a, interface_b):
+    AB(X:int):int
+
+# Verify that we can use the diamond interface
+class_ab := class(interface_ab):
+    
+    Root<override>(X:int):int= 10+X    
+    
+    A<override>(X:int):int= 20+X    
+    
+    B<override>(X:int):int= 30+X    
+    
+    AB<override>(X:int):int= 40+X
+
+assert:
+    C := class_ab{}
+    C.Root(1) = 11
+    C.A(2) = 22
+    C.B(3) = 33
+    C.AB(4) = 44
+
+# Create a diamond where one path is class inheritance.    
+class_root := class(interface_root):
+    
+    Root<override>(X:int):int= 110+X    
+    
+class_a := class(class_root, interface_a):
+    
+    Root<override>(X:int):int= 210+X 
+    
+    A<override>(X:int):int= 220+X
+
+class_b := class(class_root, interface_a):
+
+    A<override>(X:int):int= 510+X
+    
+# Verify that it does what is expected.
+assert:
+    Croot := class_root{}
+    Croot.Root(1) = 111
+assert:
+    Ca := class_a{}
+    Ca.Root(1) = 211
+    Ca.A(2) = 222
+assert:
+    Cb := class_b{}
+    Cb.Root(5) = 115
+    Cb.A(7) = 517
+
+assert_valid:
+    interface_root := interface {}
+    interface_a := interface(interface_root) {}
+    interface_fail := interface(interface_a, interface_root) {}
+
+assert_valid:
+    interface_root := interface {}
+    interface_a := interface(interface_root) {}
+    interface_fail := interface(interface_root, interface_a) {}
+
+# Currently fail, but can be implemented. However, it's most likely an error in the verse code.
+assert_semantic_error(3592):
+    interface_root := interface {}
+    interface_fail := interface(interface_root, interface_root) {}
+
+# Will never be allowed.
+assert_semantic_error(3557):    
+    interface_fail := interface(interface_fail) {}
+
+# Default implementation was allowed before, but isn't now.
+# Had to be sacrificed for diamond inheritence.
+# Allowed again, but with restrictions
+assert_valid:
+    interface_with_default := interface:
+        Default(X:int):int = X
+
+assert_semantic_error(3523, 3523, 3532):
+    interface_with_default := interface:
+        Default(X:int):int = 8
+    interface_with_override := interface(interface_with_default):
+        Default<override>(X:int):int = 10
+
+assert_valid:
+    interface_with_default := interface:
+        Default(X:int):int = 8
+    class_with_override := class(interface_with_default):
+        Default<override>(X:int):int = 10
+
+# Interfaces supports fields.
+assert_valid:
+    interface_with_final_field := interface:
+        Field<final>:int= 42
+
+assert_valid:     
+    interface_with_final_field := interface:
+        var Field<final>:int= 42
+
+# ... and final isn't required
+assert_valid:     
+    interface_with_final_field := interface:
+        Field:int= 42
+
+assert_valid:     
+    interface_with_final_field := interface:
+        var Field:int= 42
+
+# ... neither is a default value
+assert_valid:        
+    interface_with_var_field := interface:
+        Field:int
+
+assert_valid:        
+    interface_with_var_field := interface:
+        var Field:int

@@ -1,0 +1,99 @@
+# Verify that native data members are only allowed on native classes.
+assert_valid:
+    
+    C<native> := class:
+        
+        x<native>:int
+assert_semantic_error(3561):
+    C := class:
+        
+        x<native>:int
+        
+# Verify that native methods are only allowed on native classes.
+assert_valid:
+    
+    C<native> := class:
+        
+        f<native>() : void
+assert_semantic_error(3561):
+    C := class:
+        
+        f<native>() : void
+
+# Verify that native_callable methods are only allowed on native classes.
+assert_valid:
+    
+    C<native> := class:
+        
+        f<native_callable>() : void = {}
+assert_semantic_error(3561):
+    C := class:
+        
+        f<native_callable>() : void = {}
+        
+# Verify that native classes are only allowed if their super class is native.
+assert_valid:
+    
+    C<native> := class {}
+assert_valid:
+    
+    C<native> := class {}
+    
+    D<native> := class(C) {}
+assert_semantic_error(3562):
+    C := class {}
+    
+    D<native> := class(C) {}
+
+# Class using abstract interface class
+assert_valid:
+    object<native> := class{}
+
+    the_interface<native> := class<abstract>:
+        Method(Object:object):object
+
+    C<native> := class<final>(the_interface):
+        Method<native><override>(Object:object):object
+
+# Class using interface interface
+assert_valid:
+    object<native> := class{}
+
+    the_interface := interface:
+        Method(ObjectToAdd:object):object
+    
+    C<native> := class<final>(the_interface):
+        Method<native><override>(Object:object):object
+
+# Ensure previous errors don't trip up `native` validation
+assert_semantic_error(3547):
+    class1<native> := class:
+        Property := 0
+
+# Check that native structs or classes passed to native functions must also be native
+assert_valid:
+    c<native> := class{}
+    F<native>(C:c):c
+assert_valid:
+    s<native> := struct{}
+    F<native>(S:s):s
+assert_semantic_error(3564,3564):
+    c := class{}
+    F<native>(C:c):c
+assert_semantic_error(3564,3564):
+    s := struct{}
+    F<native>(S:s):s
+
+# Check that structs containing native structs must also be native
+assert_valid:
+    s<native> := struct{}
+    t<native> := struct{ S:s }
+assert_valid:
+    s<native> := struct{}
+    c<native> := class{ S:s }
+assert_semantic_error(3563):
+    s := struct{}
+    t<native> := struct{ S:s }
+assert_semantic_error(3563):
+    s := struct{}
+    c<native> := class{ S:s }

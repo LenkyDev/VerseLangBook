@@ -1,0 +1,5 @@
+#assert_semantic_error(3604){x<invalid>:int=0}
+#assert_semantic_error(3604){var x<invalid>:int=0}
+#assert_semantic_error(3604){x<invalid>:int=0}
+#assert_semantic_error(3604){x<invalid>():int=0}
+#assert_semantic_error(3604){x()<invalid>:int=0}

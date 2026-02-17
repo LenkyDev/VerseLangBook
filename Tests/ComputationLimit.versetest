@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_runtime_error("LoopIterationLimit", "HangTimeLimit"):
+    MyCounter:int = 0
+    loop:
+        if(MyCounter = 100):
+            break
+
+# TODO: 
+# Add runtime errors to VerseVM, then consolidate and add more tests for:
+#  Computation Time Outs
+#  Max instructions reached
+#  Max recursion reached
+#  Too large array (an array with 2^31 elements)

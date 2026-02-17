@@ -1,0 +1,37 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+ccc_test_class := class
+{
+    text:string := "[]"
+    block:
+        CoroUtils.LogEvent(text)
+}
+
+sss_test_struct := struct:
+    C<public>:?ccc_test_class = option{ ccc_test_class{text:="[C]"} }
+    CC<public>:?ccc_test_class = option{ ccc_test_class{text:="[CC]"} }
+    CCC<public>:?ccc_test_class = false
+
+assert:
+    SSS := sss_test_struct:
+        C:=false
+        CC:=false
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()=""
+
+
+my_class := class:
+    block:
+        CoroUtils.LogEvent("A")
+
+my_struct := struct:
+    C:my_class=my_class{}
+
+assert:
+    my_struct{}
+    my_struct{}
+    # should only construct a single instance of my_class
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="AA"

@@ -1,0 +1,135 @@
+assert{  0 = 0x00000000}
+assert{  1 = 0x00000001}
+assert{  2 = 0x00000002}
+assert{  3 = 0x00000003}
+assert{  5 = 0x00000005}
+assert{  7 = 0x00000007}
+assert{ 11 = 0x0000000b}
+assert{ 13 = 0x0000000d}
+assert{ 17 = 0x00000011}
+assert{ 19 = 0x00000013}
+assert{ 23 = 0x00000017}
+assert{ 29 = 0x0000001d}
+assert{ 31 = 0x0000001f}
+assert{ 37 = 0x00000025}
+assert{ 41 = 0x00000029}
+assert{ 43 = 0x0000002b}
+assert{ 47 = 0x0000002f}
+assert{ 53 = 0x00000035}
+assert{ 59 = 0x0000003b}
+assert{ 61 = 0x0000003d}
+assert{ 67 = 0x00000043}
+assert{ 71 = 0x00000047}
+assert{ 73 = 0x00000049}
+assert{ 79 = 0x0000004f}
+assert{ 83 = 0x00000053}
+assert{ 89 = 0x00000059}
+assert{ 97 = 0x00000061}
+assert{101 = 0x00000065}
+assert{256 = 0x00000100}
+assert{1024 = 0x00000400}
+assert{16384 = 0x00004000}
+assert{65535 = 0x0000ffff}
+assert{65536 = 0x00010000}
+assert{65537 = 0x00010001}
+assert{2147483647 = 0x000000007fffffff}
+assert{2147483648 = 0x0000000080000000}
+assert{2147483649 = 0x0000000080000001}
+assert{4294967295 = 0x00000000ffffffff}
+assert{+0 = 0}
+assert{+1 = 1}
+assert{+123456 = 123456}
+assert{ -0 = 0x00000000}
+assert{ -1 = -0x1}
+assert{ -2 = -0x2}
+assert{ -3 = -0x3}
+assert{ -5 = -0x5}
+assert{ -7 = -0x7}
+assert{-11 = -0xb}
+assert{-13 = -0xd}
+assert{-17 = -0x11}
+assert{-19 = -0x13}
+assert{-23 = -0x17}
+assert{-29 = -0x1d}
+assert{-31 = -0x1f}
+assert{-37 = -0x25}
+assert{-41 = -0x29}
+assert{-43 = -0x2b}
+assert{-47 = -0x2f}
+assert{-53 = -0x35}
+assert{-59 = -0x3b}
+assert{-61 = -0x3d}
+assert{-67 = -0x43}
+assert{-71 = -0x47}
+assert{-73 = -0x49}
+assert{-79 = -0x4f}
+assert{-83 = -0x53}
+assert{-89 = -0x59}
+assert{-97 = -0x61}
+assert{-101 = -0x65}
+assert{-256 = -0x100}
+assert{-1024 = -0x400}
+assert{-16384 = -0x4000}
+assert{-65535 = -0xffff}
+assert{-65536 = -0x10000}
+assert{-65537 = -0x10001}
+assert{-2147483647 = -0x7fffffff}
+assert{-2147483648 = -0x80000000}
+
+assert{- 11 = -0xb}
+assert{+ 11 = 0xb}
+assert{-(11) = -0xb}
+assert{+(11) = 0xb}
+
+assert{  2147483648 = 0x0000000080000000}
+assert{- 2147483648 = -0x0000000080000000}
+assert{-(2147483648) = -0x0000000080000000}
+assert{+(2147483648) = 0x0000000080000000}
+
+assert{+ +11 = 0xb}
+assert{+ -11 = -0xb}
+assert{- +11 = -0xb}
+assert{- -11 = 0xb}
+
+assert{+ +2147483648 = 0x0000000080000000}
+assert{+ -2147483648 = -0x0000000080000000}
+assert{- +2147483648 = -0x0000000080000000}
+assert{- -2147483648 = 0x0000000080000000}
+
+assert{4294967295 = 0x00000000ffffffff}
+
+assert_valid_syntax      {"0x1"}
+assert_syntax_error(3100){"0x1_"}
+assert_syntax_error(3100){"0x1g"}
+assert_syntax_error(3100){"0x1G"}
+assert_syntax_error(3100){"0x1Z"}
+
+assert { -4294967295           }
+assert { -2147483649           }
+assert { - 2147483649          }
+assert { 4294967296            }
+assert { 100000000000          }
+assert { -100000000000         }
+assert { +100000000000         }
+assert { 9223372036854775807   }
+assert { -9223372036854775808  }
+
+assert { -9223372036854775808  } # i64min
+assert { 9223372036854775807   } # i64max
+
+assert_semantic_error(3555){ foo():int= { return (-18446744073709551615) } } # -u64max
+assert { -9223372036854775807  } # -i64max
+
+assert_semantic_error(3555){ foo():int= { return (18446744073709551616)  } } # (u64max+1)
+assert_semantic_error(3555){ foo():int= { return (-18446744073709551616) } } # -(u64max+1)
+assert_semantic_error(3555){ foo():int= { return (-9223372036854775809)  } } # i64min-1
+
+assert_semantic_error(3555){ foo():int= { return (--9223372036854775809) } } # -(i64min-1)
+
+assert_semantic_error(3555){ foo():int= { return (184467440737095516150)  } } # u64max*10
+assert_semantic_error(3555){ foo():int= { return (-92233720368547758080)  } } # i64min*10
+assert_semantic_error(3555){ foo():int= { return (92233720368547758070)   } } # i64max*10
+
+assert_semantic_error(3555){ foo():int= { return (-184467440737095516150) } } # -u64max*10
+assert_semantic_error(3555){ foo():int= { return (--92233720368547758080) } } # -i64min*10
+assert_semantic_error(3555){ foo():int= { return (-92233720368547758070)  } } # -i64max*10

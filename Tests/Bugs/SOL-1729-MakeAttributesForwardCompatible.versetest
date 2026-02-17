@@ -1,0 +1,54 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Native }
+
+@attribscope_function
+sol1729_attribute<public> := class<computes>(attribute) {}
+sol1729<public><constructor>(importName:string)<computes> := sol1729_attribute{}
+
+
+# Ok to use as an attribute
+C1 := class:
+    @sol1729("/Script/Engine.AActor")
+    F():int = 1
+
+assert_semantic_error(3670): # Try to use attribute class as a "normal" class
+    @attribscope_function
+    sol1729_attribute<public> := class<computes>(attribute) {}
+    sol1729<public><constructor>(importName:string)<computes> := sol1729_attribute{}
+    X(:int):void= sol1729_attribute{}    
+
+assert_semantic_error(3670): # Try to use attribute as a function 
+    @attribscope_function
+    sol1729_attribute<public> := class<computes>(attribute) {}
+    sol1729<public><constructor>(importName:string)<computes> := sol1729_attribute{}
+    C3 := class:
+        G():int = 
+            X := sol1729("This should not work")
+            1
+
+assert_semantic_error(3552, 3670): # Try to use attribute class as a type 
+    @attribscope_function
+    sol1729_attribute<public> := class<computes>(attribute) {}
+    sol1729<public><constructor>(importName:string)<computes> := sol1729_attribute{}
+    C3 := class:
+        G():sol1729_attribute = sol1729("hello")
+
+assert_semantic_error(3670): # Try to use attribute as a value 
+    @attribscope_function
+    sol1729_attribute<public> := class<computes>(attribute) {}
+    sol1729<public><constructor>(importName:string)<computes> := sol1729_attribute{}
+    C3 := class:
+        G():int = 
+            X := sol1729
+            1
+
+assert_semantic_error(3670): # Try to use attribute class as a value 
+    @attribscope_function
+    sol1729_attribute<public> := class<computes>(attribute) {}
+    C3 := class:
+        G():int = 
+            X := sol1729_attribute
+            1
+

@@ -1,0 +1,199 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Validate that the return macro must be used with 0-1 clauses.
+assert_valid               { f():void={ return         } }
+assert_valid               { f():int ={ return 1       } }
+assert_valid               { f():int ={ return(1)      } }
+assert_semantic_error(3545){ f():int ={ return(1){}    } }
+assert_semantic_error(3545){ f():int ={ return 1{} } }
+
+# Test that return is not allowed outside of a function.
+assert_semantic_error(3548){X:int=return}
+assert_semantic_error(3548){c:=class{X:int=return 0}}
+
+# Test that return yields a value of the bottom type, i.e. it doesn't yield a value.
+# Since the bottom type is a subtype of all other types, it can be used in any type context.
+F0():int=
+    X:int = if(true?) {0} else {return 1}
+    return X
+assert{F0()=0}
+
+# Function definitions must declare a return type.
+assert_semantic_error(3502):
+    voidFunc(x:int):=return x*x
+
+# Functions without bodies (i.e. declarations and  functions) require
+# explicit<native> return type.
+assert_valid { f<native>(x:int) : void }
+
+# A function call with no type or body is not a definition (nor a declaration)
+assert_semantic_error(3585){f(x:int)}
+
+# Declarations are not supported inside other functions
+# We would expect better errors here
+assert_valid{ f(x:int):void={ g(:int):void={} } }
+assert_semantic_error(3598){ f(x:int):void={ g(:int):void } }
+
+# Empty indentation-delimited bodies produce an error.
+assert_syntax_error(3104){"f(x:int):void=\n"}
+
+# Function bodies implicitly return their final subexpression.
+F1(X:int):int=X+1
+assert{F1(0)=1}
+assert{F1(1)=2}
+
+assert_valid { F(X:int):int  = X                  }
+assert_valid { F(X:int):int  = return X           }
+assert_valid { F(X:int):int  = {Y:=X*X; Y}        }
+assert_valid { F(X:int):int  = {Y:=X*X; return Y} }
+
+F2(X:int):int={Y:=X*X; Y}
+assert{F2(1)=1}
+assert{F2(2)=4}
+assert{F2(3)=9}
+
+assert_valid:
+    F(X:int):int=
+        X
+assert_valid:
+    F(X:int):int=
+        return X
+assert_valid:
+    F(X:int):int=
+        Y:=X*X
+        Y
+assert_valid:
+    F(X:int):int=
+        Y:=X*X
+        return Y
+
+F3(X:int):int=
+    Y:=X*X
+    Y
+assert{F3(1)=1}
+assert{F3(2)=4}
+assert{F3(3)=9}
+
+# Anything can be returned from a function with a return type of void.
+F4():void=1
+assert{F4()}
+
+assert_semantic_error(3509){F():void=1; G():void={X:int=F()}}
+
+# return can be used as a subexpression in any type context.
+F6(X:int):int={if(X<>0){Y:int=(@ignore_unreachable return X+1)}; return 0}
+assert{ F6(0) = 0 }
+assert{ F6(1) = 2 }
+assert{ F6(2) = 3 }
+assert{ F6(3) = 4 }
+
+# Function bodies can have return expressions nested within the subexpressions of the body.
+max1(a:int, b:int):int=
+    if(a < b):
+        return b
+    else:
+        return a
+
+max2(a:int, b:int):int=
+    return if(a<b) {b} else {a}
+
+max3(a:int, b:int):int=
+    if(a<b) {b} else {a}
+
+assert{max1( 1,  2) =  2}
+assert{max1( 4,  3) =  4}
+assert{max2( 5,  6) =  6}
+assert{max2( 8,  7) =  8}
+assert{max3( 9, 10) = 10}
+assert{max3(12, 11) = 12}
+
+#
+# Return can't be a subexpression of an explicit or implicit return, with a few exceptions.
+#
+
+assert_semantic_error(3534,2000){ F(X:int):[]int=for(Y:=0..X){return array{0}; 0} }
+assert_semantic_error(3535,2000){ F(X:int)<transacts><decides>:[]int=for(Y:=0..X){return array{0}; 0} }
+
+assert_semantic_error(3534){ F(X:int):[]int=for(Y:=0..X){if(X=0){return array{0}}; 0} }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:[]int=for(Y:=0..X){if(X=0){return array{0}}; 0} }
+
+assert_semantic_error(3534){ F(X:int):int=X+(@ignore_unreachable return 0) }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:int=X+(@ignore_unreachable return 0) }
+
+assert_semantic_error(3534){ F(X:int):int={Y:=X+1; Y+(@ignore_unreachable return 0)} }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:int={Y:=X+1; Y+(@ignore_unreachable return 0)} }
+
+assert_semantic_error(3534){ F(X:int):[]int=array{0, @ignore_unreachable return array{}} }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:[]int=array{0, @ignore_unreachable return array{}} }
+
+assert_semantic_error(3535){ F(X:int):?int=option{@ignore_unreachable return false} }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:?int=option{@ignore_unreachable return false} }
+
+assert_semantic_error(3534,3626){ c:=class{X:int}; F(X:int):c=c{X:=(@ignore_unreachable return c{X:=0})} }
+assert_semantic_error(3535,3626){ c:=class{X:int}; F(X:int)<transacts><decides>:c=c{X:=(@ignore_unreachable return c{X:=0})} }
+
+# Exception: return can be an immediate subexpression of return.
+assert_valid               { F(X:int):int=return X }
+assert_valid               { F(X:int)<transacts><decides>:int=return X }
+
+assert_valid               { F(X:int):int=return (@ignore_unreachable return X) }
+assert_valid               { F(X:int)<transacts><decides>:int=return (@ignore_unreachable return X) }
+
+# Exception: return can occur in a loop whose result is returned, since loop yields the value false.
+assert_valid               { F(X:int):void=loop{Y:=X+1; Y+(@ignore_unreachable return)} }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:void=loop{Y:=X+1; Y+(@ignore_unreachable return)} }
+
+# Exception: return can occur in an else-less if, since they yield the value false.
+assert_valid               { F(X:int):void=if(X=0){return} }
+assert_semantic_error(3535){ F(X:int)<transacts><decides>:void=if(X=0){return} }
+
+# Exception: return can be a nested subexpression in a function with a return type of void/true,
+# since the nested return can't disagree with the outer return on the value being returned.
+assert_valid               { F(X:int):void=for(Y:=0..X){return} }
+assert_valid               { F(X:int):void=for(Y:=0..X){if(X=0){return}} }
+assert_valid               { F(X:int):void=X+(@ignore_unreachable return) }
+assert_valid               { F(X:int):void={Y:=X+1; Y+(@ignore_unreachable return)} }
+
+# Explicit return can only occur in failure contexts in a tail position.
+assert_semantic_error(3535,2000)     { F(X:int)<transacts><decides>:int={return X; 0<>0} }
+assert_semantic_error(3535)          { F(X:int)<transacts><decides>:int={if(X<>0) {return X}; 0<>0} }
+assert_valid                         { F(X:int)<transacts><decides>:int={if(X<>0) {return X} else {return X+1}      } }
+assert_semantic_error(3535,3535,2000){ F(X:int)<transacts><decides>:int={if(X<>0) {return X} else {return X+1}; 0<>0} }
+assert_semantic_error(3535,2000)     { F(X:int)<transacts><decides>:int={loop {return X}; 0<>0} }
+assert_semantic_error(3535)          { F(X:int)<transacts><decides>:int={for(Y:=0..X,X*Y=100){return Y}; 0<>0} }
+
+# Test that an error as a return subexpression produces an error correctly.
+assert_semantic_error(3506){ f():int={ return x } }
+
+# Test that implicit return from fallible functions works.
+F7(x:int)<transacts><decides>:int=x<10
+assert{F7[9]=9}
+assert{not F7[10]}
+
+F8(x:int)<transacts><decides>:void=x<10
+assert{F8[9]}
+assert{not F8[10]}
+
+# Test that explicitly returning a non-void value from a function with a void return type produces a warning.
+assert_valid               { F():void=3 }
+assert_semantic_error(2002){ F():void=return 3 }
+
+assert_valid { F():void={}; G():void=F() }
+assert_valid { F():void={}; G():void=return F() }
+
+############################################
+# Roundtrip tests
+############################################
+
+assert_roundtrip{
+for(i := 1..(Snake.Positions.Length - 1)):
+    if (BodyPosition := Snake.Positions[i]):
+        return
+}
+
+assert_roundtrip{
+for(i := 1..(Snake.Positions.Length - 1)):
+    if (BodyPosition := Snake.Positions[i]):
+        return 10
+}
+

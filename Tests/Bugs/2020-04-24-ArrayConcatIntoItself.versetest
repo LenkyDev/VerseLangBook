@@ -1,0 +1,33 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+C := module:
+    
+    appendOne<public>(Array:[]int):[]int :=
+        newArray := Array + array{1}
+        return(newArray)
+
+    
+    prependOne<public>(Array:[]int):[]int :=
+        newArray := array{1} + Array
+        return(newArray)
+
+assert_valid:
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3800):
+        snippet:
+            using {/Verse.org/Verse}
+            CC := class:
+                func():void=
+                    result := 42
+
+using {/Verse.org/Verse}
+assert_valid:
+    CC := class:
+        func():void=
+            result := 42
+
+assert:
+    (local:)result := C.appendOne(array{0})
+    (local:)result = array{0,1}
+assert:
+    (local:)result := C.prependOne(array{0})
+    (local:)result = array{1,0}

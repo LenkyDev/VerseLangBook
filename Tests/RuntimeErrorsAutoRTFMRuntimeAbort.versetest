@@ -1,0 +1,79 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+RuntimeAbortImmediate()<transacts><decides>:void=
+    TestUtils.CauseAutoRTFMRuntimeAbort[]
+
+RuntimeAbortViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[RuntimeAbortImmediate]
+
+RuntimeAbortInNestedTransaction()<transacts><decides>:void=
+    if:
+        TestUtils.CauseAutoRTFMRuntimeAbort[]
+    then:
+        Err("Unreachable")
+
+RuntimeAbortInNestedTransactionViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[RuntimeAbortInNestedTransaction]
+
+# Test that triggering an AbortedByRequest AutoRTFM error in an unnested
+# transaction is treated as a transactional failure.
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+        TestUtils.CauseAutoRTFMRuntimeAbort[]
+    then:
+        Err("Unreachable")
+
+# Test that triggering an AbortedByRequest AutoRTFM error inside a nested
+# transaction is treated as a transactional failure.
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+    then:
+        if:
+            RuntimeAbortInNestedTransaction[]
+        else:
+            Err("Unreachable")
+
+# Various tests for triggering an AbortedByRequest AutoRTFM error inside
+# native callback functions (Verse -> C++ -> Verse -> ...).
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+        TestUtils.InvokeTransacts[RuntimeAbortImmediate]
+    then:
+        Err("Unreachable")
+
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+    then:
+        if:
+            TestUtils.InvokeTransacts[RuntimeAbortInNestedTransaction]
+        else:
+            Err("Unreachable")
+
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+        TestUtils.InvokeTransacts[RuntimeAbortViaNativeCallback]
+    then:
+        Err("Unreachable")
+
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+    then:
+        if:
+            TestUtils.InvokeTransacts[RuntimeAbortInNestedTransaction]
+        else:
+            Err("Unreachable")
+
+assert:
+    if:
+        IsAutoRTFMEnabled[]
+    then:
+        if:
+            TestUtils.InvokeTransacts[RuntimeAbortInNestedTransactionViaNativeCallback]
+        else:
+            Err("Unreachable")

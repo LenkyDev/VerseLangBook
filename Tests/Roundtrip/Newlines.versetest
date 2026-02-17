@@ -1,0 +1,41 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Basic roundtripping of additional newlines.
+assert_roundtrip{
+foo():void
+
+bar():void
+}
+
+# TODO: Refer to `VerseTestScriptCmd.cpp` for why this is currently the case.
+# assert_roundtrip{
+# # This comment causes a newline to appear before it during round-tripping.
+# foo():void
+
+# bar():void
+# }
+    
+assert_roundtrip{
+foo():void
+
+
+
+
+# Comment 2
+bar():void
+}
+
+
+
+
+# Check that roundtripping trailing newlines works.
+# TODO: An extra newline gets round-tripped here.
+# assert_roundtrip{
+# foo():void
+
+# # Comment2
+# bar():void
+
+
+#}
+

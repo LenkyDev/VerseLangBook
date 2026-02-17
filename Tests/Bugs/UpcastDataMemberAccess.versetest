@@ -1,0 +1,16 @@
+assert_semantic_error(3506):
+    super_class := class{}
+    sub_class := class(super_class) { I:int }
+    f():void = 
+        O:super_class = sub_class{I:=42}
+        # Should be an error -- `o` is a super_class variable
+        O.I
+        
+assert_semantic_error(3506):
+    super_class := class{}
+    sub_class_a := class(super_class) { I:int }
+    sub_class_b := class(super_class) { O:super_class = sub_class_a{I:=42} }
+    Frank():void = 
+        B:sub_class_b = sub_class_b{}
+        # Should be an error -- `o` is a super_class variable
+        B.O.I

@@ -1,0 +1,40 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Ensure partial class writes fail if the element is not found.
+class1 := class:
+    var X:int = 0
+
+assert:
+    var Map:[int]class1 = map{}
+    not (set Map[0].X = 1)
+    not Map[0]
+
+assert:
+    var Map:[int]class1 = map{0 => class1{}}
+    set Map[0].X = 1
+    Map[0].X = 1
+
+# Ensure partial struct writes fail if the element is not found.
+struct1 := struct<computes>:
+    X:int = 0
+
+assert:
+    var Map:[int]struct1 = map{}
+    not (set Map[0].X = 1)
+    not Map[0]
+
+assert:
+    var Map:[int]struct1 = map{0 => struct1{}}
+    set Map[0].X = 1
+    Map[0].X = 1
+
+# Ensure writes with implied reads fail if the element is not found.
+assert:
+    var Map:[int]int = map{}
+    not (set Map[0] += 1)
+    not Map[0]
+
+assert:
+    var Map:[int]int = map{0 => 0}
+    set Map[0] += 1
+    Map[0] = 1

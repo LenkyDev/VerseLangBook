@@ -1,0 +1,133 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+# Right now these are semantic errors, but when we implement this in the future,
+# these should pass as "assert:", since the casts shouldn't succeed at runtime.
+
+assert_semantic_error(3502):
+    Class(t:type) := class:
+        Property:t
+
+    Assert()<decides>:void = {
+        X := Class(int) { Property := 42 }
+        if (Y := Class([]int)[X]) {
+            true = false
+        }
+    }
+
+    
+
+assert_semantic_error(3502):
+    Class(t:type) := class:
+        Property:t
+
+    Assert()<decides>:void = {
+        X := Class(int) { Property := 42 }
+        if (Y := Class(float)[X]) {
+            true = false
+        }
+    }
+
+assert_semantic_error(3502):
+    Class(t:type) := class:
+        Property:t
+
+    Assert()<decides>:void = {
+        X := Class(int) { Property := 42 }
+        if (Y := Class([]int)[X]) {
+            Y.Property[0] = 0
+            true = false
+        }
+    }
+
+# This is a shortcoming right now that we should be able to improve upon
+assert_semantic_error(3502):
+    Base := class:
+        Property:int
+    FakeParametric(t:type) := class(Base):
+        GetProperty():int = Property
+        
+    Assert()<decides>:void = {
+        Foo:Base = FakeParametric(float) { Property := 42 }
+        FooChild:FakeParametric(int) = FakeParametric(float)[Foo]
+        FooChild.Property = 42
+    }
+
+Base := class:
+    Property:int
+ParametricBase(t:type) := class:
+    Property:t
+
+Child1 := class(ParametricBase(int)):
+    GetProperty():int = Property
+
+Child2 := class(Base):
+    GetProperty():int = Property
+
+assert:
+    Foo:Base = Child2 { Property := 42 }
+    FooChild:Child2 = Child2[Foo]
+    FooChild.Property = 42
+
+assert:
+    Foo:ParametricBase(int) = Child1 { Property := 42 }
+    FooChild:Child1 = Child1[Foo]
+    FooChild.Property = 42
+
+
+BaseInterface := interface: 
+    Foo():int
+
+ParametricInterface(t:type) := interface:
+    Foo():t
+
+SpecializedInterface := interface(ParametricInterface(float)) { }
+
+Child3 := class() { }
+Child4 := class(Child3, BaseInterface) { 
+    Foo<override>():int = { 42 }
+}
+Child5 := class(Child3, SpecializedInterface) { 
+    Foo<override>():float = { 42.42 }
+}
+
+
+assert:
+    X:Child3 := Child4 { }
+    X_Casted:BaseInterface := BaseInterface[X]
+    X_Casted.Foo()
+
+assert:
+    X:Child3 := Child5 { }
+    X_Casted:SpecializedInterface := SpecializedInterface[X]
+    X_Casted.Foo() = 42.42
+
+
+
+assert_semantic_error(3502):
+    ParametricInterface(t:type) := interface {
+        Foo():t
+    }
+    Child5 := class { }
+    Child6 := class(Child5, ParametricInterface(float)) {
+        Foo<override>():float = { 42.42 }
+    }
+
+    Assert()<decides>:void = {
+        X:Child5 := Child6 { }
+        X_Casted:ParametricInterface(float) := ParametricInterface(float)[X]
+        X_Casted.Foo() = 42.42
+    }
+
+
+EmptyParametric() := class(Base) {
+    Foo():int = { 100 }
+}
+
+assert:
+    X:Base := EmptyParametric() { Property := 42 }
+    X_Casted:EmptyParametric() := EmptyParametric()[X]
+    X_Casted.Foo() = 100
+    X_Casted.Property = 42

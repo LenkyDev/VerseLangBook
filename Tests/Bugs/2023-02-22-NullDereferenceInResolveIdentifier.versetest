@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3601, 3601, 3512, 3502, 3547, 3502):
+    a:b; var b:2

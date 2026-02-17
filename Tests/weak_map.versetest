@@ -1,0 +1,667 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# "hello, world" example
+assert_valid:
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    struct1 := struct<persistable> {}
+    var Data:weak_map(class1, struct1) = map{}
+    Main()<decides>:void =
+        Key1:class1 = class1{}
+        set Data[Key1] = struct1{}
+        Data[Key1]
+
+# Test invalid type
+assert_semantic_error(3502):
+    var Data:int = 0
+
+# Test invalid `weak_map` value type
+assert_semantic_error(3502):
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    struct1 := struct {}
+    var Data:weak_map(class1, struct1) = map{}
+
+# Test invalid `weak_map` key type
+assert_semantic_error(3502):
+    class1 := class<unique><allocates><computes> {}
+    struct1 := struct<persistable> {}
+    var Data:weak_map(class1, struct1) = map{}
+
+# Use of type as value
+assert:
+    t := weak_map(int, int)
+
+# Test `Match`
+assert:
+    X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    X[1] = 2
+    X[3] = 4
+
+assert_valid:
+    class1 := class<unique> {}
+    class2 := class(class1) {}
+    struct1 := struct {}
+    Main(Data:weak_map(class2, struct1)):void =
+        OtherData:weak_map(class1, struct1) = Data
+
+assert_valid:
+    class1 := class<unique> {}
+    class2 := class(class1) {}
+    struct1 := struct {}
+    Main(Data:[class2]struct1):void =
+        OtherData:weak_map(class1, struct1) = Data
+
+assert_semantic_error(3509):
+    class1 := class<unique> {}
+    class2 := class(class1) {}
+    struct1 := struct {}
+    Main(Data:weak_map(class1, struct1)):void =
+        OtherData:weak_map(class2, struct1) = Data
+
+assert_semantic_error(3509):
+    class1 := class<unique> {}
+    class2 := class(class1) {}
+    struct1 := struct {}
+    Main(Data:weak_map(class2, struct1)):void =
+        OtherData:[class1]struct1 = Data
+
+Match := module:
+    class1<public> := class<unique> {}
+    class2<public> := class(class1) {}
+
+assert:
+    Key1 := Match.class2{}
+    Key2 := Match.class2{}
+    X:weak_map(Match.class2, int) := map{Key1 => 1, Key2 => 2}
+    Y:weak_map(Match.class1, int) = X
+    Y[Key1] = 1
+    Y[Key2] = 2
+
+assert:
+    Key1 := Match.class2{}
+    Key2 := Match.class2{}
+    X:[Match.class2]int := map{Key1 => 1, Key2 => 2}
+    Y:weak_map(Match.class2, int) = X
+    Y[Key1] = 1
+    Y[Key2] = 2
+
+assert:
+    Key1 := Match.class2{}
+    Key2 := Match.class2{}
+    X:[Match.class2]int := map{Key1 => 1, Key2 => 2}
+    Y:weak_map(Match.class1, int) = X
+    Y[Key1] = 1
+    Y[Key2] = 2
+
+# Test `Join`
+assert:
+    X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    Y := if (true?) then X else map{5 => 6}
+    Y[1] = 2
+    Y[3] = 4
+
+assert_semantic_error(3510):
+    X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    Main():[int]int = if (true?) then X else map{5 => 6}
+
+# Test `Meet`
+Meet := module:
+    F<public>(X:[int]int)<decides>:int = X[1]
+    G<public>(X:weak_map(int, int))<decides>:int = X[1]
+
+assert:
+    H := if (true?) then Meet.F else Meet.G
+    H[map{1 => 2, 3 => 4}] = 2
+
+assert_semantic_error(3509):
+    F(X:[int]int)<decides>:int = X[1]
+    G(X:weak_map(int, int))<decides>:int = X[1]
+    Main()<decides>:void =
+        X:weak_map(int, int) = map{1 => 2, 3 => 4}
+        (if (true?) then F else G)[X] = 1
+
+# Test absence of `Length`
+assert_semantic_error(3506):
+    X:weak_map(int, int) = map{}
+    Main():int = X.Length
+
+# Test absence of iteration
+assert_semantic_error(3524):
+    X:weak_map(int, int) = map{}
+    Main():void = for (Y:X) {}
+
+# Test coercion to and from `any`
+Identity(X:t where t:type):t = X
+
+assert:
+    X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    Y := Identity(X)
+    Y[1] = 2
+    Y[3] = 4
+
+# Test coercion to and from `comparable`
+assert_semantic_error(3509):
+    X:weak_map(int, int) = map{}
+    Y:comparable = X
+
+# Test complete assignment
+assert:
+    var X:weak_map(int, int) = map{1 => 2}
+    set X = map{3 => 4}
+    not X[1]
+    X[3] = 4
+
+# Test module-scoped `var` complete reads and writes
+assert_semantic_error(3502):
+    class1 := class<module_scoped_var_weak_map_key><unique><allocates><computes>{}
+    var X:weak_map(class1, int) = map{}
+    Main():void =
+        Y:weak_map(class1, int) = X
+
+assert_semantic_error(3502):
+    class1 := class<module_scoped_var_weak_map_key><unique><allocates><computes>{}
+    #Key1:class1 = class1{}
+    #Key2:class1 = class1{}
+    var X:weak_map(class1, int) = map{}
+    Main():void =
+        set X = map{}
+
+# Test the digest generator
+assert:
+    X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    Y:weak_map(int, int) = TestWeakMap(X)
+    Y[1] = 2
+    Y[3] = 4
+
+# Test partial writes
+struct1<public> := struct<persistable><computes>:
+    Data1<public>:int
+    Data2<public>:int
+
+assert:
+    var X:weak_map(int, struct1) = map{}
+    set X[0] = struct1:
+        Data1 := 1
+        Data2 := 2
+    X[0].Data1 = 1
+    X[0].Data2 = 2
+    set X[0].Data1 = 3
+    X[0].Data1 = 3
+    X[0].Data2 = 2
+
+# Test rollback
+assert:
+    var X:weak_map(int, int) = map{}
+    if:
+        set X[1] = 5
+        false?
+    not X[1]
+
+assert:
+    var X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    if:
+        set X[1] = 5
+        false?
+    X[1] = 2
+    X[3] = 4
+
+assert:
+    var X:weak_map(int, int) = map{1 => 2, 3 => 4}
+    if:
+        set X = map{3 => 5, 4 => 6}
+        false?
+    X[1] = 2
+    X[3] = 4
+
+# Test changes in key validity
+Mutable := module:
+    var Data<public>:weak_map(persistent_key, struct1) = map{}
+
+assert_runtime_error:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    Mutable.Data[Key1]
+
+assert_runtime_error:
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    Mutable.Data[Key2]
+
+assert_runtime_error:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    set Mutable.Data[Key1].Data1 = 1
+
+assert_runtime_error:
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    set Mutable.Data[Key2].Data1 = 1
+
+assert_runtime_error:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    set Mutable.Data[Key1] = struct1:
+        Data1 := 1
+        Data2 := 2
+
+assert_runtime_error:
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    set Mutable.Data[Key2] = struct1:
+        Data1 := 1
+        Data2 := 2
+
+assert:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    Key1.SetValid(true)
+    Key2.SetValid(true)
+
+assert:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    set Mutable.Data[Key1] = struct1:
+        Data1 := 1
+        Data2 := 2
+    set Mutable.Data[Key2] = struct1:
+        Data1 := 3
+        Data2 := 4
+    Mutable.Data[Key1].Data1 = 1
+    Mutable.Data[Key1].Data2 = 2
+    Mutable.Data[Key2].Data1 = 3
+    Mutable.Data[Key2].Data2 = 4
+
+assert:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    set Mutable.Data[Key1].Data1 = 5
+    set Mutable.Data[Key2].Data2 = 6
+    Mutable.Data[Key1].Data1 = 5
+    Mutable.Data[Key1].Data2 = 2
+    Mutable.Data[Key2].Data1 = 3
+    Mutable.Data[Key2].Data2 = 6
+
+assert:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    Key1.SetValid(false)
+    Key2.SetValid(false)
+
+assert_runtime_error:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    Mutable.Data[Key1]
+
+assert_runtime_error:
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    Mutable.Data[Key2]
+
+assert_runtime_error:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    set Mutable.Data[Key1].Data1 = 1
+
+assert_runtime_error:
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    set Mutable.Data[Key2].Data1 = 1
+
+assert_runtime_error:
+    Key1:persistent_key := Persistence.GetOrCreateKey(1)
+    set Mutable.Data[Key1] = struct1:
+        Data1 := 1
+        Data2 := 2
+
+assert_runtime_error:
+    Key2:persistent_key := Persistence.GetOrCreateKey(2)
+    set Mutable.Data[Key2] = struct1:
+        Data1 := 1
+        Data2 := 2
+
+# Test simulated save service updates
+
+var PersistentData<public>:weak_map(persistent_key, int) = map{}
+
+# Test invalid key lookup
+assert_runtime_error:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentData[PersistentKey3] = 1
+
+assert_runtime_error:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey4] = 2
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.Joined["PersistentData", PersistentKey3, 1]
+
+# Test moving to valid key
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentData[PersistentKey3] = 1
+
+assert_runtime_error:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey4] = 2
+
+assert:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    Persistence.Joined["PersistentData", PersistentKey4, 2]
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey3] = 1
+    PersistentData[PersistentKey4] = 2
+
+# Test updates
+
+# Separate updates
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    Persistence.RecordUpdates()
+
+    block:
+        if:
+            set PersistentData[PersistentKey3] = 3
+    block:
+        if:
+            set PersistentData[PersistentKey4] = 4
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey3] = 3
+    PersistentData[PersistentKey4] = 4
+
+    Updates := Persistence.TakeRecordedUpdates()
+
+    Updates.Length = 2
+
+    Updates[0](0) = "PersistentData"
+    Updates[0](1) = PersistentKey3
+    Updates[0](2) = 3
+
+    Updates[1](0) = "PersistentData"
+    Updates[1](1) = PersistentKey4
+    Updates[1](2) = 4
+
+# Combined updates
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    Persistence.RecordUpdates()
+
+    if:
+        set PersistentData[PersistentKey3] = 5
+        set PersistentData[PersistentKey4] = 6
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey3] = 5
+    PersistentData[PersistentKey4] = 6
+
+    Updates := Persistence.TakeRecordedUpdates()
+
+    Updates.Length = 2
+    if (Updates[0](1) = PersistentKey3):
+        Updates[0](0) = "PersistentData"
+        Updates[0](2) = 5
+        Updates[1](0) = "PersistentData"
+        Updates[1](1) = PersistentKey4
+        Updates[1](2) = 6
+    else:
+        Updates[0](0) = "PersistentData"
+        Updates[0](1) = PersistentKey4
+        Updates[0](2) = 6
+        Updates[1](0) = "PersistentData"
+        Updates[1](1) = PersistentKey3
+        Updates[1](2) = 5
+
+# Partial writes
+PartialRefCall := module:
+    var Data<public>:weak_map(persistent_key, struct1) = map{}
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.RecordUpdates()
+
+    if:
+        set PartialRefCall.Data[PersistentKey3] = struct1:
+            Data1 := 1
+            Data2 := 2
+        set PartialRefCall.Data[PersistentKey3].Data1 = 3
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PartialRefCall.Data[PersistentKey3].Data1 = 3
+    PartialRefCall.Data[PersistentKey3].Data2 = 2
+
+    Updates := Persistence.TakeRecordedUpdates()
+
+    Updates.Length >= 1
+
+    for (Update : Updates):
+        Update(0) = "PartialRefCall.Data"
+        Update(1) = PersistentKey3
+
+# Repeatedly set partial data
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.RecordUpdates()
+
+    if:
+        set PartialRefCall.Data[PersistentKey3].Data1 = 3
+        set PartialRefCall.Data[PersistentKey3].Data2 = 4
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PartialRefCall.Data[PersistentKey3].Data1 = 3
+    PartialRefCall.Data[PersistentKey3].Data2 = 4
+
+    Updates := Persistence.TakeRecordedUpdates()
+    
+    Updates.Length >= 1
+
+    for (Update : Updates):
+        Update(0) = "PartialRefCall.Data"
+        Update(1) = PersistentKey3
+
+# Set data, then fail
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.RecordUpdates()
+
+    if:
+        set PartialRefCall.Data[PersistentKey3].Data1 = 5
+        set PartialRefCall.Data[PersistentKey3].Data2 = 6
+        false?
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PartialRefCall.Data[PersistentKey3].Data1 = 3
+    PartialRefCall.Data[PersistentKey3].Data2 = 4
+
+    Updates := Persistence.TakeRecordedUpdates()
+
+    Updates.Length = 0
+
+# Set data, then fail, nested in a transaction that succeeds
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.RecordUpdates()
+
+    if:
+        set PartialRefCall.Data[PersistentKey3].Data1 = 7
+        set PartialRefCall.Data[PersistentKey3].Data2 = 8
+        if:
+            set PartialRefCall.Data[PersistentKey3].Data1 = 9
+            set PartialRefCall.Data[PersistentKey3].Data2 = 10
+            false?
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PartialRefCall.Data[PersistentKey3].Data1 = 7
+    PartialRefCall.Data[PersistentKey3].Data2 = 8
+
+    Updates := Persistence.TakeRecordedUpdates()
+    
+    Updates.Length >= 1
+
+    for (Update : Updates):
+        Update(0) = "PartialRefCall.Data"
+        Update(1) = PersistentKey3
+
+# Test moving to invalid key
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.Dropped(PersistentKey3)
+
+assert_runtime_error:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentData[PersistentKey3] = 5
+
+assert:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey4] = 6
+
+assert:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    Persistence.Dropped(PersistentKey4)
+
+assert_runtime_error:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentData[PersistentKey3] = 3
+
+assert_runtime_error:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey4] = 4
+
+assert_runtime_error:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PartialRefCall.Data[PersistentKey3].Data1
+
+assert_runtime_error:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    set PartialRefCall.Data[PersistentKey3].Data1 = 3
+
+# Test moving from a previously valid but now invalid key back to a valid key
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    Persistence.Joined["PersistentData", PersistentKey3, 5]
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentData[PersistentKey3] = 5
+
+assert_runtime_error:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    PersistentData[PersistentKey4] = 6
+
+assert:
+    PersistentKey4 := Persistence.GetOrCreateKey(4)
+    Persistence.Joined["PersistentData", PersistentKey4, 6]
+
+assert:
+    PersistentKey3 := Persistence.GetOrCreateKey(3)
+    PersistentKey4 := Persistence.GetOrCreateKey(4) 
+    PersistentData[PersistentKey3] = 5
+    PersistentData[PersistentKey4] = 6
+
+# Test `FitsInPlayerMap`
+
+# Argument must be `persistable`
+assert_semantic_error(3509):
+    class1 := class {}
+    Main()<decides>:void =
+        FitsInPlayerMap[class1{}]
+
+# `persistable` Meet
+assert_semantic_error(3502):
+    PersistableMeet := module:
+        F<public>(X:int)<decides>:int = X = 0
+    Main()<decides>:void =
+        X:int = 0
+        # References to intrinsic functions are not yet implemented
+        F := if (true?) then PersistableMeet.F else FitsInPlayerMap
+        F[0] = 0
+
+# Identity function
+assert_valid:
+    X:int = 0
+    Main()<decides>:void =
+        Y:int = FitsInPlayerMap[X]
+
+# Default implementation always raises a runtime error
+assert_runtime_error:
+    X:int = 0
+    not FitsInPlayerMap[X]
+
+assert_runtime_error:
+    not FitsInPlayerMap[0]
+
+assert_semantic_error(3509):
+    Main()<decides>:void =
+        X := if (true?) {1} else {"hello"}
+        not FitsInPlayerMap[X]
+
+# Limited number of persistent `var` `weak_map`s per island.  Set to 4 for VerseTestScriptCmd.
+assert_valid:
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    var X0:weak_map(class1, int) = map{}
+    var X1:weak_map(class1, int) = map{}
+    var X2:weak_map(class1, int) = map{}
+
+# Fail due to none of the value types being a class.
+assert_semantic_error(3502, 3502, 3502, 3502):
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    var X0:weak_map(class1, int) = map{}
+    var X1:weak_map(class1, int) = map{}
+    var X2:weak_map(class1, int) = map{}
+    var X3:weak_map(class1, int) = map{}
+
+# Succeed due to one of the value types being a class.
+assert_valid:
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    var X0:weak_map(class1, int) = map{}
+    var X1:weak_map(class1, int) = map{}
+    var X2:weak_map(class1, int) = map{}
+    class2 := class<final><persistable> {}
+    var X3:weak_map(class1, class2) = map{}
+
+# Fail due to being over the limit.
+assert_semantic_error(3502, 3502, 3502, 3502, 3502):
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    var X0:weak_map(class1, int) = map{}
+    var X1:weak_map(class1, int) = map{}
+    var X2:weak_map(class1, int) = map{}
+    var X3:weak_map(class1, int) = map{}
+    var X4:weak_map(class1, int) = map{}
+
+# Fail due to really being over the limit.
+assert_semantic_error(3502, 3502, 3502, 3502, 3502, 3502):
+    class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}
+    var X0:weak_map(class1, int) = map{}
+    var X1:weak_map(class1, int) = map{}
+    var X2:weak_map(class1, int) = map{}
+    var X3:weak_map(class1, int) = map{}
+    var X4:weak_map(class1, int) = map{}
+    var X5:weak_map(class1, int) = map{}
+
+# Test that the number of persistent weak maps is reported correctly in compilation metadata.
+assert_valid(?ExpectedNumPersistentWeakMaps:=0){class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}}
+assert_valid(?ExpectedNumPersistentWeakMaps:=1){class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}; var X0:weak_map(class1, int) = map{}}
+assert_valid(?ExpectedNumPersistentWeakMaps:=2){class1 := class<unique><allocates><computes><persistent><module_scoped_var_weak_map_key> {}; var X0:weak_map(class1, int) = map{}; var X1:weak_map(class1, int) = map{}}
+
+# Test transient keys
+
+var SessionData:weak_map(session_key, int) = map{}
+
+assert:
+    SessionKey1 := Session.GetOrCreateKey(0)
+    Persistence.RecordUpdates()
+    set SessionData[SessionKey1] = 1
+
+assert:
+    Updates := Persistence.TakeRecordedUpdates()
+    Updates.Length = 0
+
+assert:
+    SessionKey1 := Session.GetOrCreateKey(0)
+    SessionData[SessionKey1] = 1
+    Session.Reset()
+    not SessionData[SessionKey1]

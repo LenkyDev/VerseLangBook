@@ -1,0 +1,301 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Note that these are *global* `using` expressions with module path contexts
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Tests/VerseTestScriptCmd/CoroUtils }
+
+
+#################################################
+# Helper structures
+
+class_test := class:
+    var DataMember:string = "Hey"
+    MethodHello():string =  "Hello"
+    MethodData():string  =  DataMember
+
+# class with some overlapping members as `class_test`
+class_conflict := class:
+    var DataMember:string = "Boo"
+    MethodHello():string =  "TakeOff"
+    MethodOther():string =  DataMember
+
+
+#################################################
+# Local scope `using` - valid use examples
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Explicit parameter use
+TestExplicitParam(TestObj:class_test):void=
+    LogEvent(TestObj.MethodHello())
+    LogEvent(TestObj.DataMember)
+    set TestObj.DataMember = "Bye"
+    LogEvent(TestObj.MethodData())
+
+assert:
+    TestObj := class_test{}
+    TestExplicitParam(TestObj)
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Inferred parameter use with `using`
+TestImplicitParam(TestObj:class_test):void=
+    using{TestObj}
+    LogEvent(MethodHello())  # inferred TestObj.MethodHello()
+    LogEvent(DataMember)     # inferred TestObj.DataMember
+    set DataMember = "Bye"   # inferred TestObj.DataMember
+    LogEvent(MethodData())   # inferred TestObj.MethodData()
+
+assert:
+    TestObj := class_test{}
+    TestImplicitParam(TestObj)
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Explicit local variable use
+assert:
+    TestVar := class_test{} 
+    LogEvent(TestVar.MethodHello())
+    LogEvent(TestVar.DataMember)
+    set TestVar.DataMember = "Bye"
+    LogEvent(TestVar.MethodData())
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Inferred local variable use
+assert:
+    TestVar := class_test{} 
+    using{TestVar}
+    LogEvent(MethodHello())  # inferred TestVar.MethodHello()
+    LogEvent(DataMember)     # inferred TestVar.DataMember
+    set DataMember = "Bye"   # inferred TestVar.DataMember
+    LogEvent(MethodData())   # inferred TestVar.MethodData()
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Block scoping + inferred local variable use
+assert:
+    block:
+        TestVar := class_test{} 
+        using{TestVar}  # from current scope
+        LogEvent(MethodHello())  # inferred TestVar.MethodHello()
+        LogEvent(DataMember)     # inferred TestVar.DataMember
+        set DataMember = "Bye"   # inferred TestVar.DataMember
+        LogEvent(MethodData())   # inferred TestVar.MethodData()
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Block scoping + inferred nesting variable use
+assert:
+    TestVar := class_test{} 
+    block:
+        using{TestVar}  # from previous scope
+        LogEvent(MethodHello())  # inferred TestVar.MethodHello()
+        LogEvent(DataMember)     # inferred TestVar.DataMember
+        set DataMember = "Bye"   # inferred TestVar.DataMember
+        LogEvent(MethodData())   # inferred TestVar.MethodData()
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Block scoping + inferred local variable use in nested scope
+assert:
+    TestVar := class_test{} 
+    using{TestVar}  # from current scope
+    block:
+        # infer from nesting scope `using`
+        LogEvent(MethodHello())  # inferred TestVar.MethodHello()
+        LogEvent(DataMember)     # inferred TestVar.DataMember
+        set DataMember = "Bye"   # inferred TestVar.DataMember
+        LogEvent(MethodData())   # inferred TestVar.MethodData()
+    GetEventLogString() = "HelloHeyBye"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Conflict resolution
+assert:
+    TestVar     := class_test{} 
+    ConflictVar := class_conflict{} 
+    using{TestVar}
+    LogEvent(MethodHello())  # inferred TestVar.MethodHello()
+    LogEvent(DataMember)     # inferred TestVar.DataMember
+    set DataMember = "Bye"   # inferred TestVar.DataMember
+    using{ConflictVar}
+    LogEvent(MethodData())               # No conflict - inferred TestVar.MethodData()
+    LogEvent(MethodOther())              # No conflict - inferred ConflictVar.MethodOther()
+    LogEvent(ConflictVar.MethodHello())  # must specify variable or ambiguous
+    set ConflictVar.DataMember = "Leave" # must specify variable or ambiguous
+    LogEvent(ConflictVar.DataMember)     # must specify variable or ambiguous
+    GetEventLogString() = "HelloHeyByeBooTakeOffLeave"
+
+
+#################################################
+# Local scope `using` - invalid use examples
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `using` context identifier may not be used more than once
+assert_semantic_error(3666):
+    class_a := class:
+        MethodA():void =
+            SomeStr := "Hey"
+            using {SomeStr}
+            using {SomeStr}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `using` context type may not be the same type as or subtype of Self
+assert_semantic_error(3667):
+    class_a := class:
+        MethodA():void =
+            ObjA := class_a{}
+            using {ObjA}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# `using` context type may not be a super type of already existing local `using`
+assert_semantic_error(3668):
+    class_a := class:
+        MethodA():void = "MethodA"
+
+    class_b := class(class_a):
+        MethodB():void = "MethodB"
+
+    MethodModule():void =
+        ObjB := class_b{}
+        using {ObjB}
+        ObjA := class_a{}
+        using {ObjA}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# May not try to infer before `using` encountered
+# Could support order independence in the future - see Jira SOL-4877
+assert_semantic_error(3506):
+    class_a := class:
+        MethodA():void = "MethodA"
+
+    MethodModule():void =
+        TestVar := class_a{} 
+        MethodA()       # Error - cannot infer before `using` encountered
+        using{TestVar}
+        MethodA()       # Okay - in `using` scope
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Block scoping + referenced before `using` scope
+assert_semantic_error(3506):
+    class_a := class:
+        MethodA():void = "MethodA"
+
+    MethodModule():void =
+        TestVar := class_a{} 
+        MethodA()      # Error - before `using` scope
+        block:
+            using{TestVar}
+            MethodA()  # Okay - in `using` scope
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Block scoping + referenced after `using` scope
+assert_semantic_error(3506):
+    class_a := class:
+        MethodA():void = "MethodA"
+
+    MethodModule():void =
+        TestVar := class_a{} 
+        block:
+            using{TestVar}
+            MethodA()  # Okay - in `using` scope
+        MethodA()      # Error - after `using` scope
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Local `using` data member name conflict
+assert_semantic_error(3588):
+    class_a := class:
+        DataA:string   = "DataA"
+        DataX:string   = "DataAX"
+
+    class_b := class:
+        DataB:string   = "DataB"
+        DataX:string   = "DataBX"
+ 
+    MethodModule():void =
+        ObjA := class_a{}
+        ObjB := class_b{}
+        using {ObjA}
+        using {ObjB}
+        DataX
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Local `using` method name conflict
+assert_semantic_error(3518):
+    class_a := class:
+        MethodA():void = "MethodA"
+        MethodX():void = "MethodAX"
+
+    class_b := class:
+        MethodB():void = "MethodB"
+        MethodX():void = "MethodBX"
+
+    MethodModule():void =
+        ObjA := class_a{}
+        ObjB := class_b{}
+        using {ObjA}
+        using {ObjB}
+        MethodX()
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# May not use module paths in local scope `using`
+# Could support this in the future - see Jira SOL-4877
+assert_semantic_error(3502, 3669):
+    MethodModule():void =
+        using{/Verse.org/Simulation}
+        4 + 2
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# May not use module identifier in local scope `using`
+# Could support this in the future - see Jira SOL-4877
+assert_semantic_error(3669):
+    MethodModule():void =
+        using{Native}
+        4 + 2
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Disallow identifier with additional context in local scope `using`
+# Could support this in the future - see Jira SOL-4877
+assert_semantic_error(3669):
+    outer_class := class:
+        Inner:inner_class=inner_class{}
+
+    inner_class := class:
+        X:int=0
+
+    MethodModule():int=
+        Outer := outer_class{}
+        using{Outer.Inner}  # Fails currently
+        X
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Disallow identifier with additional context in local scope `using`
+# - including inferred context from an earlier `using`.
+# Could support this in the future - see Jira SOL-4877
+assert_semantic_error(3669):
+    outer_class := class:
+        Inner:inner_class=inner_class{}
+
+    inner_class := class:
+        X:int=0
+
+    MethodModule():int=
+        Outer := outer_class{}
+        using{Outer}
+        using{Inner}  # Fails currently
+        X

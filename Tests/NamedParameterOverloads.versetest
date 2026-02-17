@@ -1,0 +1,144 @@
+assert_semantic_error(3532):
+    F(?X:int):int = X
+    F(?X:int):int = X
+
+assert_semantic_error(3532):
+    F(?X:int):int = X
+    F(?X:comparable):comparable = X
+
+assert_semantic_error(3532):
+    F(Arg:int, ?X:int):int = X
+    F(Arg:int, ?X:int):int = X
+
+assert_semantic_error(3532):
+    F(?Y:int, ?X:int):int = X + Y
+    F(?X:int, ?Y:int):int = X - Y
+
+assert_semantic_error(3532):
+    F(?Y:int=42, ?X:int=42):int = X + Y
+    F(?X:int, ?Y:int):int = X - Y
+
+assert_semantic_error(3532):
+    F(?Y:int=42, ?X:int=42):int = X + Y
+    F(?X:int=40, ?Y:int=40):int = X - Y
+
+assert_semantic_error(3532):
+    F(?Y:int=42, ?X:int):int = X + Y
+    F(?X:int, ?Y:int):int = X - Y
+
+assert_semantic_error(3532):
+    F(?Y:int=42, ?X:int):int = X + Y
+    F(?X:int, ?Y:int=42):int = X - Y
+
+assert_semantic_error(3532):
+    F(Arg:int, ?X:int, ?Y:int):int = X + Y
+    F(Arg:int, ?Y:int, ?X:int):int = X - Y
+
+assert_semantic_error(3532):
+    F(?Y:int, ?X:comparable):int = Y
+    F(?X:int, ?Y:int):int = X + Y
+
+assert_valid:
+    F(?X:int):int = X
+    F(?Y:int):int = Y
+
+assert_valid:
+    F(?X:int):int = X
+    F(?Y:comparable):comparable = Y
+
+assert_valid:
+    F(?Y:int, ?X:int=42):int = X
+    F(?Y:float, ?X:int):int = X
+
+assert_valid:
+    F(?X:int):int = X
+    F(X:int):int = X
+
+assert_valid:
+    F(?X:int=42):int = X
+    F(X:int):int = X
+
+assert_valid:
+    F(Arg:float, ?X:int):int = X
+    F(Arg:int, ?X:int):int = X
+
+assert_valid:
+    F(?X:int=42):int = X
+    F(?Y:int):int = Y
+
+assert_valid:
+    F(?X:int=42):int = X
+    F(?X:float):float = X
+
+assert_valid:
+    F(?X:int=42, ?Y:int):int = Y
+    F(?X:float=42.0, ?Y:float=42.0):float = Y
+
+assert_valid:
+    F(?Y:int, ?X:int=42):int = X
+    F(?X:int):int = X
+
+assert_valid:
+    F(?Y:int, ?Z:int=42):int = Y
+    F(?X:int):int = X
+
+assert_valid:
+    F(?X:int=42):int = X
+    F(?Y:int):int = Y
+
+assert_valid:
+    F(Z:int, ?X1:int=42, ?Y1:int=42, ?P1:float):int = Y1
+    F(Z:int, ?X2:float=4.0, ?Y2:float=4.0, ?P2:float):float = Y2
+
+assert_valid:
+    F(Z:int, ?X1:int=42, ?Y1:int=42, ?P1:float=4.0):int = Y1
+    F(Z:int, ?X2:float=4.0, ?Y2:float=4.0, ?P2:float):float = Y2
+
+assert_valid:
+    F(Z:int, ?X1:int=42, ?Y1:int=42, ?P1:float):int = Y1
+    F(Z:int, ?X2:float=4.0, ?Y2:float=4.0, ?P2:float=4.0):float = Y2
+
+assert_semantic_error(3532):
+    F(?X:int=42):int = X
+    F(?Y:int=42):int = Y
+
+assert_semantic_error(3532):
+    F(Z:int, ?X:int=42):int = X
+    F(Z:int, ?Y:int=42):int = Y
+
+assert_semantic_error(3532):
+    F(?X:int=42):int = X
+    F(?X:int):int = X
+
+assert_semantic_error(3532):
+    F(Z:int, ?X:int=42):int = X
+    F(Z2:int, ?X:int):int = X
+
+assert_semantic_error(3532):
+    F(?Y:int, ?X:int=42):int = X
+    F(?Y:int, ?X:int):int = X
+
+assert_semantic_error(3532):
+    F(Z:int, ?Y:int, ?X:int=42):int = X
+    F(Z:int, ?Y:int, ?X:int):int = X
+
+assert_semantic_error(3532):
+    F(?Y:int=42, ?X:int=42):int = X
+    F(?X:int):int = X
+
+assert_semantic_error(3532):
+    F(Z:int, ?Y:int=42, ?X:int=42):int = X
+    F(Z:int, ?X:int):int = X
+
+assert_semantic_error(3532):
+    F(?X:int=42):int = X
+    F(?X:float=55.0):float = X
+
+assert_semantic_error(3532):
+    F(?X1:int=42, ?Y1:int=42):int = Y1
+    F(?X2:float=4.0, ?Y2:float=4.0):float = Y2
+
+assert_semantic_error(3532):
+    F(Z:int, ?X1:int=42, ?Y1:int=42):int = Y1
+    F(Z:int, ?X2:float=4.0, ?Y2:float=4.0):float = Y2
+

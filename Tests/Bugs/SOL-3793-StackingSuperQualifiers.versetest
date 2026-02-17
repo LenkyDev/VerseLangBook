@@ -1,0 +1,49 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# no stacking is the valid case
+assert_valid:
+    b0 := class:
+        f():int= 42
+
+    b1 := class(b0):
+        f<override>():int= (super:)f() + 1   # ok
+
+    c := class(b1):
+        f<override>():int= 
+            (super:)f() + 2                  # ok
+
+# using super as context for super is not valid
+assert_semantic_error(3654):
+    b0 := class:
+        f():int= 42
+
+    b1 := class(b0):
+        f<override>():int= (super:)f() + 1
+
+    c := class(b1):
+        f<override>():int= 
+            (super.super:)f() + 2            # 3654
+
+# using super as a qualifier for super is not valid
+assert_semantic_error(3654):
+    b0 := class:
+        f():int= 42
+
+    b1 := class(b0):
+        f<override>():int= (super:)f() + 1
+
+    c := class(b1):
+        f<override>():int= 
+            (super.super:)f() + 2            # 3654
+
+assert_semantic_error(3654, 3654):
+    b0 := class:
+        f():int= 42
+
+    b1 := class(b0):
+        f<override>():int= (super:)f() + 1   # ok
+
+    c := class(b1):
+        f<override>():int= 
+            (((((super:)foo:)foo:)foo:)super:)f() + 2            # 3654
+            (super.super.super.foo.super.super.super:)f() + 3    # 3654

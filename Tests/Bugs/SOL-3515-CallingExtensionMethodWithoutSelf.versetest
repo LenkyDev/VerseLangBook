@@ -1,0 +1,33 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Slight variation of theexample in the jira
+
+my_class:=class:
+    X:int
+(MyInstance:my_class).DoSomething():int := 40 + MyInstance.X
+my_subclass := class(my_class):
+    SomeFunc1():int=
+        Self.DoSomething()
+    SomeFunc2():int=
+        DoSomething()
+
+assert:
+    O:=my_subclass{X:=2}
+    O.SomeFunc1() = 42
+    O.SomeFunc2() = 42
+
+# With ambigious overloading
+
+assert_semantic_error(3518):
+    my_class2:=class:
+        X:int
+    (MyInstance2:my_class2).DoSomething2():int := 40 + MyInstance2.X
+    DoSomething2():int= 21
+
+    my_subclass2 := class(my_class2):
+        SomeFunc1():int=
+            Self.DoSomething2()
+        SomeFunc2():int=
+            DoSomething2()  # Ambigious

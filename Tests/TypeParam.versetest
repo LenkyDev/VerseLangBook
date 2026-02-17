@@ -1,0 +1,60 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert:
+    X:type = Identity(int)
+
+Identity(X:t where t:type):t = X
+
+class1 := class:
+
+assert:
+    X:type = Identity(class1)
+
+struct1 := struct:
+
+assert:
+    X:type = Identity(struct1)
+
+assert:
+    X:type = Identity([]int)
+
+assert:
+    X:type = Identity([int]int)
+
+assert:
+    X:type = Identity(?int)
+
+assert:
+    X:type = Identity(subtype(class1))
+
+class2(t:type) := class:
+
+assert:
+    X:type = Identity(class2(int))
+
+assert:
+    X:type = Identity(tuple(int, int))
+
+assert:
+    X:type = Identity(int->int)
+
+bp_vm_only
+{
+assert_link_error(9001,9001):
+    Bar(t:type):void = {}
+    Foo(:t where t:type):void = Bar(t)
+}
+verse_vm_only
+{
+assert_valid:
+    Bar(t:type):void = {}
+    Foo(:t where t:type):void = Bar(t)
+}
+
+assert:
+    X:type = Identity(type{_(:int):int})
+
+False(t:type):?t = false
+
+assert:
+    False(int) = False(logic)

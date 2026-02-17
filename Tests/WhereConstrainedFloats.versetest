@@ -1,0 +1,157 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+percent := type{_X:float where 0.0 <= _X, _X <= 1.0}
+
+assert:
+	X:percent = 0.4
+	X = 0.4
+
+assert:
+	if (percent[100.0]):
+		false = true
+
+
+small_float := type{ _X:float where _X < 0.1 }
+
+assert:
+	# First double before .1
+	X:small_float = 0.09999999999999999167332731531132594682276248931884765625
+
+assert_semantic_error(3509):
+	small_float := type{ _X:float where _X < 0.1 }
+	# What .1 gets rounded to
+	X:small_float = 0.1000000000000000055511151231257827021181583404541015625
+
+negative := type{ _X: float where _X < 0.0 }
+
+assert:
+	# -0.0 shouldn't be accepted.
+	if (negative[0.0 / -1.0]):
+		false = true
+
+	negative[-1.0]
+
+
+finite := type{ _X:float where -Inf < _X, _X < Inf }
+
+# This is the maximum finite double.
+MaxFinite:finite = 1.7976931348623157e+308
+MinFinite:finite = -1.7976931348623157e+308
+
+Half(X:finite):float = X / 2.0
+
+assert:
+	Half(100.0) = 50.0
+	Half(1.0) = 0.5
+
+positive := type{ _X:float where _X > -0.0 }
+
+assert:
+	if (positive[0.0]):
+		false = true
+
+	positive[1.0]
+	positive[0.1]
+
+F(X:positive):float = X
+F(X:negative):float = X + 1.0
+
+assert:
+	F(1.0) = 1.0
+	F(-1.0) = 0.0
+
+infinity_type := type { _X:float where 1.7976931348623157e+308 < _X }
+negative_infinity_type := type { _X:float where -1.7976931348623157e+308 > _X }
+
+assert:
+	Infinity:infinity_type = infinity_type[Inf]
+	NegativeInf:negative_infinity_type = negative_infinity_type[-Inf]
+
+assert_semantic_error(3509):
+	negative_infinity_type := type { _X:float where -1.7976931348623157e+308 > _X }
+	Value:negative_infinity_type = 1.0
+
+assert_semantic_error(3532):
+	percent := type{_X:float where 0.0 <= _X, _X <= 1.0}
+	not_infinity := type{_X:float where Inf > _X}
+
+	F(X:percent):float = 0.0
+	F(X:not_infinity):float = X
+
+assert_semantic_error(3509):
+	percent := type{_X:float where 0.0 <= _X, _X <= 1.0}
+	not_infinity := type{_X:float where Inf > _X}
+
+    A := module{F<public>(X:percent):float=X}
+    B := module{F<public>(X:not_infinity):float=X}
+    C := module:
+        using{A}
+        using{B}
+        G():float=F(0) # ambiguous call to overloaded function
+
+assert_semantic_error(3502):
+	Z:float = 100.0
+	t := type{_X:float where Z < _X}
+
+assert_semantic_error(3502):
+	Z:float = 100.0
+	t := type{_X:float where _X < Z}
+
+#Check we can inhabit refinement types containing infinity without a fallible cast
+MyInf:infinity_type = Inf
+MyNegativeInf:negative_infinity_type = -Inf
+
+assert_semantic_error(3509):
+	finite := type{ _X:float where -Inf < _X, _X < Inf }
+	MyInf:finite = Inf
+
+assert_semantic_error(3509):
+	finite := type{ _X:float where -Inf < _X, _X < Inf }
+	MyInf:finite = -Inf
+
+MakePercent():percent = 0.5
+negative_percent := type{ _X:float where _X <= 0.0, _X >= -1.0 }
+assert:
+	NegativePercent:negative_percent = -MakePercent()
+	NegativePercent = -0.5
+	MyPercent := 0.7
+	OtherNegPercent:negative_percent = ---MyPercent
+
+assert:
+	Inf
+	true?
+
+assert_semantic_error(3502):
+	A := module {
+		(A:)Inf:float = 1.0
+		t<public> := type{ _X:float where _X < (A:)Inf }
+	}
+
+assert_semantic_error(3502):
+	F()<computes>:float = 1.0
+	t := type{_X:float where _X < F()}
+
+assert_semantic_error(3502):
+	F()<computes>:float = 1.0
+	t := type{_X:float where F() > _X}
+
+
+# We don't allow NaNs in where right now because they add annoying constraints to the ranges we'd need to support. It's not really useful as the resulting range would, at most, be just NaN.
+
+assert_semantic_error(3502):
+	t := type{_X:float where _X <= NaN}
+
+assert_semantic_error(3502):
+	t := type{_X:float where NaN <= _X}
+
+assert_semantic_error(3502):
+	# Don't allow computed NaN
+	t := type{_X:float where 0.0/0.0 <= _X}
+
+assert_semantic_error(3552, 3502, 3565):
+	# Don't allow NaN through converging functions.
+	GetNaN()<converges>:type{NaN} = NaN
+	t := type{_X:float where GetNaN() <= _X}
+
+assert_semantic_error(3502):
+	t := type{_X:float where _X <= 142}

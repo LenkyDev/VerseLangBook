@@ -1,0 +1,120 @@
+<#> Verse operator precedence in descending order:
+    a:b
+    a..b
+    not a +a -a
+    a*b a/b
+    a+b a-b
+    a=b a<=b a>=b a<>b a<b a>b
+    a and b
+    a or b
+    a:=b
+    a,b
+
+# TODO: : vs ..
+# TODO: .. vs * /
+# TODO: unary prefix operators not + - ? ^
+# TODO: binary = <= >= <> < > vs binary and
+# TODO: binary = vs binary ,
+
+# Test that + is higher precedence than the comparison operators.
+
+assert{ 1 + 2  =  1 + 2}
+assert{ 1 + 2  = (1 + 2)}
+assert{(1 + 2) =  1 + 2}
+
+assert{ 1 + 2  <=  1 + 2}
+assert{ 1 + 2  <= (1 + 2)}
+assert{(1 + 2) <=  1 + 2}
+
+assert{ 1 + 2  >=  1 + 2}
+assert{ 1 + 2  >= (1 + 2)}
+assert{(1 + 2) >=  1 + 2}
+
+assert{ 1 + 2  <>  2 + 3}
+assert{ 1 + 2  <> (2 + 3)}
+assert{(1 + 2) <>  2 + 3}
+
+assert{ 1 + 2  <  2 + 3}
+assert{ 1 + 2  < (2 + 3)}
+assert{(1 + 2) <  2 + 3}
+
+assert{ 3 + 2  >  2 + 1}
+assert{ 3 + 2  > (2 + 1)}
+assert{(3 + 2) >  2 + 1}
+
+# Test that - is higher precedence than the comparison operators.
+
+assert{ 1 - 2  =  1 - 2}
+assert{ 1 - 2  = (1 - 2)}
+assert{(1 - 2) =  1 - 2}
+
+assert{ 1 - 2  <=  1 - 2}
+assert{ 1 - 2  <= (1 - 2)}
+assert{(1 - 2) <=  1 - 2}
+
+assert{ 1 - 2  >=  1 - 2}
+assert{ 1 - 2  >= (1 - 2)}
+assert{(1 - 2) >=  1 - 2}
+
+assert{ 1 - 2  <>  2 - 1}
+assert{ 1 - 2  <> (2 - 1)}
+assert{(1 - 2) <>  2 - 1}
+
+assert{ 2 - 3  <  3 - 2}
+assert{ 2 - 3  < (3 - 2)}
+assert{(2 - 3) <  3 - 2}
+
+assert{ 3 - 2  >  2 - 3}
+assert{ 3 - 2  > (2 - 3)}
+assert{(3 - 2) >  2 - 3}
+
+# Test that * is higher precedence than the +- operators.
+
+assert{1 + 2 * 3 = 7}
+assert{1 + (2 * 3) = 7}
+assert{(1 + 2) * 3 = 9}
+
+assert{4 * 5 + 6 = 26}
+assert{(4 * 5) + 6 = 26}
+assert{4 * (5 + 6) = 44}
+
+assert{1 - 2 * 3 = -5}
+assert{1 - (2 * 3) = -5}
+assert{(1 - 2) * 3 = -3}
+
+assert{4 * 5 - 6 = 14}
+assert{(4 * 5) - 6 = 14}
+assert{4 * (5 - 6) = -4}
+
+# Test that / is higher precedence than the +- operators.
+
+assert{1.0 + 12.0 / 3.0 = 5.0}
+assert{1.0 + (12.0 / 3.0) = 5.0}
+assert{(2.0 + 12.0) / 7.0 = 2.0}
+
+assert{12.0 / 3.0 + 1.0 = 5.0}
+assert{(12.0 / 3.0) + 1.0 = 5.0}
+assert{12.0 / (3.0 + 1.0) = 3.0}
+
+assert{1.0 - 12.0 / 3.0 = -3.0}
+assert{1.0 - (12.0 / 3.0) = -3.0}
+assert{(2.0 - 12.0) / 2.0 = -5.0}
+
+assert{12.0 / 3.0 - 1.0 = 3.0}
+assert{(12.0 / 3.0) - 1.0 = 3.0}
+assert{12.0 / (3.0 - 1.0) = 6.0}
+
+# Test that `and` is higher precedence than `or`.
+
+assert{logic{ false? and  false?  or true? } = true}
+assert{logic{ false? and (false?  or true?)} = false}
+assert{logic{(false? and  false?) or true? } = true}
+
+assert{logic{ true? or  false?  and false? } = true}
+assert{logic{(true? or  false?) and false? } = false}
+assert{logic{ true? or (false?  and false?)} = true}
+
+# Test that `or` is higher precedence than `:=`.
+
+assert{x := true?  or true; x = false}
+assert{x := false? or true;  x = true}

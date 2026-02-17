@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{map{""=>0}}
+assert{map{""=>0}[""]=0}

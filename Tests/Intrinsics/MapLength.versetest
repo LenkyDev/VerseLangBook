@@ -1,0 +1,11 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{Map:[int]int=map{}; Map.Length=0}
+assert{Map:[int]int=map{0=>0}; Map.Length=1}
+assert{Map:[int]int=map{0=>0,1=>1}; Map.Length=2}
+assert{Map:[int]int=map{0=>0,1=>1,2=>2}; Map.Length=3}
+
+# Duplicate keys aren't counted.
+assert{Map:[int]int=map{0=>0, 1=>1,2=>2}; Map.Length=3}
+assert{Map:[int]int=map{0=>0, 0=>1,2=>2}; Map.Length=2}
+assert{Map:[int]int=map{0=>0, 0=>1,0=>2}; Map.Length=1}

@@ -1,0 +1,147 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+Bob<public> := module:
+    Gertrude<public> := module:
+Frank<public> := module:
+
+auto_qualify_todo
+{
+vmodule(Bob):
+    vmodule(Gertrude):
+        snippet:
+            using{Frank}
+            A<public> := class(B):
+                a<public>:int
+vmodule(Frank):
+    snippet:
+        using{Bob.Gertrude}
+        B<public> := class:
+            b<public>:int
+        C<public> := class(A):
+            c<public>:int
+using{Frank}
+assert{C{a:=0,b:=1,c:=2}}
+}
+
+# Test that you can use import in a module macro.
+ModuleA := module:
+    using{ModuleB}    
+    F<public>(X:int):int=G(X)
+ModuleB := module:    
+    G<public>(X:int):int=X*2
+using{ModuleA}
+assert{F(39)=78}
+
+# Only modules or snippets allowed inside modules
+assert_semantic_error(3500):
+    vmodule(Bob):
+        B := class:
+            b:int
+
+# Can't see code inside another module without importing it
+assert_semantic_error(3506):
+    vmodule(Bob):
+        snippet:            
+            B<public> := class {}
+    vmodule(Frank):
+        snippet:
+            A := class(B) {}
+
+# Importing something in one snippet won't make it visible in another
+assert_semantic_error(3506):
+    vmodule(Bob):
+        snippet:            
+            B<public> := class {}
+    vmodule(Frank):
+        snippet:
+            using{Bob}
+            A := class(B) {}
+        snippet:
+            C := class(B) {}
+
+# Import bad argument
+assert_semantic_error(3614):
+    vmodule(Bob):
+        snippet:
+            using{ 42 }
+
+# Import bad argument
+assert_semantic_error(3509):
+    vmodule(Bob):
+        snippet:
+            using{ 42 * "Foo" }
+
+# Import bad module name
+assert_semantic_error(3587):
+    vmodule(Bob):
+        snippet:
+            using{/Verse.org/VerseTests/Gertrude}
+
+# Import bad nested module name
+assert_semantic_error(3587):
+    vmodule(Bob):
+        snippet:
+            using{/Verse.org/VerseTests/Gertrude/Hestor}
+
+# Test that you can't use using as an expression.
+assert_semantic_error(3669):
+    vmodule(M0){snippet{}}
+    vmodule(M1):
+        snippet:
+            f():void=using{M0}
+
+assert_semantic_error(3669):
+    vmodule(M0){snippet{}}
+    vmodule(M1):
+        snippet:
+            f():void=if(using{M1}, true?) {} else {}
+
+assert_semantic_error(3546):
+    vmodule(M0){snippet{}}
+    e:=enum{using{/Verse.org/VerseTests/M0}}
+    
+# Test that it an error is produced if using occurs in an expression
+assert_semantic_error(3537){ vmodule(M0){snippet{}}; c:=class {using{M0}} }
+assert_semantic_error(3537){ vmodule(M0){snippet{}}; s:=struct{using{M0}} }
+assert_semantic_error(3537){ vmodule(M0){snippet{}}; t:=interface {using{M0}} }
+assert_semantic_error(3669){ vmodule(M0){snippet{}}; F():void={using{M0}} }
+assert_semantic_error(3624){ vmodule(M0){snippet{}}; F(X:int where using{M0}):void={} }
+
+# Test that using only imports the named scope, and doesn't also import the parents of that scope.
+assert_semantic_error(3506):
+    M0<public> := module:
+        M1<public> := module:
+    vmodule(M0):
+        vmodule(M1){}
+        snippet:
+            F<public>():void={}
+    vmodule(M2):
+        snippet:
+            using{M0.M1}
+            G():void=F()
+
+# Test that using only imports the named scope, and doesn't also import the imported scope's imported scopes.
+assert_semantic_error(3506):
+    M0<public> := module:
+    vmodule(M0):
+        snippet:
+            F<public>():void={}
+    M1<public> := module:
+    vmodule(M1):
+        snippet:
+            using{M0}
+    vmodule(M2):
+        snippet:
+            using{M1}
+            G():void=F()
+
+assert_semantic_error(3614, 3547, 3598):
+    using {a():1}
+
+assert:
+    X := Using.C.class2{}
+    X.Data = 1
+    Y := Using.D.class2{}
+    Y.Data = 2.0

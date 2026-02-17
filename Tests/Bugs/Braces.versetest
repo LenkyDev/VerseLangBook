@@ -1,0 +1,15 @@
+assert_valid:
+    A := class:
+        DoubleIt(x:int):int=
+            return(x*2)
+
+assert_valid
+{
+    A := class
+    {
+        DoubleIt(x:int):int=
+        {
+            return(x*2)
+        }
+    }
+}

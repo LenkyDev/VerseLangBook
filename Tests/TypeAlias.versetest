@@ -1,0 +1,239 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{/Verse.org/Tests/VerseTestScriptCmd/TestTypeAliases}
+
+# Test trivial type aliases.
+
+C0 := class {}
+
+#T0 := int
+T1:subtype(C0)= C0 # this is accepted, but is not a type alias: it's instead a class-typed data definition.
+
+#f0(i:T):T = return i + 2
+
+# Test type aliases of a type with function declarations as subexpressions.
+
+F := type{_():int}
+
+f1():int=return 0
+f2():int=return 1
+
+callF(f:F):int=return f()
+
+assert{callF(f1)=0}
+assert{callF(f2)=1}
+
+# Test type aliases of optional types.
+
+O0 := ?int
+f3(o:O0)<transacts><decides>:int=return o?
+
+assert{not f3[false]}
+assert{f3[option{1}] = 1}
+
+O1 := ?O0
+f4(o:O1)<transacts><decides>:int=return o??
+
+assert{not f4[false]}
+assert{not f4[option{false}]}
+assert{f4[option{option{2}}] = 2}
+
+assert_semantic_error(3502){O0:=?O1; O1:=?int}
+assert_semantic_error(3502){O0:=?O1; O1:=?O0}
+
+# Test type aliases of array types.
+
+A := []int
+
+f5(a:A):int=
+    var (local:)result:int = 0
+    for(x : a) { set (local:)result += x }
+    return (local:)result
+
+assert{f5(array{})=0}
+assert{f5(array{1})=1}
+assert{f5(array{1,2})=3}
+
+# Test type aliases of subtype types.
+
+C1 := class(C0) {}
+ClassOfC0 := subtype(C0)
+
+f6(c:ClassOfC0):void={}
+
+assert{f6(C0)}
+assert{f6(C1)}
+
+# Test type aliases of map types.
+
+M := [string]int
+
+f7(m:M):int=
+    var (local:)result:int = 0
+    for(x : m) { set (local:)result += x }
+    return (local:)result
+
+assert{f7(map{})=0}
+assert{f7(map{"1"=>1})=1}
+assert{f7(map{"1"=>1,"2"=>2})=3}
+
+# Test type aliases of function types declared with arrow syntax.
+
+F2 := int -> int
+
+f8(f:F2):int=f(1)
+f9(x:int):int=x+1
+f10(x:int):int=x+2
+
+assert{f8(f9)=2}
+assert{f8(f10)=3}
+
+# Test type alias visibility attributes.
+assert_valid:
+    vmodule(A) { snippet { T<public> := ?int } }
+    vmodule(B) { snippet { using{A}; x:T = false } }
+
+assert_semantic_error(3593):
+    vmodule(A) { snippet { T<internal> := ?int } }
+    vmodule(B) { snippet { using{A}; x:T = false } }
+
+# Test that type aliases may only occur at module scope.
+
+assert_semantic_error(3502){C := class {O := ?int}}
+assert_semantic_error(3502){f():void =        {O := ?int}}
+
+# Test type aliases used as macros.
+assert_semantic_error(3545){t:=?int; T :void= t{}}
+
+# Test type aliases used as functions.
+assert_semantic_error(3552){t:=?int; c:=class{}; F(X:c)<transacts><decides>:t=t[X]}
+
+# Test using externally defined type aliases.
+F11(X:int):int = X+1
+F12(G:int_to_int_function, X:int):int=G(X)
+assert{F12(F11, 10)=11}
+
+F13(G:int_to_int_function):int_to_int_function=G
+F14(G:int_to_int_function_to_int_to_int_function_function, H:int_to_int_function, X:int):int=
+    G(H)(X)
+assert{F14(F13, F11, 12)=13}
+
+F15(S:test_struct):int=S.X+1
+F16(G:struct_to_int_function, S:test_struct):int=G(S)
+assert{F16(F15, test_struct{X:=14})=15}
+
+F17(G:internal_type_alias_to_internal_type_alias_function, H:int_to_int_function, X:int):int=
+    G(H)(X)
+assert{F17(F13, F11, 16)=17}
+
+F18(C:test_parametric_class(int)):int=C.X+1
+F19(G:parametric_class_of_int_to_int, C:test_parametric_class(int)):int=G(C)
+assert{F19(F18, test_parametric_class(int){X:=18})=19}
+
+F20(G:parametric_type_alias_parametric_class_to_t(t), C:test_parametric_class(t) where t:type):t = G(C)
+assert{F20(F18, test_parametric_class(int){X:=20})=21}
+
+F21(X:int):test_parametric_class(int)=test_parametric_class(int){X:=X+1}
+F22(G:parametric_type_alias_t_to_parametric_class(t), X:t where t:type):test_parametric_class(t) = G(X)
+assert{F22(F21, 22).X=23}
+
+c2(t:subtype(comparable)) := class:
+    Y:t
+    Method(C:test_parametric_class(t))<transacts><decides>:test_parametric_class(t) =
+        test_parametric_class(t){X:=C.X=Y}
+F23(G:constrained_parametric_type_alias(int), C:test_parametric_class(int))<transacts><decides>:test_parametric_class(int) = G[C]
+assert{    F23[c2(int){Y:=24}.Method, test_parametric_class(int){X:=24}].X=24}
+assert{not F23[c2(int){Y:=25}.Method, test_parametric_class(int){X:=26}]     }
+
+<#
+These crash with a known bug (SOL-4489):
+
+F23(G:constrained_parametric_type_alias(t), C:test_parametric_class(t) where t:type)<decides>:test_parametric_class(t) = G(C)
+assert{    F23[c2(int){Y:=24}.Method, test_parametric_class(int){X:=24}].X=24}
+assert{not F23[c2(int){Y:=25}.Method, test_parametric_class(int){X:=26}]     }
+
+TestCrash := module:
+    my_class(t:type) := class{X<public>:t}
+    my_alias<public>(t:subtype(comparable)) := type{_(:my_class(t)):my_class(t)}
+    MyFunction(G:my_alias(t), C:my_class(t) where t:type):my_class(t) = G[C]
+#>
+
+AliasesOfClasses := module:
+    a<public> := c
+    c<public> := class{Foo<public>():int=26}
+    b<public> := c
+    d<public> := class(b){Bar<public>():int=(b:)Foo()+1}
+    (AliasesOfClasses:)e<public> := (AliasesOfClasses:)d
+
+assert{AliasesOfClasses.a{}.Foo()=26}
+assert{AliasesOfClasses.b{}.Foo()=26}
+assert{AliasesOfClasses.c{}.Foo()=26}
+
+assert{AliasesOfClasses.d{}.(AliasesOfClasses.a:)Foo()=26}
+assert{AliasesOfClasses.d{}.(AliasesOfClasses.b:)Foo()=26}
+assert{AliasesOfClasses.d{}.(AliasesOfClasses.c:)Foo()=26}
+assert{AliasesOfClasses.d{}.Bar()=27}
+
+assert{AliasesOfClasses.e{}.Bar()=27}
+
+AliasesOfEnumerations := module:
+    e<public> := enum{E0, E1}
+    f<public> := e
+    Foo<public>(E:e):f=E
+
+assert{AliasesOfEnumerations.Foo(AliasesOfEnumerations.e.E0)=AliasesOfEnumerations.f.E0}
+assert{AliasesOfEnumerations.Foo(AliasesOfEnumerations.e.E1)=AliasesOfEnumerations.f.E1}
+assert{AliasesOfEnumerations.Foo(AliasesOfEnumerations.f.E0)=AliasesOfEnumerations.e.E0}
+assert{AliasesOfEnumerations.Foo(AliasesOfEnumerations.f.E1)=AliasesOfEnumerations.e.E1}
+
+AliasesOfBuiltInTypes := module:
+    t := int
+    Foo<public>(X:t):t=X+1
+
+assert{AliasesOfBuiltInTypes.Foo(10)=11}
+
+# Test using type aliases defined in the VerseTestScriptCmd package.
+assert{test_class_alias{}}
+assert{test_struct_alias{X:=1}}
+
+# Test out-of-order type alias definitions.
+assert_valid               {a := int; b := a          }
+assert_semantic_error(3502){          b := a; a := int}
+
+assert_valid               {a := int; b := a -> logic          }
+assert_semantic_error(3502){          b := a -> logic; a := int}
+
+assert_valid               {a := int; b := ?a          }
+assert_semantic_error(3502){          b := ?a; a := int}
+
+assert_valid               {a := int; b := tuple(a,logic)          }
+assert_semantic_error(3502){          b := tuple(a,logic); a := int}
+
+assert_valid               {a := int; b := []a          }
+assert_semantic_error(3502){          b := []a; a := int}
+
+assert_valid               {a := int; b := [a]logic          }
+assert_semantic_error(3502){          b := [a]logic; a := int}
+
+assert_valid               {a := int; b := type{_(:a):logic}          }
+assert_semantic_error(3502){          b := type{_(:a):logic}; a := int}
+
+assert_valid               {a(t:type) := class{}; b := int; c := a(b)}
+assert_semantic_error(3502){a(t:type) := class{}; c := a(b); b := int}
+
+assert_valid               {a := int; c := class{X:a}}
+assert_semantic_error(3502){c := class{X:a}; a := int}
+
+# Test that type aliases that are more accessible than the nominal type they alias are disallowed.
+assert_semantic_error(3593){c := class{}; a<public> := c}
+assert_semantic_error(3593){e := enum{}; a<public> := e}
+assert_semantic_error(3593){s := struct{}; a<public> := s}
+assert_semantic_error(3593){i := interface{}; a<public> := i}
+
+assert_semantic_error(3593){c := class{}; a<public> := int->c}
+assert_semantic_error(3593){c := class{}; a<public> := c->int}
+assert_semantic_error(3593){c := class{}; a<public> := ?c}
+assert_semantic_error(3593){c := class{}; a<public> := tuple(int, c)}
+assert_semantic_error(3593){c := class{}; a<public> := []c}
+assert_semantic_error(3593){c := class{}; a<public> := [int]c}
+assert_semantic_error(3593){c := class{}; a<public> := type{_():c}}

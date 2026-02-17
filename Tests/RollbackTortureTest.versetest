@@ -1,0 +1,373 @@
+c := class<unique>:
+    X:int = 42
+
+MakeInt32Array(Num:int)<transacts>:[]int =
+    for (I := 0..Num-1) { I }
+
+MakeCharArray(Num:int)<transacts>:[]char =
+    for (I := 0..Num-1) { '0' }
+
+Char32:char32 = 0u000a0 
+MakeChar32Array(Num:int)<transacts>:[]char32 =
+    for (I := 0..Num-1) { Char32 }
+
+MakeBigMap(Num:int)<transacts>:[int]int =
+    var Map:[int]int = map{}
+    for (I := 0..Num-1) { (set Map[I] = I) or Err() }
+    Map
+
+N:int = 75
+LoopCount:int = 10
+
+assert:
+    var A:[]comparable = MakeInt32Array(N)
+
+    A.Length = N
+
+    for (J := 1..LoopCount):
+        if:
+            for (I := 0..N-1):
+                (A[I] = I) or Err()
+            (set A[0] = 42) or Err()
+            A[0] = 42 or Err()
+            for (I := 1..N-1):
+                (A[I] = I) or Err()
+
+            O:c = c{}
+            (set A[0] = O) or Err()
+            A[0] = O or Err()
+            for (I := 1..N-1):
+                (A[I] = I) or Err()
+
+            true = false
+
+assert:
+    var A:[]comparable = MakeCharArray(N)
+
+    A.Length = N
+
+    for (J := 1..LoopCount):
+        if:
+            for (I := 0..N-1):
+                (A[I] = '0') or Err()
+            (set A[0] = '1') or Err()
+            A[0] = '1' or Err()
+            for (I := 1..N-1):
+                (A[I] = '0') or Err()
+
+            O:c = c{}
+            (set A[0] = O) or Err()
+            A[0] = O or Err()
+            for (I := 1..N-1):
+                (A[I] = '0') or Err()
+
+            true = false
+
+assert:
+    var A:[]comparable = MakeCharArray(N)
+
+    A.Length = N
+
+    for (J := 1..LoopCount):
+        if:
+            for (I := 0..N-1):
+                (A[I] = '0') or Err()
+            (set A[0] = '1') or Err()
+            A[0] = '1' or Err()
+            for (I := 1..N-1):
+                (A[I] = '0') or Err()
+
+            (set A[0] = 42) or Err()
+            A[0] = 42 or Err()
+            for (I := 1..N-1):
+                (A[I] = '0') or Err()
+
+            true = false
+
+assert:
+    var A:[]comparable = MakeChar32Array(N)
+
+    for (J := 1..LoopCount):
+        A.Length = N
+
+        if:
+            for (I := 0..N-1):
+                (A[I] = Char32) or Err()
+            set A[0] = 0u000b0
+            A[0] = 0u000b0 or Err()
+            for (I := 1..N-1):
+                (A[I] = Char32) or Err()
+
+            O:c = c{}
+            (set A[0] = O) or Err()
+            A[0] = O or Err()
+            for (I := 1..N-1):
+                (A[I] = Char32) or Err()
+
+            true = false
+
+
+assert:
+    var A:[]comparable = MakeChar32Array(N)
+
+
+    for (J := 1..LoopCount):
+        A.Length = N
+
+        if:
+            for (I := 0..N-1):
+                (A[I] = Char32) or Err()
+            (set A[0] = 0u000b0) or Err()
+            (A[0] = 0u000b0) or Err()
+            for (I := 1..N-1):
+                (A[I] = Char32) or Err()
+
+            (set A[0] = 42) or Err()
+            A[0] = 42 or Err()
+            for (I := 1..N-1):
+                (A[I] = Char32) or Err()
+
+            true = false
+
+
+assert:
+    var A:[]comparable = MakeInt32Array(N)
+
+    for (J := 1..LoopCount):
+        A.Length = N
+        if:
+            for (I := 0..N-1):
+                (A[I] = I) or Err()
+            (set A[0] = 42) or Err()
+            A[0] = 42 or Err()
+            for (I := 1..N-1):
+                (A[I] = I) or Err()
+
+            O:c = c{}
+            for (I := 0..N-1):
+                set A[I] = O
+            for (I := 0..N-1):
+                A[I] = O or Err()
+
+            true = false
+
+assert:
+    var A:[]comparable = MakeInt32Array(N)
+
+    for (J := 1..LoopCount):
+        A.Length = N
+        if:
+            O:c = c{}
+            if:
+                for (I := 0..N-1):
+                    (A[I] = I) or Err()
+                (set A[0] = 42) or Err()
+                A[0] = 42 or Err()
+                for (I := 1..N-1):
+                    (A[I] = I) or Err()
+
+                for (I := 0..N-1):
+                    set A[I] = O
+                for (I := 0..N-1):
+                    (A[I] = O) or Err()
+
+            for (I := 0..N-1):
+                (A[I] = O) or Err()
+            true = false
+
+verse_vm_only
+{
+assert:
+    var M:[comparable]comparable = MakeBigMap(N)
+
+    for (J := 1..LoopCount):
+        if:
+            (M.Length = N) or Err()
+
+            for (I := 0..N-1):
+                (M[I] = I) or Err()
+            (set M[0] = 42) or Err()
+            (M[0] = 42) or Err()
+            for (I := 1..N-1):
+                (M[I] = I) or Err()
+
+            O:c = c{}
+            for (I := 0..N-1):
+                (set M[I] = O) or Err()
+            for (I := 0..N-1):
+                (M[I] = O) or Err()
+            
+            for (I := 0..N-1):
+                (set M[I + N] = I + N) or Err()
+            (M.Length = N * 2) or Err()
+            for (I := 0..N-1):
+                (M[I] = O) or Err()
+                (M[I + N] = I + N) or Err()
+
+            true = false
+
+assert:
+    var M:[comparable]comparable = MakeBigMap(N)
+
+    for (J := 1..LoopCount):
+        M.Length = N
+        if:
+            for (I := 0..N-1):
+                (M[I] = I) or Err()
+            (set M[0] = 42) or Err()
+            (M[0] = 42) or Err()
+            for (I := 1..N-1):
+                (M[I] = I) or Err()
+
+            for (I := 0..N*5):
+                (set M[I] = I*2) or Err()
+
+            for (I := 0..N*5):
+                (M[I] = I*2) or Err()
+
+            true = false
+
+assert:
+    var M:[comparable]comparable = MakeBigMap(N)
+
+    for (J := 1..LoopCount):
+        M.Length = N
+        if:
+            if:
+                for (I := 0..N-1):
+                    (M[I] = I) or Err()
+                (set M[0] = 42) or Err()
+                (M[0] = 42) or Err()
+                for (I := 1..N-1):
+                    (M[I] = I) or Err()
+
+                for (I := 0..N*5):
+                    (set M[I] = I*2) or Err()
+
+                for (I := 0..N*5):
+                    (M[I] = I*2) or Err()
+
+                true = true
+
+            for (I := 0..N*5):
+                (M[I] = I*2) or Err()
+
+            true = false
+
+}
+
+
+s := struct<computes>:
+    X:int = 42
+s2 := struct<computes>:
+    A:[]int = array{42, 1234}
+s3 := struct<computes>:
+    X:[int][]int = map{0=>array{1}, 1=>array{2}}
+
+assert:
+    var S:s = s{}
+    set S.X = 42
+    for (J := 1..LoopCount):
+        S.X = 42            
+        if:
+            S2 := S
+            set S.X = 1234
+            S.X = 1234 or Err()
+            S2.X = 42 or Err()
+
+            true = false
+    
+
+assert:
+    var A:[][int]s = array{ map{ 0=>s{} }, map{ 0=>s{}, 1=>s{X:=1234} } }
+
+    for (J := 1..LoopCount):
+        A.Length = 2
+        A[0].Length = 1
+        A[1].Length = 2
+        A[0][0].X = 42
+        A[1][0].X = 42
+        A[1][1].X = 1234
+
+        if:
+            (set A[0][0].X = 666) or Err()
+            (A[0][0].X = 666) or Err()
+
+            (set A[0][0] = s{X:=1234}) or Err()
+            (A[0][0].X = 1234) or Err()
+
+            verse_vm_only
+            {
+                (set A[0][1] = s{X:=1234}) or Err()
+                (A[0][1].X = 1234) or Err()
+            }
+
+            (set A[0] = map{42=>s{}}) or Err()
+            (A[0].Length = 1) or Err()
+            (A[0][42].X = 42) or Err()
+
+            true = false
+
+assert:
+    var M:[int]s2 = map{0=>s2{}, 1=>s2{A:=array{666}}}
+
+    for (J := 1..LoopCount):
+        M.Length = 2
+        M[0].A.Length = 2
+        M[0].A[0] = 42
+        M[0].A[1] = 1234
+        M[1].A.Length = 1
+        M[1].A[0] = 666
+
+
+        if:
+            (set M[0].A[0] = 1) or Err()
+            (M[0].A[0] = 1) or Err()
+            (M[0].A[1] = 1234) or Err()
+
+            (set M[0].A[1] = 111222) or Err()
+            (M[0].A[1] = 111222) or Err()
+
+            (set M[2] = s2{}) or Err()
+            (M.Length = 3) or Err()
+            (M[2].A.Length = 2; M[2].A[0] = 42; M[2].A[1] = 1234) or Err()
+            (M[0].A[0] = 1; M[0].A[1] = 111222) or Err()
+            (M[1].A.Length = 1; M[1].A[0] = 666) or Err()
+
+            (set M[1] = s2{}) or Err()
+            (M[1].A[0] = 42; M[1].A[1] = 1234) or Err()
+            (M.Length = 3) or Err()
+
+            set M = map{}
+            (M.Length = 0) or Err()
+
+            true = false
+
+assert:
+    var A:[]s3 = array{s3{}, s3{X:=map{666=>array{1234}}}}
+
+    for (J := 1..LoopCount):
+        A.Length = 2
+        A[0].X = map{0=>array{1}, 1=>array{2}}
+        A[1].X = map{666=>array{1234}}
+
+        if:
+            (set A[0].X[0] = array{1234}) or Err()
+            (A[0].X = map{0=>array{1234}, 1=>array{2}}) or Err()
+
+            verse_vm_only
+            {
+                (set A[0].X[42] = array{666}) or Err()
+                (A[0].X = map{0=>array{1234}, 1=>array{2},42=>array{666}}) or Err()
+            }
+
+            (A[1].X = map{666=>array{1234}}) or Err()
+            (set A[1].X[666] = array{666}) or Err()
+            (A[1].X = map{666=>array{666}}) or Err()
+            (set A[1].X = map{111=>array{666}}) or Err()
+            (A[1].X = map{111=>array{666}}) or Err()
+
+            (set A[1] = s3{}) or Err()
+            (A[1].X = map{0=>array{1}, 1=>array{2}}) or Err()
+
+            true = false

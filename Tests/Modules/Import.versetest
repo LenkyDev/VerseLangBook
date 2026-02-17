@@ -1,0 +1,65 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+Bob<public> := module:
+    Gertrude<public> := module:
+Frank<public> := module:
+
+auto_qualify_todo
+{
+vmodule(Bob):
+    vmodule(Gertrude):
+        snippet:
+            Jim := import( /Verse.org/VerseTests/Frank )
+            
+            A<public> := class(Jim.B):
+                
+                a<public>:int
+vmodule(Frank):
+    snippet:
+        Gertrude := import( /Verse.org/VerseTests/Bob/Gertrude )
+        using{ Gertrude }
+        
+        B<public> := class:
+            
+            b<public>:int
+        
+        C<public> := class(A):
+            
+            c<public>:int
+using{Frank}
+assert{C{a:=0,b:=1,c:=2}}
+}
+
+# Importing something in one snippet is also visible in another
+assert_valid:
+    vmodule(Bob):
+        snippet:
+            
+            B<public> := class {}
+    vmodule(Frank):
+        snippet:
+            Bib := import( /Verse.org/VerseTests/Bob )
+            A := class(Bib.B) {}
+        snippet:
+            C := class(Bib.B) {}
+
+# Import bad module name
+assert_semantic_error(3587):
+    vmodule(Bob):
+        snippet:
+            A := import( /Verse.org/VerseTests/Gertrude )
+
+# Import bad nested module name
+assert_semantic_error(3587):
+    vmodule(Bob):
+        snippet:
+            using{ /Verse.org/VerseTests/Gertrude/Hestor }
+
+# Test a module alias in a different package
+using{/Verse.org/Tests/VerseTestScriptCmd}
+assert{ModuleToBeAliased.Magic=ModuleAlias.Magic}
+
+# Test calling a function from an imported module alias.
+TestModule := module{F<public>():int=10}
+TestModuleAlias := import(/Verse.org/VerseTests/TestModule)
+assert{TestModuleAlias.F()=10}

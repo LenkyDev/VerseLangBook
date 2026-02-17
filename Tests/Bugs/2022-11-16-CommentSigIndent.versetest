@@ -1,0 +1,162 @@
+
+# No comments
+assert:
+    1 + 1
+    2 + 2
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# Same indentation
+assert:
+    1 + 1
+    2 + 2
+    # Same indent
+    3 + 3
+    <# Same #>
+    5 + 5
+    <#>
+        Same
+    1 < 2
+
+# Earlier indent level
+assert:
+    1 + 1
+    2 + 2
+# Shouldn't affect significant indentation
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# Earlier mid-indent level
+assert:
+    1 + 1
+    2 + 2
+  # Shouldn't affect significant indentation
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# Later indent level
+assert:
+    1 + 1
+    2 + 2
+        # Shouldn't affect significant indentation
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# Earlier indent level
+assert:
+    1 + 1
+    2 + 2
+<# Shouldn't affect significant indentation#>
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# Earlier indent level
+assert:
+    1 + 1
+    2 + 2
+  <# Shouldn't affect significant indentation#>
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# Later indent level
+assert:
+    1 + 1
+    2 + 2
+        <# Shouldn't affect significant indentation#>
+    3 + 3
+    4 + 4
+    5 + 5
+    1 < 2
+
+# [Error] Same line - earlier indent level
+<#
+assert:
+    1 + 1
+    2 + 2
+    3 + 3
+<##>4 + 4
+    5 + 5
+    1 < 2
+#>
+
+# Multiline - earlier indent level
+assert:
+    1 + 1
+    2 + 2
+    3 + 3
+<#
+    4 + 4
+#>
+    5 + 5
+    1 < 2
+
+# Multiline - earlier indent level
+assert:
+    1 + 1
+    2 + 2
+    3 + 3
+        <#
+    4 + 4
+        #>
+    5 + 5
+    1 < 2
+
+# [Error] Multiline shared line - earlier indent level
+<#
+assert:
+    1 + 1
+    2 + 2
+    3 + 3
+<#  4 + 4
+#>  5 + 5
+    1 < 2
+#>
+
+<# [Syntax Error]
+# Multiline shared line
+assert:
+    1 + 1
+    2 + 2
+    3 + 3 <#
+    4 + 4
+#>  5 + 5
+    1 < 2
+#>
+
+# Multiline shared line
+assert:
+    1 + 1
+    2 + 2
+    3 + 3
+<#  4 + 4
+        #>
+    5 + 5
+    1 < 2
+
+# [Error] Mixed comments
+<#
+assert:
+    1 + 1
+    2 + 2
+    # Same indent
+# Shouldn't affect significant indentation
+  # Nope
+    3 + 3  # Post comment
+<##>4 + 4
+    5 + 5
+    <#>
+        test
+    1 < 2
+#>

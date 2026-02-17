@@ -1,0 +1,599 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Native }
+using{/Verse.org/Tests/VerseTestScriptCmd}
+
+assert_valid { E:=enum{} }
+assert_valid { E:=enum{a} }
+assert_valid { E:=enum{a, b} }
+assert_valid { E:=enum<open>{A, B, C} }
+assert_valid { E:=enum<closed>{A, B, C} }
+assert_semantic_error(3681) { E:=enum<open><open>{A, B, C} }
+assert_semantic_error(3681) { E:=enum<closed><closed>{A, B, C} }
+assert_semantic_error(3681) { E:=enum<open><open><open><open><open>{A, B, C} }
+assert_semantic_error(3681) { E:=enum<closed><closed><closed><closed><closed>{A, B, C} }
+assert_semantic_error(3604) { E:=enum<open><closed>{A, B, C} }
+assert_semantic_error(3681, 3681, 3604) { E:=enum<open><open><closed><closed>{A, B, C} }
+
+F := enum {a, b, c}
+
+f0():F = { return(F.a) }
+
+f1():F = { return(F.b) }
+
+f2(f:F):F =
+    if(f = F.a):
+        return(F.b)
+    else if(f = F.b):
+        return(F.c)
+    else:
+        return(F.a)
+
+assert{f0() = F.a}
+assert{f1() = F.b}
+assert{f2(F.a) = F.b}
+assert{f2(F.b) = F.c}
+assert{f2(F.c) = F.a}
+
+# Test that you can't use an enum type as a value.
+assert_semantic_error(3509):
+    e:=enum{A}
+    c0 := class:
+        var M0:e=e
+
+assert_semantic_error(3509):
+    e:=enum{A}
+    c0 := class:
+        var M0:e=e.A
+    f0():void=
+        C0:= c0{}
+        set C0.M0=e
+assert_semantic_error(3509){ E:=enum{a}; f0(a0:E)   :void={f0(E)    }}
+assert_semantic_error(3510){ E:=enum{a}; f0()       :E   ={return(E)}}
+
+# Test that you can't define two enum types with the same name.
+assert_semantic_error(3532){ E:=enum{a}; E:=enum{b} }
+
+# Test that you can't define an enum type with a reserved name.
+assert_semantic_error(3514):
+    m := module:
+        (m:)true:=enum{a}
+
+# Test that you can't define an enum value with a reserved name.
+# TODO: assert_semantic_error(0){ E:=enum{void} }
+
+# Test that you can't use the enum macro except as the direct RHS of a definition.
+assert_semantic_error(3560){ enum{a} }
+assert_semantic_error(3606){ C:=-enum{a} }
+assert_semantic_error(3606,3547){ C:=enum{a}+1 }
+assert_semantic_error(3502){ f():void= enum{a} }
+assert_semantic_error(3502){ f():void={enum{a}}} 
+
+# Test that you can't define a local enum type.
+assert_semantic_error(3502){ f():void={ e:=enum{a} } }
+
+# Test for the ability to have attributes on enumerations.
+assert_valid:
+    @attribscope_enum @attribscope_enumerator
+    test_attribute := class<computes>(attribute) {}
+    test<constructor>(text:string)<computes> := test_attribute{}
+    
+    @test("Test attribute")
+    E := enum:
+        @test("Another test attribute")
+        A
+        @test("Yet another test attribute")
+        B
+
+# Test that an erroneous attribute on an enumerator produces an error.
+assert_semantic_error(3596):
+    @attribscope_enum
+    test_attribute := class<computes>(attribute) {}
+    test<constructor>(text:string)<computes> := test_attribute{}
+    
+    @test("Should be fine") 
+    E := enum:
+        @test("Should give an error")
+        A
+
+# Duplicate enumerators in different enums should not collide
+assert_valid:
+    NoDupeEnumValues := enum:
+        A
+        B
+        C
+
+    NoDupeEnumValues2 := enum:
+        A
+        B
+        C
+        D
+        E
+        F
+
+# explicit qualification of enumerators supported
+assert_valid:
+    A:int = 0
+    SomeEnum := enum:
+        (SomeEnum:)A
+        B
+        C
+
+assert_semantic_error(3532):
+    m1 := module:
+        E := enum {A, B, C}
+        m2 := module:
+            E := enum {A, B, C}  # 3532 - collides with m1.E
+
+# Before 30.00, duplicate enumerators don't cause an error until actually referenced
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2930):
+        snippet:
+            DupEnumValues := enum:
+                A
+                C
+                B
+                B
+                C
+
+assert_semantic_error(3532, 3532, 3532):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=3000):
+        snippet:
+            DupEnumValues := enum:
+                A   # 3532  - with the module name
+                C
+                B
+                B   # 3532
+                C   # 3532
+
+# Before 30.00, enumerators don't collide with parent-scope symbols
+assert_valid:
+    vpackage(P0, /M, ?UploadedAtFNVersion:=2930):
+        snippet:
+            A:int = 0
+            SomeEnum := enum:
+                A
+                B
+                C
+
+assert_semantic_error(3532):
+    vpackage(P0, /M, ?UploadedAtFNVersion:=3000):
+        snippet:
+            A:int = 0
+            SomeEnum := enum:
+                A
+                B
+                C
+
+bp_vm_only
+{
+
+# This is a limitation of the BPVM implementation only. We may eventually support wider enums there.
+assert_link_error(3552):
+    WayTooBig := enum
+    {
+        e000,e001,e002,e003,e004,e005,e006,e007,e008,e009,e00A,e00B,e00C,e00D,e00E,e00F,
+        e010,e011,e012,e013,e014,e015,e016,e017,e018,e019,e01A,e01B,e01C,e01D,e01E,e01F,
+        e020,e021,e022,e023,e024,e025,e026,e027,e028,e029,e02A,e02B,e02C,e02D,e02E,e02F,
+        e030,e031,e032,e033,e034,e035,e036,e037,e038,e039,e03A,e03B,e03C,e03D,e03E,e03F,
+        e040,e041,e042,e043,e044,e045,e046,e047,e048,e049,e04A,e04B,e04C,e04D,e04E,e04F,
+        e050,e051,e052,e053,e054,e055,e056,e057,e058,e059,e05A,e05B,e05C,e05D,e05E,e05F,
+        e060,e061,e062,e063,e064,e065,e066,e067,e068,e069,e06A,e06B,e06C,e06D,e06E,e06F,
+        e070,e071,e072,e073,e074,e075,e076,e077,e078,e079,e07A,e07B,e07C,e07D,e07E,e07F,
+        e080,e081,e082,e083,e084,e085,e086,e087,e088,e089,e08A,e08B,e08C,e08D,e08E,e08F,
+        e090,e091,e092,e093,e094,e095,e096,e097,e098,e099,e09A,e09B,e09C,e09D,e09E,e09F,
+        e0A0,e0A1,e0A2,e0A3,e0A4,e0A5,e0A6,e0A7,e0A8,e0A9,e0AA,e0AB,e0AC,e0AD,e0AE,e0AF,
+        e0B0,e0B1,e0B2,e0B3,e0B4,e0B5,e0B6,e0B7,e0B8,e0B9,e0BA,e0BB,e0BC,e0BD,e0BE,e0BF,
+        e0C0,e0C1,e0C2,e0C3,e0C4,e0C5,e0C6,e0C7,e0C8,e0C9,e0CA,e0CB,e0CC,e0CD,e0CE,e0CF,
+        e0D0,e0D1,e0D2,e0D3,e0D4,e0D5,e0D6,e0D7,e0D8,e0D9,e0DA,e0DB,e0DC,e0DD,e0DE,e0DF,
+        e0E0,e0E1,e0E2,e0E3,e0E4,e0E5,e0E6,e0E7,e0E8,e0E9,e0EA,e0EB,e0EC,e0ED,e0EE,e0EF,
+        e0F0,e0F1,e0F2,e0F3,e0F4,e0F5,e0F6,e0F7,e0F8,e0F9,e0FA,e0FB,e0FC,e0FD,e0FE,e0FF,
+    
+        <# all these are too large for BPVM #>
+        e100,e101,e102,e103,e104,e105,e106,e107,e108,e109,e10A,e10B,e10C,e10D,e10E,e10F,
+        e110,e111,e112,e113,e114,e115,e116,e117,e118,e119,e11A,e11B,e11C,e11D,e11E,e11F,
+        e120,e121,e122,e123,e124,e125,e126,e127,e128,e129,e12A,e12B,e12C,e12D,e12E,e12F,
+        e130,e131,e132,e133,e134,e135,e136,e137,e138,e139,e13A,e13B,e13C,e13D,e13E,e13F,
+        e140,e141,e142,e143,e144,e145,e146,e147,e148,e149,e14A,e14B,e14C,e14D,e14E,e14F,
+        e150,e151,e152,e153,e154,e155,e156,e157,e158,e159,e15A,e15B,e15C,e15D,e15E,e15F,
+        e160,e161,e162,e163,e164,e165,e166,e167,e168,e169,e16A,e16B,e16C,e16D,e16E,e16F,
+        e170,e171,e172,e173,e174,e175,e176,e177,e178,e179,e17A,e17B,e17C,e17D,e17E,e17F,
+        e180,e181,e182,e183,e184,e185,e186,e187,e188,e189,e18A,e18B,e18C,e18D,e18E,e18F,
+        e190,e191,e192,e193,e194,e195,e196,e197,e198,e199,e19A,e19B,e19C,e19D,e19E,e19F,
+        e1A0,e1A1,e1A2,e1A3,e1A4,e1A5,e1A6,e1A7,e1A8,e1A9,e1AA,e1AB,e1AC,e1AD,e1AE,e1AF,
+        e1B0,e1B1,e1B2,e1B3,e1B4,e1B5,e1B6,e1B7,e1B8,e1B9,e1BA,e1BB,e1BC,e1BD,e1BE,e1BF,
+        e1C0,e1C1,e1C2,e1C3,e1C4,e1C5,e1C6,e1C7,e1C8,e1C9,e1CA,e1CB,e1CC,e1CD,e1CE,e1CF,
+        e1D0,e1D1,e1D2,e1D3,e1D4,e1D5,e1D6,e1D7,e1D8,e1D9,e1DA,e1DB,e1DC,e1DD,e1DE,e1DF,
+        e1e1,e1E1,e1E2,e1E3,e1E4,e1E5,e1E6,e1E7,e1E8,e1E9,e1EA,e1EB,e1EC,e1ED,e1EE,e1EF,
+        e1F0,e1F1,e1F2,e1F3,e1F4,e1F5,e1F6,e1F7,e1F8,e1F9,e1FA,e1FB,e1FC,e1FD,e1FE,e1FF,
+    
+        e200,e201,e202,e203,e204,e205,e206,e207,e208,e209,e20A,e20B,e20C,e20D,e20E,e20F,
+        e210,e211,e212,e213,e214,e215,e216,e217,e218,e219,e21A,e21B,e21C,e21D,e21E,e21F,
+        e220,e221,e222,e223,e224,e225,e226,e227,e228,e229,e22A,e22B,e22C,e22D,e22E,e22F,
+        e230,e231,e232,e233,e234,e235,e236,e237,e238,e239,e23A,e23B,e23C,e23D,e23E,e23F,
+        e240,e241,e242,e243,e244,e245,e246,e247,e248,e249,e24A,e24B,e24C,e24D,e24E,e24F,
+        e250,e251,e252,e253,e254,e255,e256,e257,e258,e259,e25A,e25B,e25C,e25D,e25E,e25F,
+        e260,e261,e262,e263,e264,e265,e266,e267,e268,e269,e26A,e26B,e26C,e26D,e26E,e26F,
+        e270,e271,e272,e273,e274,e275,e276,e277,e278,e279,e27A,e27B,e27C,e27D,e27E,e27F,
+        e280,e281,e282,e283,e284,e285,e286,e287,e288,e289,e28A,e28B,e28C,e28D,e28E,e28F,
+        e290,e291,e292,e293,e294,e295,e296,e297,e298,e299,e29A,e29B,e29C,e29D,e29E,e29F,
+        e2A0,e2A1,e2A2,e2A3,e2A4,e2A5,e2A6,e2A7,e2A8,e2A9,e2AA,e2AB,e2AC,e2AD,e2AE,e2AF,
+        e2B0,e2B1,e2B2,e2B3,e2B4,e2B5,e2B6,e2B7,e2B8,e2B9,e2BA,e2BB,e2BC,e2BD,e2BE,e2BF,
+        e2C0,e2C1,e2C2,e2C3,e2C4,e2C5,e2C6,e2C7,e2C8,e2C9,e2CA,e2CB,e2CC,e2CD,e2CE,e2CF,
+        e2D0,e2D1,e2D2,e2D3,e2D4,e2D5,e2D6,e2D7,e2D8,e2D9,e2DA,e2DB,e2DC,e2DD,e2DE,e2DF,
+        e2e2,e2E1,e2E2,e2E3,e2E4,e2E5,e2E6,e2E7,e2E8,e2E9,e2EA,e2EB,e2EC,e2ED,e2EE,e2EF,
+        e2F0,e2F1,e2F2,e2F3,e2F4,e2F5,e2F6,e2F7,e2F8,e2F9,e2FA,e2FB,e2FC,e2FD,e2FE,e2FF
+    }
+
+    wtbA:WayTooBig = WayTooBig.e000  # OK
+    wtbB:WayTooBig = WayTooBig.e0FF  # OK
+    wtbC:WayTooBig = WayTooBig.e100  # 3552
+}
+verse_vm_only
+{
+assert_valid:
+    WayTooBig := enum
+    {
+        e000,e001,e002,e003,e004,e005,e006,e007,e008,e009,e00A,e00B,e00C,e00D,e00E,e00F,
+        e010,e011,e012,e013,e014,e015,e016,e017,e018,e019,e01A,e01B,e01C,e01D,e01E,e01F,
+        e020,e021,e022,e023,e024,e025,e026,e027,e028,e029,e02A,e02B,e02C,e02D,e02E,e02F,
+        e030,e031,e032,e033,e034,e035,e036,e037,e038,e039,e03A,e03B,e03C,e03D,e03E,e03F,
+        e040,e041,e042,e043,e044,e045,e046,e047,e048,e049,e04A,e04B,e04C,e04D,e04E,e04F,
+        e050,e051,e052,e053,e054,e055,e056,e057,e058,e059,e05A,e05B,e05C,e05D,e05E,e05F,
+        e060,e061,e062,e063,e064,e065,e066,e067,e068,e069,e06A,e06B,e06C,e06D,e06E,e06F,
+        e070,e071,e072,e073,e074,e075,e076,e077,e078,e079,e07A,e07B,e07C,e07D,e07E,e07F,
+        e080,e081,e082,e083,e084,e085,e086,e087,e088,e089,e08A,e08B,e08C,e08D,e08E,e08F,
+        e090,e091,e092,e093,e094,e095,e096,e097,e098,e099,e09A,e09B,e09C,e09D,e09E,e09F,
+        e0A0,e0A1,e0A2,e0A3,e0A4,e0A5,e0A6,e0A7,e0A8,e0A9,e0AA,e0AB,e0AC,e0AD,e0AE,e0AF,
+        e0B0,e0B1,e0B2,e0B3,e0B4,e0B5,e0B6,e0B7,e0B8,e0B9,e0BA,e0BB,e0BC,e0BD,e0BE,e0BF,
+        e0C0,e0C1,e0C2,e0C3,e0C4,e0C5,e0C6,e0C7,e0C8,e0C9,e0CA,e0CB,e0CC,e0CD,e0CE,e0CF,
+        e0D0,e0D1,e0D2,e0D3,e0D4,e0D5,e0D6,e0D7,e0D8,e0D9,e0DA,e0DB,e0DC,e0DD,e0DE,e0DF,
+        e0E0,e0E1,e0E2,e0E3,e0E4,e0E5,e0E6,e0E7,e0E8,e0E9,e0EA,e0EB,e0EC,e0ED,e0EE,e0EF,
+        e0F0,e0F1,e0F2,e0F3,e0F4,e0F5,e0F6,e0F7,e0F8,e0F9,e0FA,e0FB,e0FC,e0FD,e0FE,e0FF,
+    
+        <# all these are too large for BPVM #>
+        e100,e101,e102,e103,e104,e105,e106,e107,e108,e109,e10A,e10B,e10C,e10D,e10E,e10F,
+        e110,e111,e112,e113,e114,e115,e116,e117,e118,e119,e11A,e11B,e11C,e11D,e11E,e11F,
+        e120,e121,e122,e123,e124,e125,e126,e127,e128,e129,e12A,e12B,e12C,e12D,e12E,e12F,
+        e130,e131,e132,e133,e134,e135,e136,e137,e138,e139,e13A,e13B,e13C,e13D,e13E,e13F,
+        e140,e141,e142,e143,e144,e145,e146,e147,e148,e149,e14A,e14B,e14C,e14D,e14E,e14F,
+        e150,e151,e152,e153,e154,e155,e156,e157,e158,e159,e15A,e15B,e15C,e15D,e15E,e15F,
+        e160,e161,e162,e163,e164,e165,e166,e167,e168,e169,e16A,e16B,e16C,e16D,e16E,e16F,
+        e170,e171,e172,e173,e174,e175,e176,e177,e178,e179,e17A,e17B,e17C,e17D,e17E,e17F,
+        e180,e181,e182,e183,e184,e185,e186,e187,e188,e189,e18A,e18B,e18C,e18D,e18E,e18F,
+        e190,e191,e192,e193,e194,e195,e196,e197,e198,e199,e19A,e19B,e19C,e19D,e19E,e19F,
+        e1A0,e1A1,e1A2,e1A3,e1A4,e1A5,e1A6,e1A7,e1A8,e1A9,e1AA,e1AB,e1AC,e1AD,e1AE,e1AF,
+        e1B0,e1B1,e1B2,e1B3,e1B4,e1B5,e1B6,e1B7,e1B8,e1B9,e1BA,e1BB,e1BC,e1BD,e1BE,e1BF,
+        e1C0,e1C1,e1C2,e1C3,e1C4,e1C5,e1C6,e1C7,e1C8,e1C9,e1CA,e1CB,e1CC,e1CD,e1CE,e1CF,
+        e1D0,e1D1,e1D2,e1D3,e1D4,e1D5,e1D6,e1D7,e1D8,e1D9,e1DA,e1DB,e1DC,e1DD,e1DE,e1DF,
+        e1e1,e1E1,e1E2,e1E3,e1E4,e1E5,e1E6,e1E7,e1E8,e1E9,e1EA,e1EB,e1EC,e1ED,e1EE,e1EF,
+        e1F0,e1F1,e1F2,e1F3,e1F4,e1F5,e1F6,e1F7,e1F8,e1F9,e1FA,e1FB,e1FC,e1FD,e1FE,e1FF,
+    
+        e200,e201,e202,e203,e204,e205,e206,e207,e208,e209,e20A,e20B,e20C,e20D,e20E,e20F,
+        e210,e211,e212,e213,e214,e215,e216,e217,e218,e219,e21A,e21B,e21C,e21D,e21E,e21F,
+        e220,e221,e222,e223,e224,e225,e226,e227,e228,e229,e22A,e22B,e22C,e22D,e22E,e22F,
+        e230,e231,e232,e233,e234,e235,e236,e237,e238,e239,e23A,e23B,e23C,e23D,e23E,e23F,
+        e240,e241,e242,e243,e244,e245,e246,e247,e248,e249,e24A,e24B,e24C,e24D,e24E,e24F,
+        e250,e251,e252,e253,e254,e255,e256,e257,e258,e259,e25A,e25B,e25C,e25D,e25E,e25F,
+        e260,e261,e262,e263,e264,e265,e266,e267,e268,e269,e26A,e26B,e26C,e26D,e26E,e26F,
+        e270,e271,e272,e273,e274,e275,e276,e277,e278,e279,e27A,e27B,e27C,e27D,e27E,e27F,
+        e280,e281,e282,e283,e284,e285,e286,e287,e288,e289,e28A,e28B,e28C,e28D,e28E,e28F,
+        e290,e291,e292,e293,e294,e295,e296,e297,e298,e299,e29A,e29B,e29C,e29D,e29E,e29F,
+        e2A0,e2A1,e2A2,e2A3,e2A4,e2A5,e2A6,e2A7,e2A8,e2A9,e2AA,e2AB,e2AC,e2AD,e2AE,e2AF,
+        e2B0,e2B1,e2B2,e2B3,e2B4,e2B5,e2B6,e2B7,e2B8,e2B9,e2BA,e2BB,e2BC,e2BD,e2BE,e2BF,
+        e2C0,e2C1,e2C2,e2C3,e2C4,e2C5,e2C6,e2C7,e2C8,e2C9,e2CA,e2CB,e2CC,e2CD,e2CE,e2CF,
+        e2D0,e2D1,e2D2,e2D3,e2D4,e2D5,e2D6,e2D7,e2D8,e2D9,e2DA,e2DB,e2DC,e2DD,e2DE,e2DF,
+        e2e2,e2E1,e2E2,e2E3,e2E4,e2E5,e2E6,e2E7,e2E8,e2E9,e2EA,e2EB,e2EC,e2ED,e2EE,e2EF,
+        e2F0,e2F1,e2F2,e2F3,e2F4,e2F5,e2F6,e2F7,e2F8,e2F9,e2FA,e2FB,e2FC,e2FD,e2FE,e2FF
+    }
+
+    wtbA:WayTooBig = WayTooBig.e000  # OK
+    wtbB:WayTooBig = WayTooBig.e0FF  # OK
+    wtbC:WayTooBig = WayTooBig.e100  # OK
+}
+
+##############
+# Test all the permutations of open, defaulted, and having full-coverage
+
+# open, with default, with coverage = valid
+assert_valid:
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            _ => 666
+
+# open, with default, without coverage = valid
+assert_valid:
+    OpenEnum:=enum<open> {A, B, C, D}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            _ => 666
+
+# open, without default, with coverage = requires failure context
+assert_semantic_error(3512):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+
+# open, without default, with coverage, failure context = valid
+assert_valid:
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum)<decides>:int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+
+
+# open, without default, without coverage = requires failure context
+assert_semantic_error(3512):
+    OpenEnum:=enum<open> {A, B, C, D}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            
+# open, without default, without coverage, failure context = valid
+assert_valid:
+    OpenEnum:=enum<open> {A, B, C, D}
+    caseEnum(x:OpenEnum)<decides>:int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+
+
+# closed, with default, with coverage = unreachable default warning
+assert_semantic_error(2302):
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            _ => 666
+
+# closed, with default, without coverage = valid
+assert_valid:
+    ClosedEnum:=enum {A, B, C, D}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            _ => 666
+
+# closed, without default, with coverage = valid
+assert_valid:
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+
+# closed, without default, without coverage = requires failure context
+assert_semantic_error(3512):
+    ClosedEnum:=enum {A, B, C, D}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+
+
+# closed, without default, without coverage, failure context = valid
+assert_valid:
+    ClosedEnum:=enum {A, B, C, D}
+    caseEnum(x:ClosedEnum)<decides>:int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+
+###############
+# some additional cases dealing with unreachable and dangling wildcards cases
+# closed, with duplicate unreachable case, without coverage = unreachable error & unhandled value error
+assert_semantic_error(3616, 3512):
+    ClosedEnum:=enum {A, B, C, D}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            ClosedEnum.C => 9
+
+# closed, with duplicate unreachable case, without coverage, failure context = unreachable error
+assert_semantic_error(3616):
+    ClosedEnum:=enum {A, B, C, D}
+    caseEnum(x:ClosedEnum)<decides>:int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            ClosedEnum.C => 9
+
+# open, with duplicate unreachable case, without coverage = unreachable error & missing default case on an open enum that's also not in a decides context
+assert_semantic_error(3616, 3512):
+    OpenEnum:=enum<open> {A, B, C, D}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            OpenEnum.C => 9
+
+# open, with duplicate unreachable case, without coverage, failure context = unreachable error
+assert_semantic_error(3616):
+    OpenEnum:=enum<open> {A, B, C, D}
+    caseEnum(x:OpenEnum)<decides>:int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            OpenEnum.C => 9
+
+# closed, with duplicate unreachable case, with coverage = unreachable error
+assert_semantic_error(3616):
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            ClosedEnum.C => 9
+
+# open, with duplicate unreachable case, with coverage = unreachable error & missing default case on an open enum that's also not in a decides context
+assert_semantic_error(3616, 3512):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            OpenEnum.C => 9
+
+# open, with duplicate unreachable case, with coverage, failure context = unreachable error
+assert_semantic_error(3616):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum)<decides>:int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            OpenEnum.C => 9
+
+# closed, with duplicate unreachable case, with coverage = unreachable error
+assert_semantic_error(3616):
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.A => 4
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+
+# open, with duplicate unreachable case, with coverage = unreachable error & missing default case on an open enum that's also not in a decides context
+assert_semantic_error(3616, 3512):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.A => 4
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+
+# open, with duplicate unreachable case, with coverage, failure context = unreachable error
+assert_semantic_error(3616):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum)<decides>:int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.A => 4
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+
+###############
+# @ignore_unreachable should suppress errors and warnings
+assert_semantic_error(3512):
+    ClosedEnum:=enum {A, B, C, D}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            @ignore_unreachable ClosedEnum.C => 9
+
+assert_semantic_error(3512):
+    OpenEnum:=enum<open> {A, B, C, D}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            @ignore_unreachable OpenEnum.C => 9
+
+assert_valid:
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            @ignore_unreachable ClosedEnum.C => 9
+
+assert_valid:
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            @ignore_unreachable _ => 12
+            @ignore_unreachable ClosedEnum.C => 9
+            @ignore_unreachable ClosedEnum.A => 9
+            @ignore_unreachable ClosedEnum.B => 9
+            @ignore_unreachable ClosedEnum.C => 9
+
+assert_semantic_error(3512):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            @ignore_unreachable OpenEnum.C => 9
+
+assert_valid:
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            @ignore_unreachable ClosedEnum.A => 4
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+
+assert_semantic_error(3512):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            @ignore_unreachable OpenEnum.A => 4
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+
+assert_semantic_error(3616, 3512):
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            @ignore_unreachable OpenEnum.A => 3
+            @ignore_unreachable OpenEnum.B => 6
+            OpenEnum.A => 123                       # unreachable, but not marked
+            @ignore_unreachable OpenEnum.C => 9
+
+assert_valid:
+    OpenEnum:=enum<open> {A, B, C}
+    caseEnum(x:OpenEnum):int =
+        case (x):
+            OpenEnum.A => 3
+            OpenEnum.B => 6
+            OpenEnum.C => 9
+            @ignore_unreachable _ => 666
+
+assert_valid:
+    ClosedEnum:=enum {A, B, C}
+    caseEnum(x:ClosedEnum):int =
+        case (x):
+            ClosedEnum.A => 3
+            ClosedEnum.B => 6
+            ClosedEnum.C => 9
+            @ignore_unreachable _ => 666

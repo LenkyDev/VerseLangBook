@@ -1,0 +1,29 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3502){Global:Global=0}
+assert_semantic_error(3502){Global:tuple(Global,int)=(0,0)}
+assert_semantic_error(3502){F():void={Local:Local=0}}
+assert_semantic_error(3502){F(Parameter:Parameter):void={}}
+assert_semantic_error(3502){F():F={}}
+assert_semantic_error(3502){c := class{Member:Member}}
+
+assert_semantic_error(3547){Global1:(Global2:int=0)=0}
+
+assert_semantic_error(3502){a:a{}=0}
+assert_semantic_error(3502){a:-a=0}
+
+assert_semantic_error(3547){Global1:int     = 0; Global2:Global1 = 0}
+assert_semantic_error(3502){Global1:Global2 = 0; Global2:int     = 0}
+assert_semantic_error(3502){Global1:Global2 = 0; Global2:Global1 = 0}
+
+assert_semantic_error(3547){F():void={Local1:int    = 0; Local2:Local1 = 0}}
+assert_semantic_error(3506){F():void={Local1:Local2 = 0; Local2:int     = 0}}
+assert_semantic_error(3506){F():void={Local1:Local2 = 0; Local2:Local1  = 0}}
+
+assert_semantic_error(3547){F(Parameter1:int       , Parameter2:Parameter1):void={}}
+assert_semantic_error(3502){F(Parameter1:Parameter2, Parameter2:int       ):void={}}
+assert_semantic_error(3502){F(Parameter1:Parameter2, Parameter2:Parameter1):void={}}
+
+assert_semantic_error(3547){c:=class{Member1:int     = 0; Member2:Member1 = 0}}
+assert_semantic_error(3502){c:=class{Member1:Member2 = 0; Member2:int     = 0}}
+assert_semantic_error(3502){c:=class{Member1:Member2 = 0; Member2:Member1 = 0}}

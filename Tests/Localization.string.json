@@ -1,0 +1,664 @@
+﻿{
+	"localizations": [
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/form2a/TheMsg",
+			"where": "Localization.versetest(23,5, 23,11)"
+		},
+		{
+			"path": "",
+			"default": "The Message",
+			"where": "Localization.versetest(23,5, 23,48)"
+		},
+		{
+			"path": "",
+			"default": "The Message",
+			"where": "Localization.versetest(25,29, 25,40)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/form2b/TheMsg",
+			"where": "Localization.versetest(30,5, 30,11)"
+		},
+		{
+			"path": "",
+			"default": "The Message",
+			"where": "Localization.versetest(30,5, 30,55)"
+		},
+		{
+			"path": "",
+			"default": "The Message",
+			"where": "Localization.versetest(32,29, 32,40)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/form2c/TheMsg",
+			"where": "Localization.versetest(37,5, 37,11)"
+		},
+		{
+			"path": "",
+			"default": "The {0u004d}essage \\r\n\t\"'#<>&~",
+			"where": "Localization.versetest(37,5, 37,79)"
+		},
+		{
+			"path": "",
+			"default": "The {0u004d}essage \\r\n\t\"'#<>&~",
+			"where": "Localization.versetest(39,29, 39,71)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsg4",
+			"where": "Localization.versetest(49,1, 49,8)"
+		},
+		{
+			"path": "",
+			"default": "The Message",
+			"where": "Localization.versetest(49,1, 49,58)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(49,20, 49,24)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsg6",
+			"where": "Localization.versetest(59,1, 59,8)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(59,1, 59,68)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(59,20, 59,24)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsg6b",
+			"where": "Localization.versetest(63,1, 63,9)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name} \\\r\n\t\"'#<>&~",
+			"where": "Localization.versetest(63,1, 63,99)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(63,21, 63,25)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsg6c",
+			"where": "Localization.versetest(67,1, 67,9)"
+		},
+		{
+			"path": "",
+			"default": "The {0u004d}essage to {Name}",
+			"where": "Localization.versetest(67,1, 67,78)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(67,21, 67,25)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsgWithArgs1",
+			"where": "Localization.versetest(72,1, 72,16)"
+		},
+		{
+			"path": "",
+			"default": "Hey {Name}, your number is {Number}",
+			"where": "Localization.versetest(72,1, 72,102)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(72,28, 72,32)"
+		},
+		{
+			"path": "",
+			"default": "Number",
+			"where": "Localization.versetest(72,41, 72,47)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsgWithArgs2",
+			"where": "Localization.versetest(77,1, 77,16)"
+		},
+		{
+			"path": "",
+			"default": "Hey {Number} {Name}, your number is {Number} and your name is {Name}",
+			"where": "Localization.versetest(77,1, 77,135)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(77,28, 77,32)"
+		},
+		{
+			"path": "",
+			"default": "Number",
+			"where": "Localization.versetest(77,41, 77,47)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsgWithArgs3",
+			"where": "Localization.versetest(82,1, 82,16)"
+		},
+		{
+			"path": "",
+			"default": "I like your name, {Name}",
+			"where": "Localization.versetest(82,1, 82,91)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(82,28, 82,32)"
+		},
+		{
+			"path": "",
+			"default": "Number",
+			"where": "Localization.versetest(82,41, 82,47)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsgWithArgs4",
+			"where": "Localization.versetest(87,1, 87,16)"
+		},
+		{
+			"path": "",
+			"default": "Thanks for playing!",
+			"where": "Localization.versetest(87,1, 87,86)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(87,28, 87,32)"
+		},
+		{
+			"path": "",
+			"default": "Number",
+			"where": "Localization.versetest(87,41, 87,47)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheSingleIntMsg",
+			"where": "Localization.versetest(92,1, 92,16)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Number}",
+			"where": "Localization.versetest(92,1, 92,77)"
+		},
+		{
+			"path": "",
+			"default": "Number",
+			"where": "Localization.versetest(92,28, 92,34)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheSingleIntMsg2",
+			"where": "Localization.versetest(97,1, 97,17)"
+		},
+		{
+			"path": "",
+			"default": "{Number}",
+			"where": "Localization.versetest(97,1, 97,63)"
+		},
+		{
+			"path": "",
+			"default": "Number",
+			"where": "Localization.versetest(97,29, 97,35)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheSingleStringMsg",
+			"where": "Localization.versetest(101,1, 101,19)"
+		},
+		{
+			"path": "",
+			"default": "{Name}",
+			"where": "Localization.versetest(101,1, 101,64)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(101,31, 101,35)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/InterpolantWithWhitespace1",
+			"where": "Localization.versetest(146,1, 146,27)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(146,1, 146,88)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(146,39, 146,43)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/InterpolantWithWhitespace2",
+			"where": "Localization.versetest(147,1, 147,27)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(147,1, 147,88)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(147,39, 147,43)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/InterpolantWithComment1",
+			"where": "Localization.versetest(148,1, 148,24)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(148,1, 148,97)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(148,36, 148,40)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/InterpolantWithComment2",
+			"where": "Localization.versetest(149,1, 149,24)"
+		},
+		{
+			"path": "",
+			"default": "The Message to I",
+			"where": "Localization.versetest(149,1, 149,97)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(149,36, 149,40)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/InterpolantWithComment3",
+			"where": "Localization.versetest(150,1, 150,24)"
+		},
+		{
+			"path": "",
+			"default": "The Message to I",
+			"where": "Localization.versetest(150,1, 150,97)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(150,36, 150,40)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/StringWithComment1",
+			"where": "Localization.versetest(151,1, 151,19)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name}",
+			"where": "Localization.versetest(151,1, 151,90)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(151,31, 151,35)"
+		},
+		{
+			"path": "",
+			"default": "abc",
+			"where": "Localization.versetest(163,15, 163,18)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/TheMsg7",
+			"where": "Localization.versetest(164,1, 164,8)"
+		},
+		{
+			"path": "",
+			"default": "The Message to {Name} is {Abc}",
+			"where": "Localization.versetest(164,1, 164,77)"
+		},
+		{
+			"path": "",
+			"default": "Name",
+			"where": "Localization.versetest(164,20, 164,24)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/super_class/MyMessage",
+			"where": "Localization.versetest(169,5, 169,14)"
+		},
+		{
+			"path": "",
+			"default": "A",
+			"where": "Localization.versetest(169,5, 169,39)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/sub_class/MyMessage",
+			"where": "Localization.versetest(171,5, 171,28)"
+		},
+		{
+			"path": "",
+			"default": "B",
+			"where": "Localization.versetest(171,5, 171,61)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/common_code/Goal",
+			"where": "Localization.versetest(177,5, 177,9)"
+		},
+		{
+			"path": "",
+			"default": "No Goal",
+			"where": "Localization.versetest(177,5, 177,53)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/case_a/Task",
+			"where": "Localization.versetest(180,5, 180,9)"
+		},
+		{
+			"path": "",
+			"default": "Collect A",
+			"where": "Localization.versetest(180,5, 180,54)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/case_a/Goal",
+			"where": "Localization.versetest(181,5, 181,9)"
+		},
+		{
+			"path": "",
+			"default": "A",
+			"where": "Localization.versetest(181,5, 181,46)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/case_b/Task",
+			"where": "Localization.versetest(184,5, 184,9)"
+		},
+		{
+			"path": "",
+			"default": "Collect B",
+			"where": "Localization.versetest(184,5, 184,54)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/NamedParam",
+			"where": "Localization.versetest(187,1, 187,11)"
+		},
+		{
+			"path": "",
+			"default": "{A}!",
+			"where": "Localization.versetest(187,1, 187,47)"
+		},
+		{
+			"path": "",
+			"default": "A",
+			"where": "Localization.versetest(187,24, 187,25)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/NamedParams",
+			"where": "Localization.versetest(192,1, 192,12)"
+		},
+		{
+			"path": "",
+			"default": "{A} {B}",
+			"where": "Localization.versetest(192,1, 192,59)"
+		},
+		{
+			"path": "",
+			"default": "A",
+			"where": "Localization.versetest(192,25, 192,26)"
+		},
+		{
+			"path": "",
+			"default": "B",
+			"where": "Localization.versetest(192,33, 192,34)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/NamedParamsWithDefaults",
+			"where": "Localization.versetest(196,1, 196,24)"
+		},
+		{
+			"path": "",
+			"default": "{A} {B}",
+			"where": "Localization.versetest(196,1, 196,79)"
+		},
+		{
+			"path": "",
+			"default": "A",
+			"where": "Localization.versetest(196,37, 196,38)"
+		},
+		{
+			"path": "",
+			"default": "B",
+			"where": "Localization.versetest(196,49, 196,50)"
+		},
+		{
+			"path": "",
+			"default": "/Verse.org/VerseTests/UsingTuple",
+			"where": "Localization.versetest(203,1, 203,11)"
+		},
+		{
+			"path": "",
+			"default": "{A} {B} {C}",
+			"where": "Localization.versetest(203,1, 203,69)"
+		},
+		{
+			"path": "",
+			"default": "A",
+			"where": "Localization.versetest(203,23, 203,24)"
+		},
+		{
+			"path": "",
+			"default": "B",
+			"where": "Localization.versetest(203,31, 203,32)"
+		},
+		{
+			"path": "",
+			"default": "C",
+			"where": "Localization.versetest(203,38, 203,39)"
+		},
+		{
+			"path": "",
+			"default": "MyName",
+			"where": "Localization.versetest(51,23, 51,29)"
+		},
+		{
+			"path": "",
+			"default": "The Message",
+			"where": "Localization.versetest(51,36, 51,47)"
+		},
+		{
+			"path": "",
+			"default": "MyName",
+			"where": "Localization.versetest(61,23, 61,29)"
+		},
+		{
+			"path": "",
+			"default": "The Message to MyName",
+			"where": "Localization.versetest(61,36, 61,57)"
+		},
+		{
+			"path": "",
+			"default": "MyName",
+			"where": "Localization.versetest(65,24, 65,30)"
+		},
+		{
+			"path": "",
+			"default": "The Message to MyName \\\r\n\t\"'#<>&~",
+			"where": "Localization.versetest(65,37, 65,81)"
+		},
+		{
+			"path": "",
+			"default": "MyName",
+			"where": "Localization.versetest(69,24, 69,30)"
+		},
+		{
+			"path": "",
+			"default": "The {0u004d}essage to MyName",
+			"where": "Localization.versetest(69,37, 69,67)"
+		},
+		{
+			"path": "",
+			"default": "MyName",
+			"where": "Localization.versetest(74,31, 74,37)"
+		},
+		{
+			"path": "",
+			"default": "Hey MyName, your number is 44",
+			"where": "Localization.versetest(74,48, 74,77)"
+		},
+		{
+			"path": "",
+			"default": "NameTwo",
+			"where": "Localization.versetest(79,31, 79,38)"
+		},
+		{
+			"path": "",
+			"default": "Hey 747 NameTwo, your number is 747 and your name is NameTwo",
+			"where": "Localization.versetest(79,50, 79,110)"
+		},
+		{
+			"path": "",
+			"default": "NameThree",
+			"where": "Localization.versetest(84,31, 84,40)"
+		},
+		{
+			"path": "",
+			"default": "I like your name, NameThree",
+			"where": "Localization.versetest(84,52, 84,79)"
+		},
+		{
+			"path": "",
+			"default": "NameFour",
+			"where": "Localization.versetest(89,31, 89,39)"
+		},
+		{
+			"path": "",
+			"default": "Thanks for playing!",
+			"where": "Localization.versetest(89,51, 89,70)"
+		},
+		{
+			"path": "",
+			"default": "The Message to 190,091",
+			"where": "Localization.versetest(94,42, 94,64)"
+		},
+		{
+			"path": "",
+			"default": "190,092",
+			"where": "Localization.versetest(99,43, 99,50)"
+		},
+		{
+			"path": "",
+			"default": "SingleName",
+			"where": "Localization.versetest(103,34, 103,44)"
+		},
+		{
+			"path": "",
+			"default": "SingleName",
+			"where": "Localization.versetest(103,51, 103,61)"
+		},
+		{
+			"path": "",
+			"default": "The Message to abc",
+			"where": "Localization.versetest(152,53, 152,71)"
+		},
+		{
+			"path": "",
+			"default": "The Message to abc",
+			"where": "Localization.versetest(153,53, 153,71)"
+		},
+		{
+			"path": "",
+			"default": "The Message to abc",
+			"where": "Localization.versetest(154,50, 154,68)"
+		},
+		{
+			"path": "",
+			"default": "The Message to I",
+			"where": "Localization.versetest(155,50, 155,65)"
+		},
+		{
+			"path": "",
+			"default": "The Message to I",
+			"where": "Localization.versetest(156,50, 156,65)"
+		},
+		{
+			"path": "",
+			"default": "The Message to abc",
+			"where": "Localization.versetest(157,45, 157,63)"
+		},
+		{
+			"path": "",
+			"default": "MyName",
+			"where": "Localization.versetest(166,23, 166,29)"
+		},
+		{
+			"path": "",
+			"default": "The Message to MyName is {Abc}",
+			"where": "Localization.versetest(166,36, 166,68)"
+		},
+		{
+			"path": "",
+			"default": "4!",
+			"where": "Localization.versetest(189,36, 189,38)"
+		},
+		{
+			"path": "",
+			"default": "4!",
+			"where": "Localization.versetest(190,36, 190,38)"
+		},
+		{
+			"path": "",
+			"default": "4 2",
+			"where": "Localization.versetest(194,46, 194,49)"
+		},
+		{
+			"path": "",
+			"default": "4 2",
+			"where": "Localization.versetest(198,58, 198,61)"
+		},
+		{
+			"path": "",
+			"default": "4 1",
+			"where": "Localization.versetest(199,49, 199,52)"
+		},
+		{
+			"path": "",
+			"default": "2 3",
+			"where": "Localization.versetest(200,49, 200,52)"
+		},
+		{
+			"path": "",
+			"default": "2 1",
+			"where": "Localization.versetest(201,42, 201,45)"
+		},
+		{
+			"path": "",
+			"default": "1 2 3",
+			"where": "Localization.versetest(205,35, 205,40)"
+		}
+	]
+}

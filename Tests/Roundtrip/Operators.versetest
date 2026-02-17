@@ -1,0 +1,49 @@
+assert_roundtrip{a + b}
+assert_roundtrip{a - b}
+assert_roundtrip{a * b}
+assert_roundtrip{a / b}
+
+assert_roundtrip{a}
+assert_roundtrip{a?}
+assert_roundtrip{(a + b)^}
+assert_roundtrip{(a - b)^}
+assert_roundtrip{(a * b)^}
+assert_roundtrip{(a / b)^}
+assert_roundtrip{(a + b)?}
+assert_roundtrip{(a - b)?}
+assert_roundtrip{(a * b)?}
+assert_roundtrip{(a / b)?}
+
+assert_roundtrip{(a + b) + c}
+assert_roundtrip{a + (b + c)}
+assert_roundtrip{(a - b) - c}
+assert_roundtrip{a - (b - c)}
+assert_roundtrip{(a * b) * c}
+assert_roundtrip{a * (b * c)}
+assert_roundtrip{(a / b) / c}
+assert_roundtrip{a / (b / c)}
+
+assert_roundtrip{-a}
+assert_roundtrip{+a}
+assert_roundtrip{+-a}
+assert_roundtrip{--a}
+assert_roundtrip{---a}
+# The inconsistency between how negation is handled should be resolved.
+assert_roundtrip{---a - b}
+assert_roundtrip{a - (-b)}
+assert_roundtrip(a - -b){a - (-b)}
+assert_roundtrip{(-a) * d - (-b) * c}
+
+assert_roundtrip{foo and bar}
+assert_roundtrip{foo or bar}
+assert_roundtrip{(foo and bar) and baz}
+assert_roundtrip{foo and (bar and baz)}
+assert_roundtrip{(foo or bar) or baz}
+assert_roundtrip{foo or (bar or baz)}
+assert_roundtrip{((foo and bar) and baz) and foobar}
+assert_roundtrip{((foo or bar) or baz) or foobar}
+assert_roundtrip{(foo and bar) or baz}
+
+assert_roundtrip{(foo or bar) and baz}
+assert_roundtrip{(false or true) and (true or true)}
+assert_roundtrip{((foo and bar) and baz) and foobar}

@@ -1,0 +1,57 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    c := class:
+    # Test
+        X<public>:int
+    F(C:c):int=C.X
+
+assert_valid:
+    c := class:
+        X<public>:int
+    # Test
+        Y<public>:int
+    F(C:c):int=C.Y
+
+assert_valid:
+    c := class:
+        X<public>:int
+# Test
+        Y<public>:int
+    F(C:c):int=C.Y
+
+assert_valid:
+    c := class:
+        X<public>:int
+       # Test
+        Y<public>:int
+    F(C:c):int=C.Y
+
+assert_valid:
+    c := class:
+        X<public>:int
+
+    # Test
+
+        Y<public>:int
+    F(C:c):int=C.Y
+    
+assert_valid:
+    c := class:
+        X<public>:int
+        <# Test
+Test 2
+    Test 3
+        Test 4 #>
+        Y<public>:int
+    F(C:c):int=C.Y
+
+assert_valid:
+    c := class:
+        X<public>:int
+        <# Test
+Test 2
+    Test 3
+        Test 4
+#>      Y<public>:int
+    F(C:c):int=C.Y

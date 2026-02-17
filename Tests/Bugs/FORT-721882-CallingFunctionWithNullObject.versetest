@@ -1,0 +1,16 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_todo
+{
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+test_object := class:
+    var Var:int = 0
+    test_func():int=
+        return Var
+
+NullTestObject:test_object=MakeNull(test_object)
+
+assert_runtime_error{NullTestObject.test_func()}
+
+}

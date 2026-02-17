@@ -1,0 +1,5 @@
+assert_semantic_error(3506):
+    E := enum {a}
+    C := class:
+        foo():void=
+            l:E=a

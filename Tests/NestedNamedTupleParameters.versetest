@@ -1,0 +1,173 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+SquareSelf(A:int):int = A*A
+assert:
+    SquareSelf(2) = 4
+
+SumTwo(?X:int=1, ?Y:int=1):int = X+Y
+assert:
+    SumTwo() = 2
+    SumTwo(?X:=9) = 10
+    SumTwo(?Y:=9) = 10
+    SumTwo(?X:=5, ?Y:=5) = 10
+    SumTwo(?Y:=5, ?X:=5) = 10
+
+SumThree(U:int, (?X:int=1, ?Y:int=1)):int = U+X+Y
+assert:
+    SumThree(1, ()) = 3
+    SumThree(1, (?X:=2, ?Y:=3)) = 6
+
+SumFour(A:int, (X:int, (Y:int, (Z:int)))):int = A + X + Y + Z
+assert:
+    SumFour(1, (2, (3, (4)))) = 10
+    X:=(1, (2, (3, (4))))
+    SumFour(X) = 10
+
+SumFourNamed(A:int, (X:int, (Y:int, (?Z:int=0)))):int = A + X + Y + Z
+assert:
+    SumFourNamed(1, (2, (3, (?Z:=4)))) = 10
+    SumFourNamed((1, (2, (3)))) = 6
+    Y:=(3)
+    SumFourNamed((1, (2, Y))) = 6
+
+SumFourArray(A:int, (U:[]int, ?X:int=1, ?Y:int=1)):int = 
+    if(Result:=U[0]):
+        return Result+X+Y
+    return X+Y
+assert:
+    SumFourArray(1, array{100, 2}) = 102
+    SumFourArray(1, (array{100, 2}, ?X:=1)) = 102
+    SumFourArray(1, (array{100, 2}, ?Y:=1)) = 102
+    X:=array{100, 2}
+    SumFourArray(1, (X, ?X:=1, ?Y:=1)) = 102
+    SumFourArray(1, (X, ?Y:=1, ?X:=1)) = 102
+    SumFourArray(1, (X, ?Y:=1, ?X:=1)) = 102
+
+# extension replicas of above methods
+(A:int).SquareSelf():int = A*A
+assert:
+    2.SquareSelf() = 4
+
+(A:int).SumThreeExt(?X:int=1, ?Y:int=1):int = A+X+Y
+assert:
+    0.SumThreeExt() = 2
+    0.SumThreeExt(?X:=5, ?Y:=5) = 10
+    0.SumThreeExt(?Y:=5, ?X:=5) = 10
+
+(A:int).SumFourExt(U:int, ?X:int=1, ?Y:int=1):int = A+X+Y
+assert:
+    0.SumFourExt(0) = 2
+    0.SumFourExt(0, ?X:=9) = 10
+    0.SumFourExt(0, ?Y:=9) = 10
+    0.SumFourExt(0, ?X:=5, ?Y:=5) = 10
+    0.SumFourExt(0, ?Y:=5, ?X:=5) = 10
+
+(A:int).SumFourTupledExt(U:int, (?X:int=1, ?Y:int=1)):int = A+X+Y
+assert:
+    0.SumFourTupledExt(0, ()) = 2
+    0.SumFourTupledExt(0, (?Y:=5, ?X:=5)) = 10
+
+(A:int).SumFiveExt(U:int, (X:int, (Y:int, (Z:int)))):int = A + U + X + Y + Z
+assert:
+    0.SumFiveExt(1, (2, (3, (4)))) = 10
+    X:=(1, (2, (3, (4))))
+    0.SumFiveExt(X) = 10
+
+    Y := (1, (2, (3, (4))))
+    0.SumFiveExt(Y) = 10
+
+(A:int).SumFiveNamedExt(U:int, (X:int, (Y:int, (?Z:int=0)))):int = A + U + X + Y + Z
+assert:
+    0.SumFiveNamedExt(1, (2, (3, (?Z:=4)))) = 10
+    0.SumFiveNamedExt(1, (2, (3))) = 6
+    Z:=(3)
+    0.SumFiveNamedExt(1, (2, Z)) = 6
+
+(A:int).SumFiveArrayExt(B:int, (U:[]int, ?X:int=1, ?Y:int=1)):int = 
+    if(Result:=U[0]):
+        return Result+X+Y
+    return X+Y
+assert:
+    0.SumFiveArrayExt(1, array{100, 2}) = 102
+    0.SumFiveArrayExt(1, (array{100, 2}, ?X:=1)) = 102
+    0.SumFiveArrayExt(1, (array{100, 2}, ?Y:=1)) = 102
+    X:=array{100, 2}
+    0.SumFiveArrayExt(1, (X, ?X:=1, ?Y:=1)) = 102
+    0.SumFiveArrayExt(1, (X, ?Y:=1, ?X:=1)) = 102
+    0.SumFiveArrayExt(1, (X, ?Y:=1, ?X:=1)) = 102
+
+# native replicas of above methods
+assert:
+    TestNestedNamedTupleParameters.SquareSelf(2) = 4
+
+assert:
+    TestNestedNamedTupleParameters.SumTwo() = 2
+    TestNestedNamedTupleParameters.SumTwo(?X:=9) = 10
+    TestNestedNamedTupleParameters.SumTwo(?Y:=9) = 10
+    TestNestedNamedTupleParameters.SumTwo(?X:=5, ?Y:=5) = 10
+    TestNestedNamedTupleParameters.SumTwo(?Y:=5, ?X:=5) = 10
+
+assert:
+    TestNestedNamedTupleParameters.SumThree(1, ()) = 3
+    TestNestedNamedTupleParameters.SumThree(1, (?X:=2, ?Y:=3)) = 6
+
+assert:
+    TestNestedNamedTupleParameters.SumFour(1, (2, (3, (4)))) = 10
+    X:=(1, (2, (3, (4))))
+    TestNestedNamedTupleParameters.SumFour(X) = 10
+
+assert:
+    TestNestedNamedTupleParameters.SumFourNamed(1, (2, (3, (?Z:=4)))) = 10
+    TestNestedNamedTupleParameters.SumFourNamed((1, (2, (3)))) = 6
+    Y:=(3)
+    TestNestedNamedTupleParameters.SumFourNamed((1, (2, Y))) = 6
+
+assert:
+    TestNestedNamedTupleParameters.SumFourArray(1, array{100, 2}) = 102
+    TestNestedNamedTupleParameters.SumFourArray(1, (array{100, 2}, ?X:=1)) = 102
+    TestNestedNamedTupleParameters.SumFourArray(1, (array{100, 2}, ?Y:=1)) = 102
+    X:=array{100, 2}
+    TestNestedNamedTupleParameters.SumFourArray(1, (X, ?X:=1, ?Y:=1)) = 102
+    TestNestedNamedTupleParameters.SumFourArray(1, (X, ?Y:=1, ?X:=1)) = 102
+
+#test unboxing/boxing params to 'unwrapped' native functions
+assert:
+    TestNestedNamedTupleParameters.SumFourFlat(1,2,3,4) = 10
+    TestNestedNamedTupleParameters.SumFourFlat((1,2,3,4)) = 10
+    X:= (1,2,3,4)
+    TestNestedNamedTupleParameters.SumFourFlat(X) = 10
+
+    TestNestedNamedTupleParameters.SumTwoTuple(1,2) = 3
+    TestNestedNamedTupleParameters.SumTwoTuple((1,2)) = 3
+    Y:=(1,2)
+    TestNestedNamedTupleParameters.SumTwoTuple(Y) = 3
+
+#test 'wrapped' native class methods passing 'self'
+assert:
+    SumClass:=TestNestedNamedTupleParameters.sum_class{Const1:=1}
+
+    SumClass.AddThreeMethod() = 3
+    SumClass.AddThreeMethod(?X:=9) = 11
+    SumClass.AddThreeMethod(?Y:=9) = 11
+    SumClass.AddThreeMethod(?X:=5, ?Y:=5) = 11
+    SumClass.AddThreeMethod(?Y:=5, ?X:=5) = 11
+
+#JIRA SOL-6937
+# Undesirable language behaviour where a tuple of named-args requires an empty tuple to be passed in
+assert_semantic_error(3509, 3509):
+    SumThree(U:int, (?X:int=1, ?Y:int=1)):int = U+X+Y
+    (A:int).SumFourTupledExt(U:int, (?X:int=1, ?Y:int=1)):int = A+X+Y
+    Main()<decides>:void =
+        SumThree(1) = 3
+        0.SumFourTupledExt(0) = 10
+
+#JIRA SOL-6939
+# SemanticAnalyzer fails to Constrain single named args to tuples params in same way unnamed args do to unnamed tuples
+assert_semantic_error(3509, 3509):
+    SumThree(U:int, (?X:int=1, ?Y:int=1)):int = U+X+Y
+    (A:int).SumThreeExt(?X:int=1, ?Y:int=1):int = A+X+Y
+    Main()<decides>:void =
+        SumThree(1, (?X:=2)) = 4
+        0.SumThreeExt(?X:=9) = 10

@@ -1,0 +1,38 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# this tests the code paths which suggest out of scope overloads which a user could add to fix error 3509, ie this kind of suggestion:
+# "No overload of the function `<func name>` matches the provided arguments (<arg types>). Did you forget to specify using { <verse path> }?"
+
+#overloads
+assert_semantic_error(3509):
+	Overload(A:int):comparable = A
+	Overload(A:char):comparable = A
+	Submodule := module:
+		Overload(A:float):comparable = A
+	Foo():void=Overload(42.00)
+
+assert_semantic_error(3509):
+	Overload(A:int):comparable = A
+	Overload(A:char):comparable = A
+	SubmoduleA := module:
+		Overload(A:float):comparable = A
+	SubmoduleB := module:
+		Overload(A:float):comparable = A
+	Foo():void=Overload(42.00)
+
+#extension overloads
+assert_semantic_error(3509):
+	(X:tuple()).Extension():int = 42  # _ doesn't work here!
+	(A:int).Extension():int= 10* A
+	Submodule := module:
+		(AB:tuple(int,int)).Extension():int= 10*AB(0) + 100*AB(1)
+	Foo()<decides>:void=(1,2).Extension() = 210
+
+assert_semantic_error(3509):
+	(X:tuple()).Extension():int = 42  # _ doesn't work here!
+	(A:int).Extension():int= 10* A
+	SubmoduleA := module:
+		(AB:tuple(int,int)).Extension():int= 10*AB(0) + 100*AB(1)
+	SubmoduleB := module:
+		(AB:tuple(int,int)).Extension():int= 10*AB(0) + 100*AB(1)
+	Foo()<decides>:void=(1,2).Extension() = 210

@@ -1,0 +1,218 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+
+#-------------------
+# Unqualified function definition calling through base type - 2003
+
+assert_semantic_error(2003):
+    a := class:
+        F():void={}
+
+    b := class(a):
+        F<override>():void= (a:)F() # 2003 - should use super
+
+
+#-------------------
+# Unqualified function definition calling through an ancestor base-type - 2004
+
+assert_semantic_error(2004):
+    a := class:
+        F():void={}
+
+    b := class(a):
+        F<override>():void={}
+
+    c := class(b):
+        F<override>():void= (a:)F() # 2004 - you can't reach a: as super:
+
+
+#-------------------
+# Unqualified function definition calling to an interface
+
+assert_valid:
+    ia := interface:
+        F():void
+
+    b := class(ia):
+        F<override>():void={}
+
+    c := class(b):
+        F<override>():void= (ia:)F() # no warning because we assume the user intended the vcall
+
+
+#-------------------
+# Unqualified function definition calling to an interface over an abstract
+assert_valid:
+    ia := interface:
+        F():void
+
+    b := class<abstract>(ia):
+
+    c := class(b):
+        F<override>():void= (ia:)F() # no warning because we assume the user intended the vcall
+
+
+#-------------------
+# Non-override function definition calling through base type
+assert_valid:
+    a := class:
+        F():void={}
+
+    b := class(a):
+        (b:)F():void= (a:)F() # ok because we're not in a vcall scenario
+
+#-------------------
+# Non-override function definition calling through base type
+assert_valid:
+    a := class:
+        F():void={}
+
+    b := class(a):
+        (b:)F():void={}
+
+    c := class(b):
+        (c:)F():void=
+            (a:)F() # ok because we're not in a vcall scenario
+            (b:)F() # also ok 
+
+#-------------------
+# Qualified function definition calling through base type
+assert_semantic_error(2003):
+    a := class:
+        F():void={}
+
+    b := class(a):
+        (b:)F(X:int):void= (a:)F()
+        F<override>():void= (a:)F()    # 2003
+
+
+#-------------------
+assert_semantic_error(3506):
+    basest_class<public> := class:
+        Func1():void={}
+        Func2():void={}
+        Func2(X:int):void={}
+
+    base_class<public> := class(basest_class):
+        Func1<override>():void=
+            (super:)Func1();
+
+    child_class := class(base_class):
+        Func1<override>():void=
+            (basest_class:)Func2()      # OK
+            (base_class:)Func2()        # 3506 - doesn't find the basest version this way
+
+
+#-------------------
+assert_semantic_error(2003, 3506, 2004):
+    basest_class<public> := class:
+        Func():void={}
+
+    base_class<public> := class(basest_class):
+        Func<override>():void=
+            (basest_class:)Func();     # Warning 2003
+
+    child_class := class(base_class):
+        Func<override>():void=
+            (base_class:)Func()        # Warning 3506 ??
+            (super:)Func()              # OK
+            (basest_class:)Func()      # Warning 2004
+
+#-------------------
+assert_semantic_error(3506, 3506):
+    basest_interface := interface:
+        Func():void
+        Func(a:int):void
+
+    base_class<public> := class(basest_interface):
+        Func<override>():void=
+            (basest_interface:)Func();          # OK - calling the interface
+        Func<override>(a:int):void={}
+
+    child_class := class(base_class):
+        Func<override>():void=
+            (basest_interface:)Func(1)          # OK - calling the interface
+            (base_class:)Func()                # 3506
+            (base_class:)Func(1)               # 3506
+
+#-------------------
+assert_valid:
+    base_class := class:
+        Func():void={}
+        Func(val:int):void={}
+
+    child_class := class(base_class):
+        Func<override>():void=
+            (base_class:)Func(1)
+
+
+#-------------------
+assert_semantic_error(3509):
+    basest_interface := interface:
+        Func():void
+
+    base_class<public> := class(basest_interface):
+        Func<override>():void=
+            (basest_interface:)Func();          # OK - vcalling the interface
+        Func<public>(a:int):void={}
+
+    child_class := class(base_class):
+        Func<override>():void=
+            (base_class:)Func()                # 3509 - only finds the int-version of the function
+            (base_class:)Func(1)               # OK - not vcalling itself
+
+#-------------------
+# Intentional recurrsion using a qualifier to
+# the current class in a non-override situation
+assert_valid:
+    child_class := class:
+        Func():void=
+            (child_class:)Func()              # OK - intentional recurrsion in a 
+
+
+#-------------------
+# Intentional recurrsion using a qualifier to
+# the current class in an override situation
+assert_semantic_error(3506):
+    base_class := class:
+        Func():void={}
+
+    child_class := class(base_class):
+        Func<override>():void=
+            (child_class:)Func()              # 3506 - intentional recurrsion, but can't find the symbol in an override
+
+
+#-------------------
+#-------------------
+# Finally, just some proving to myself that I know what the 
+# qualifiers actually mean in different contexts
+base := class:
+    Func():int = 42
+    Bunc():int = 50
+
+typeA := class(base):
+    (typeA:)Func():int = 142
+
+typeB := class(base):
+    Func<override>():int = 1142
+    Bunc<override>():int = (super:)Bunc() + 2
+
+
+assert:
+    b:base = base{}
+    b.Func() = 42
+    
+    tB:typeB = typeB{}
+    tB.Func() = 1142
+
+    tBB:base = tB
+    tBB.Func() = 1142
+
+    tA:typeA = typeA{}
+    tA.(typeA:)Func() = 142
+
+    tAB:typeA = tA
+    tAB.(base:)Func() = 42
+
+    tB.Bunc() = 52
+    tBB.Bunc() = 52

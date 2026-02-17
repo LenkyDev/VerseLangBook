@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3552, 3600, 3600):
+    c := class<computes>{X:int, Y:int}
+    C:c := c. (X:=0, Y:=1)
+
+assert_semantic_error(3552, 3600, 3600):
+    c := class<computes>{X:int, Y:int}
+    C:c := c{(X:=0, Y:=1)}
+    
+assert_semantic_error(3582, 3552, 3600, 3600):
+    c := class<computes>{X:int, Y:int}
+    F(:int, :int):void={}
+    C:c := c. F(X:=0, Y:=1)

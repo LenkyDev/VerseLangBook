@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test that path values aren't allowed outside of import/using.
+
+assert_valid{Alias:=import(/Verse.org)}
+assert_valid{using{/Verse.org}}
+
+assert_semantic_error(3502     ){Test:any=/path}
+assert_semantic_error(3502     ){Test:[]any=array{/path}}
+assert_semantic_error(3502     ){c:=class{Test:[]any=array{/path}}}
+assert_semantic_error(3502     ){F():void={Test:=(0,/path)}}
+assert_semantic_error(3502     ){F():void={Test:=option{/path}}}
+assert_semantic_error(3502     ){F():void={Test:=array{/path}}}
+assert_semantic_error(3502,3509){F():void={Test:=map{/path=>0}}}
+assert_semantic_error(3502     ){F():void={Test:=map{0=>/path}}}
+assert_semantic_error(3502     ){F()<suspends>:void={Test:=/path}}
+
+assert_semantic_error(3502):
+    c(t:type):=class{Data:t}
+    F(X:t where t:type):c(t) = c(t){Data:=X}
+    G():void=F(/path)

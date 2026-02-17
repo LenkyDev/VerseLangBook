@@ -1,0 +1,38 @@
+assert_semantic_error(3532):
+    c0 := class:
+        F():void={}
+    c1 := class(c0):
+        F<override>():void={}
+        F<override>():void={}       # 3532 w/ line 5
+        F(a:int):void={}            # VALID
+    
+assert_semantic_error(3532,3532,3532):
+    c1 := class:
+        F():void={}       # 3532 
+        F():void={}       # 3532 
+        F():void={}       # 3532 
+
+assert_semantic_error(3532):
+    c1 := class:
+        F():void={}            # VALID
+        F(A:int):void={}
+        F(B:int):void={}       # 3532 
+
+assert_valid:
+    c1 := class:
+        F():void={}   
+        F(A:int):void={}       
+        F(B:float):void={}       
+
+assert_semantic_error(3602, 3523, 3532, 3532):
+    c0 := class:
+        F():void={}                 # 3532 - collides with data line below
+        F:int = 42                  # 3532 - collides with line above
+    c1 := class(c0):
+        F<override>():void={}       # 3602, 3523, 3532 - collides and fails to override data definition in the base
+
+assert_semantic_error(3602, 3532):
+    c0 := class:
+        D:int = 42
+    c1 := class(c0):
+        D<override>:float = 42.1    # 3602, 3532- float can't override int

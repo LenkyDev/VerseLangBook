@@ -1,0 +1,279 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# v1 made mixing , and ;/newline an explicit error instead of silently ignore the tuple.
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2819):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3 }
+            F():abc = abc{ A := 10; B := 20, C := 30 }
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2820):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3 }
+            F():abc = abc{ A := 10; B := 20, C := 30 }
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2821):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3 }
+            F():abc = abc{ A := 10; B := 20, C := 30 }
+
+assert_semantic_error(3552):
+    vpackage(P0, /M, ?VerseVersion:=1):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3 }
+            F():abc = abc{ A := 10; B := 20, C := 30 }
+
+
+assert_semantic_error(2013,2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2819):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3; D:?abc=false }
+            F():abc =
+                abc{ A := 10; B := 20, C := 30; D:=option{abc{ A := 11, B := 21; C := 31 }} }
+
+assert_semantic_error(2013,2013,3532):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2820):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3; D:?abc=false }
+            F():abc =
+                abc{ A := 10; B := 20, C := 30; D:=option{abc{ A := 11, B := 21; C := 31 }} }
+
+assert_semantic_error(2013,2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2821):
+        snippet:
+            abc<public> := class { A:int := 1; B:int := 2; C:int := 3; D:?abc=false }
+            F():abc =
+                abc{ A := 10; B := 20, C := 30; D:=option{abc{ A := 11, B := 21; C := 31 }} }
+
+
+# Some tests to check that we're preserving our bad legacy behaviour in previous versions of Verse.
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2019):
+        snippet:
+            F():void=
+                # This was being parsed+desugared as-if you wrote: block{A:=1, B:=2}.
+                # There was no conflicting definition because `block` creates its own scope,
+                # and resolving definitions from that scope and the `for`'s own control scope
+                # doesn't end up walking to each other's scope and both being visible.
+                A:=1,
+                B:=2
+                block:
+                    A:=3
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2020):
+        snippet:
+            F():void=
+                # This was being parsed+desugared as-if you wrote: block{A:=1, B:=2}.
+                # There was no conflicting definition because `block` creates its own scope,
+                # and resolving definitions from that scope and the `for`'s own control scope
+                # doesn't end up walking to each other's scope and both being visible.
+                A:=1,
+                B:=2
+                block:
+                    A:=3
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2021):
+        snippet:
+            F():void=
+                # This was being parsed+desugared as-if you wrote: block{A:=1, B:=2}.
+                # There was no conflicting definition because `block` creates its own scope,
+                # and resolving definitions from that scope and the `for`'s own control scope
+                # doesn't end up walking to each other's scope and both being visible.
+                A:=1,
+                B:=2
+                block:
+                    A:=3
+
+assert_semantic_error(3532):
+    vpackage(P0, /M, ?VerseVersion:=1):
+        snippet:
+            F():void=
+                # This is now being parsed+desugared as-if you wrote: A:=1, B:=2.
+                # There is a conflicting definition here because walking from the `for`'s control scope
+                # up now walks to `F`'s logical scope, which now contains `A := 1`, which conflicts with the
+                # `A := 0..2` definition now.
+                A:=1,
+                B:=2
+                block:
+                    A:=3
+
+#
+# Some tests for a slightly different case where the fact that the comma is being deliberately used to form a tuple.
+#
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2019):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This was previously being parsed+desugared as if you wrote: block{2, 3}
+                2, 3
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2020):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This was previously being parsed+desugared as if you wrote: block{2, 3}
+                2, 3
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2021):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This was previously being parsed+desugared as if you wrote: block{2, 3}
+                2, 3
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=1):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This is now being parsed+desugared as just 2, 3.
+                2, 3
+
+# Test that it's possible to suppress the warning in v0 by using a block, as suggested by the warning.
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2019):
+        snippet:
+            F():tuple(int, int)=
+                1
+                block{2, 3}
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2020):
+        snippet:
+            F():tuple(int, int)=
+                1
+                block{2, 3}
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2021):
+        snippet:
+            F():tuple(int, int)=
+                1
+                block{2, 3}
+
+# Test a multi-line variant of the above case.
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2019):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This was previously being parsed+desugared as if you wrote: block{2, 3}
+                2,
+                3
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2020):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This was previously being parsed+desugared as if you wrote: block{2, 3}
+                2,
+                3
+
+assert_semantic_error(2013):
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2021):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This was previously being parsed+desugared as if you wrote: block{2, 3}
+                2,
+                3
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=1):
+        snippet:
+            F():tuple(int, int)=
+                1
+                # This is now being parsed+desugared as just 2, 3.
+                2,
+                3
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2019):
+        snippet:
+            F():tuple(int, int)=
+                1
+                block:
+                    2,
+                    3
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2020):
+        snippet:
+            F():tuple(int, int)=
+                1
+                block:
+                    2,
+                    3
+
+assert_valid:
+    vpackage(P0, /M, ?VerseVersion:=0, ?UploadedAtFNVersion:=2021):
+        snippet:
+            F():tuple(int, int)=
+                1
+                block:
+                    2,
+                    3
+
+
+# Finally, make sure that execution is doing the right thing.
+F():tuple(int,int)=
+    1
+    2,
+    3
+assert{F()=(2,3)}
+
+# Making sure that pre-28.20 behaviour is also as expected.
+assert_semantic_error(2013, 3506):
+    vpackage(P,/A,?VerseVersion:=0, ?UploadedAtFNVersion:=2819):
+        snippet:
+            M0 := module:
+                Foo(I:int):int = {I}
+                # Pre 28.20, this would just have been implicitly wrapped in a `block`. So this should error since `Dum` can't be found.
+                Bar():int=
+                    Dum:= 5,
+                    B:= 10
+                    Foo(Dum)
+
+# Should succeed. No warning was given in `28.20`, so we preserve that bad behaviour.
+assert_valid:
+    vpackage(P,/A,?VerseVersion:=0, ?UploadedAtFNVersion:=2820):
+        snippet:
+            M0 := module:
+                Foo(I:int):int = {I}
+                # In 28.20, we mistakenly shipped behavior that did _not_ put `Dum` and `B` into an implicit `block`.
+                # Thus `Dum` would still be in scope when calling `Foo(Dum)`.
+                Bar():int=
+                    Dum:= 5,
+                    B:= 10
+                    Foo(Dum)
+
+# Gives an error for `28.30` if it wasn't uploaded before `28.20`.
+assert_semantic_error(2013, 3506):
+    vpackage(P,/A,?VerseVersion:=0, ?UploadedAtFNVersion:=2830):
+        snippet:
+            M0 := module:
+                Foo(I:int):int = {I}
+                Bar():int=
+                    Dum:= 5,
+                    B:= 10
+                    Foo(Dum)
+
+# Eventually is fine when `Dum` and `B` are wrapped in an implicit `tuple`.
+assert_valid:
+    vpackage(P,/A,?VerseVersion:=1):
+        snippet:
+            M0 := module:
+                Foo(I:int):int = {I}
+                Bar():int=
+                    Dum:= 5,
+                    B:= 10
+                    Foo(Dum)

@@ -1,0 +1,35 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+# VerseVM only supports instancing UObjects - force C to use that representation by inheriting from a native class
+C:= class<unique>(reference_test_base):
+	X:int
+D:= class(reference_test_base):
+	Ref:C= C {X:=1}
+	var SelfRef:?reference_test_base= false
+
+# Basic tests to check reference integrity after instantiation
+assert:
+	C1 := C {X:=2}
+	D1 := D {}
+	D2 := D {Ref:=C1}
+	D3 := D {Ref:=C1}
+	D1.Ref <> D2.Ref
+	D2.Ref <> D1.Ref
+	D2.Ref = D3.Ref
+	D3.Ref = D2.Ref
+	D2.Ref.X = D3.Ref.X
+	D2.Ref.X <> D1.Ref.X
+
+# Cannot reference another class member variable in an initializer
+assert_semantic_error(3502){ C := class{}; D := class{C0:C=C{}; C1:C=C0} }
+
+# Check that UE won't reinstantiate a reference to another object or to itself
+assert:
+	C1 := C {X:=2}
+	D1 := D {Ref:=C1}
+	set D1.SelfRef = option {D1}
+	D1.ValidateObjectInstanceGraph()
+	D1.Ref = C1
+	D1.SelfRef? = D1

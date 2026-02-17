@@ -1,0 +1,33 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+SyncTest()<suspends>:void=
+    sync:
+        for (Index := 1..4):
+            CoroUtils.WaitTicks(1)
+        CoroUtils.WaitTicks(1)
+
+assert:
+    spawn{SyncTest()}
+    CoroUtils.Tick(10)
+
+RaceTest()<suspends>:void=
+    race:
+        for (Index := 1..4):
+            CoroUtils.WaitTicks(1)
+        CoroUtils.WaitTicks(1)
+
+assert:
+    spawn{RaceTest()}
+    CoroUtils.Tick(10)
+
+RushTest()<suspends>:void=
+    rush:
+        for (Index := 1..4):
+            CoroUtils.WaitTicks(1)
+        CoroUtils.WaitTicks(1)
+
+assert:
+    spawn{RushTest()}
+    CoroUtils.Tick(10)

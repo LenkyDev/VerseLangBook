@@ -1,0 +1,78 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Local-vars inside of block functions
+
+assert_semantic_error(3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        block:
+            a_public_integer<public>:int = 5
+            set Test = a_public_integer
+
+assert_semantic_error(3594, 3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        block:
+            private_int<private>:int = 5
+            set Test = private_int
+
+assert_semantic_error(3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        block:
+            internal_int<internal>:int = 5
+            set Test = internal_int
+
+assert_semantic_error(3594, 3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        block:
+            protected_int<protected>:int = 5
+            set Test = protected_int
+            
+assert_semantic_error(3661):
+    my_scope := scoped{ my_module }
+    my_module<public> := module:
+        class_c<my_scope> := class:
+
+    MyClass := class:
+        var Test<public>:int = 0
+        block:
+            scoped_int<my_scope>:int = 5
+            set Test = scoped_int
+
+
+# Local-vars inside of regular functions
+
+assert_valid:
+    MyClass := class:
+        var Test<public>:int = 0
+        Func():int =
+            local_var:int = 10
+            local_var
+
+assert_semantic_error(3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        Func():int =
+            local_var<public>:int = 10
+            local_var
+
+assert_semantic_error(3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        Func():int =
+            local_var<public>:int = 10
+            local_var
+
+assert_semantic_error(3661):
+    MyClass := class:
+        var Test<public>:int = 0
+        Func()<decides>:int =
+            result:int = 0
+            if (result = 0):
+                var local_var<internal>:int = 0    # 3661
+                set local_var = 10
+                result = local_var
+            result
+

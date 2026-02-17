@@ -1,0 +1,155 @@
+# In this file, we'll make sure that the semantic analyzer detects cases
+# where dependencies of definitions are as accesible as the definitions themselves
+
+# Ok: Inside public module, a public function depends on a public class
+assert_valid:
+    X<public> := module:
+        c<public> := class:
+        F<public>(MyClass:c):void = {}
+
+# Ok: Inside a public module, a protected function depends on a public class
+assert_valid:
+    X<public> := module:
+        c<public> := class:
+        d<public> := class:
+            F<protected>(MyClass:c):void = {}
+
+# Bad: Inside a public module, a public function depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        d<public> := class:
+            F<public>(MyClass:c):void = {}
+
+# Bad: Inside a public module, a protected function depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        d<public> := class:
+            F<protected>(MyClass:c):void = {}
+
+# Ok: Inside an internal module, a public function depends on an internal class
+assert_valid:
+    X<public> := module:
+        c := class:
+        Y := module:
+            F<public>(MyClass:c):void = {}
+
+# Ok: Inside an internal module, a public function depends on an internal class
+assert_valid:
+    X<public> := module:
+        c := class:
+        Y := module:
+            Z<public> := module:
+                F<public>(MyClass:c):void = {}
+
+# Ok: Inside an internal module, a public function depends on an internal class
+assert_valid:
+    X<public> := module:
+        c := class:
+        Y<public> := module:
+            Z := module:
+                F<public>(MyClass:c):void = {}
+
+# Ok: Inside an internal class, a public function depends on an internal class
+assert_valid:
+    X<public> := module:
+        c := class:
+        d := class:
+            F<public>(MyClass:c):void = {}
+
+# Ok: Inside a public module, a public function depends on a public class from another public module
+assert_valid:
+    X<public> := module:
+        using{ Y }
+        F<public>(MyClass:c):void = {}
+    Y<public> := module:
+        c<public> := class:
+
+# Bad: Inside a public module, a public data member depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        d<public> := class:
+            D<public>:c := c{}
+
+# Bad: Inside a public module, a public data member depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        D<public>:?c := false
+
+# Bad: Inside a public module, a public data member depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        D<public>:[]c := array{}
+
+# Bad: Inside a public module, a public data member depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        D<public>:[int]c := map{}
+
+# Bad: Inside a public module, a public data member depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        D<public>:?tuple(int,c,c) := false
+
+# Bad: Inside a public module, a public data member depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        D<public>:?tuple(int,tuple(int,tuple(int,c))) := false
+
+# Bad: Inside a public module, a public class-typed data definition depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        T<public>:?subtype(c) := false
+
+# Bad: Inside a public module, a public type alias depends on an internal class
+assert_semantic_error(3593):
+    X<public> := module:
+        c := class:
+        F<public> := type{_():c}
+
+# Dependency is universally visible
+assert_valid               {M0<public>:=module{c0<public>       :=class{}}; M1<public>:=module{c1<public>:=class{F<public>       (:M0.c0):void={}}}}
+assert_valid               {M0<public>:=module{c0<public>       :=class{}}; M1<public>:=module{c1<public>:=class{F<epic_internal>(:M0.c0):void={}}}}
+assert_valid               {M0<public>:=module{c0<public>       :=class{}}; M1<public>:=module{c1<public>:=class{F               (:M0.c0):void={}}}}
+
+# Dependency is visible from all Epic-internal scopes: dependee must also be epic_internal, or only visible from Epic-internal scopes.
+assert_semantic_error(3593){M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{c1<public>:=class{F<public>       (:M0.c0):void={}}}}
+assert_semantic_error(3593){M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{c1<public>:=class{F<protected>    (:M0.c0):void={}}}}
+assert_valid               {M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{c1<public>:=class{F<epic_internal>(:M0.c0):void={}}}}
+assert_valid               {M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{c1<public>:=class{F               (:M0.c0):void={}}}}
+assert_valid               {M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{c1<public>:=class{F<private>      (:M0.c0):void={}}}}
+
+# Dependency is visible from only a specific scope: dependee must only be visible from that scope or subscopes.
+assert_valid               {vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0<public>:=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0<public>:=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_semantic_error(3593){vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0        :=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0        :=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/NotVerse.org/Root                    ){snippet{M0<public>:=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/NotVerse.org/Root                    ){snippet{M0<public>:=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_semantic_error(3593){vpackage(Root,/NotVerse.org/Root                    ){snippet{M0        :=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/NotVerse.org/Root                    ){snippet{M0        :=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<public>   (:M0.c0):void={}}}}}}
+
+assert_valid               {vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0<public>:=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0<public>:=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_semantic_error(3593){vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0        :=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/Verse.org/Root   ,?Scope:=InternalAPI){snippet{M0        :=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/NotVerse.org/Root                    ){snippet{M0<public>:=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/NotVerse.org/Root                    ){snippet{M0<public>:=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_semantic_error(3593){vpackage(Root,/NotVerse.org/Root                    ){snippet{M0        :=module{c0<public>:=class{}}; M1<public>:=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+assert_valid               {vpackage(Root,/NotVerse.org/Root                    ){snippet{M0        :=module{c0<public>:=class{}}; M1        :=module{c1<public>:=class{F<protected>(:M0.c0):void={}}}}}}
+
+# Test that accessibility on interfaces/classes/structs is considered.
+assert_semantic_error(3593){M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{i0<public>       :=interface{F<public>   (:M0.c0):void   }}}
+assert_valid               {M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{i0<epic_internal>:=interface{F<public>   (:M0.c0):void   }}}
+assert_semantic_error(3593){M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{i0<public>       :=class    {F<public>   (:M0.c0):void={}}}}
+assert_valid               {M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{i0<epic_internal>:=class    {F<public>   (:M0.c0):void={}}}}
+assert_semantic_error(3593){M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{i0<public>       :=struct   {X<public>    :M0.c0         }}}
+assert_valid               {M0<public>:=module{c0<epic_internal>:=class{}}; M1<public>:=module{i0<epic_internal>:=struct   {X<public>    :M0.c0         }}}

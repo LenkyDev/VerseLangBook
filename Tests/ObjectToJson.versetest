@@ -1,0 +1,202 @@
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+ReportErrors():void =
+	Errors := CoroUtils.GetEventLogString();
+	if (Errors <> ""):
+		Err("Error(s) found in ObjectToJSON:\n{Errors}")
+
+round_start := class(test_object_to_json_base):
+    GetEventName():string = "Feral.round_start"
+
+    var Cash:int = 0
+    var StartCash:int = -1
+    var EndCash:int = -1
+    var Transactions:[]shop_transaction = array{}
+
+shop_transaction := class():
+    Item:string
+    Category:string
+    Cost:int
+
+assert:
+	MyTestObject:round_start = round_start:
+		Cash:=100, 
+		StartCash:=0, 
+		EndCash:=100,
+		Transactions := array:
+			shop_transaction{Item:="Instant Shield", Cost:=500, Category:="Shield"},
+			shop_transaction{Item:="Instant Shield", Cost:=500, Category:="Shield"},
+			shop_transaction{Item:="Frenzy Auto Shotgun", Cost:=1500, Category:="Primary"},
+			shop_transaction{Item:="Impulse Grenade", Cost:=300, Category:="Kit"},
+			shop_transaction{Item:="Impulse Grenade", Cost:=300, Category:="Kit"},
+			shop_transaction{Item:="Flashbang", Cost:=200, Category:="Grenade"}
+
+	CoroUtils.Reset()
+	MyTestObject.GenerateJson()
+
+	MyTestObject.Check("Transactions/0/Item", MyTestObject.Transactions[0].Item)
+	MyTestObject.Check("Transactions/0/Cost", MyTestObject.Transactions[0].Cost)
+	MyTestObject.Check("Transactions/0/Category", MyTestObject.Transactions[0].Category)
+
+	MyTestObject.Check("Transactions/5/Item", MyTestObject.Transactions[5].Item)
+	MyTestObject.Check("Transactions/5/Cost", MyTestObject.Transactions[5].Cost)
+	MyTestObject.Check("Transactions/5/Category", MyTestObject.Transactions[5].Category)
+	ReportErrors()
+
+my_coordinates := class:
+	X : float = 0.0
+	Y : float = 0.0
+
+my_inner_class := class:
+    IntValue  : int = 0
+	FloatValue : float = 1.4
+	StringValue : string = "Not Set"
+	Coordinates : my_coordinates = my_coordinates{X:=0.0, Y:=0.0}
+	my_inner_func(X:int):int =
+		return X*X
+
+natural := type{_X:int where _X >= 0 }
+uchar := type{_X:int where _X < 256, _X >= 0 }
+fuchar := type{_X:float where _X < 256.0, _X >= 0.0 }
+
+my_func(X:int):int = 
+	return X*X
+
+my_test_object := class(test_object_to_json_base):
+    IntValue  : int = 2112
+	FloatValue : float = 42.6
+	StringValue : string = "Rush"
+	CharValue : char = 'a'
+	EscCharValue : char = '\t'
+	HexCharValue : char = 0o0
+	Char32Value : char32 = 'é'
+	RationalValue : rational
+	OptionalString:?int  = false
+	IntArray:[]int = array{2112, 3, 4}
+	StringArray:[]string = array{"ab", "cde", "fghi"}
+	Int2DArray:[][]int = array{array{1}, array{4,5}, array{7,8,9}}
+	InnerClass : my_inner_class = my_inner_class { IntValue := 13, FloatValue := 6.66, StringValue := "InnerClass", Coordinates:=my_coordinates{X:=100.0, Y:=200.0} }
+	StringIntArrayMap : [string][]int = map{"Monday"=>array{1,2,3}, "Tuesday"=>array{4,5,6}, "Wednesday"=>array{7,8,9}}
+	IntType : type  = int
+	NatType : type  = natural
+	CharType : type  = uchar
+	FloatType : type  = float
+	FCharType : type  = fuchar
+	ClassType : type  = my_inner_class
+	TupleStruct : tuple_struct_nested = tuple_struct_nested{Elem0:=0, Elem1:=tuple_struct{Elem0:=42, Elem1:=123.0}}
+	OptionalClass:?my_inner_class = option{my_inner_class { IntValue := 13, FloatValue := 6.66, StringValue := "InnerClass", Coordinates:=my_coordinates{X:=100.0, Y:=200.0} }}
+	FuncValue : any = my_func
+	SelfFuncValue : any
+	NativeFunc : any = test_vni.TupleThrough
+
+assert:
+	MyFuncObj : my_inner_class = my_inner_class{}
+	MyTestObject : my_test_object = my_test_object{RationalValue:= 7/11, SelfFuncValue:=MyFuncObj.my_inner_func}
+
+	CoroUtils.Reset()
+	MyTestObject.GenerateJson()
+
+	MyTestObject.Check("StringValue",  "Rush")
+
+	MyTestObject.Check("IntValue",  MyTestObject.IntValue)
+	MyTestObject.Check("FloatValue",  MyTestObject.FloatValue)
+	MyTestObject.Check("StringValue",  MyTestObject.StringValue)
+	
+	MyTestObject.Check("CharValue",  97)
+	MyTestObject.Check("EscCharValue",  9)
+	MyTestObject.Check("HexCharValue",  0)
+	MyTestObject.Check("Char32Value",  233)
+
+	bp_vm_only{
+		MyTestObject.Check("RationalValue/Numerator", 7)
+		MyTestObject.Check("RationalValue/Denominator", 11)
+	}
+	verse_vm_only{
+		MyTestObject.Check("RationalValue", "7/11")
+	}
+
+	MyTestObject.Check("IntArray/0",  MyTestObject.IntArray[0])
+	MyTestObject.Check("IntArray/2",  MyTestObject.IntArray[2])
+
+	MyTestObject.Check("Int2DArray/0/0",  MyTestObject.Int2DArray[0][0])
+	MyTestObject.Check("Int2DArray/2/2",  MyTestObject.Int2DArray[2][2])
+
+	MyTestObject.Check("InnerClass/IntValue",  MyTestObject.InnerClass.IntValue)
+	MyTestObject.Check("InnerClass/FloatValue",  MyTestObject.InnerClass.FloatValue)
+	MyTestObject.Check("InnerClass/StringValue",  MyTestObject.InnerClass.StringValue)
+	MyTestObject.Check("InnerClass/Coordinates/X",  MyTestObject.InnerClass.Coordinates.X)
+	MyTestObject.Check("InnerClass/Coordinates/Y",  MyTestObject.InnerClass.Coordinates.Y)
+
+	#TODO: Update TestObjectToJson so it can parse a field-path containing '/'s
+	#MyTestObject.GetString["InnerClass/(/Verse.org/VerseTests/my_inner_class:)my_inner_func(:int)"]#, "(/Verse.org/VerseTests/my_inner_class:)my_inner_func(:int)"
+
+	MyTestObject.Check("TupleStruct/Elem0",  MyTestObject.TupleStruct.Elem0)
+	MyTestObject.Check("TupleStruct/Elem1/Elem0",  MyTestObject.TupleStruct.Elem1.Elem0)
+	MyTestObject.Check("TupleStruct/Elem1/Elem1",  MyTestObject.TupleStruct.Elem1.Elem1)
+
+	MyTestObject.Check("OptionalClass/Coordinates/X",  MyTestObject.InnerClass.Coordinates.X)
+	MyTestObject.Check("OptionalClass/Coordinates/Y",  MyTestObject.InnerClass.Coordinates.Y)
+
+	MyTestObject.Check("TupleStruct/Elem1/Elem0", MyTestObject.TupleStruct.Elem1.Elem0)
+	MyTestObject.Check("TupleStruct/Elem1/Elem1", MyTestObject.TupleStruct.Elem1.Elem1)
+
+	bp_vm_only{ 
+		MyTestObject.Check("RationalValue/Numerator", 7)
+		MyTestObject.Check("RationalValue/Denominator", 11)
+
+		MyTestObject.Check("FuncValue", "\"DYNAMIC_PROPERTY\"")
+		MyTestObject.Check("NativeFunc", "\"DYNAMIC_PROPERTY\"")
+
+		MyTestObject.Check("StringIntArrayMap/Monday/0", 1)
+		MyTestObject.Check("StringIntArrayMap/Wednesday/2",  9)
+
+		MyTestObject.Check("IntType", "IntType")
+		MyTestObject.Check("NatType", "NatType")
+		MyTestObject.Check("CharType", "CharType")
+		MyTestObject.Check("FloatType", "FloatType")
+		MyTestObject.Check("FCharType", "FCharType")
+		MyTestObject.Check("ClassType", "ClassType")
+	}
+
+	verse_vm_only{
+		MyTestObject.Check("RationalValue", "7/11")
+
+		MyTestObject.Check("StringIntArrayMap/0/Key", "Monday")
+		MyTestObject.Check("StringIntArrayMap/2/Value/2",  9)
+		
+		MyTestObject.Check("FuncValue", "(/Verse.org/VerseTests:)my_func(:int)")
+		MyTestObject.Check("SelfFuncValue", "(/Verse.org/VerseTests/my_inner_class:)my_inner_func(:int)")
+		MyTestObject.Check("NativeFunc", "(/Verse.org/Tests/VerseTestScriptCmd/test_vni:)TupleThrough(:tuple(int,float),:int)")
+
+		MyTestObject.Check("IntType/Type", "INTEGER")
+		MyTestObject.Check("NatType/Type", "INTEGER")
+		MyTestObject.Check("NatType/Minimum", 0)
+		MyTestObject.Check("CharType/Type", "INTEGER")
+		MyTestObject.Check("CharType/Minimum", 0)
+		MyTestObject.Check("CharType/Maximum", 255)
+		MyTestObject.Check("FloatType/Type", "NUMBER")
+		MyTestObject.Check("FCharType/Type", "NUMBER")
+		MyTestObject.Check("FCharType/Minimum", 0.0)
+		MyTestObject.Check("FCharType/Maximum", 255.99999999999997)
+		MyTestObject.Check("ClassType/Properties/StringValue/Type", "STRING")
+		MyTestObject.Check("ClassType/Properties/FloatValue/Type", "NUMBER")
+	}
+	ReportErrors()
+
+# Recursive objects
+LogCheck(Actual:string, Expected:string):void =
+	if (Actual <> Expected):
+		Err("Did not get expected result!\nExpected: {Expected}\nResult: {Actual}")
+
+recursive_object := class(test_object_to_json_base):
+  Head:int
+  var Tail:?recursive_object
+
+assert:
+	MyTestObject := recursive_object{Head:=0, Tail:=false}
+	set MyTestObject.Tail = option{recursive_object{Head:=1, Tail:=option{MyTestObject}}}
+	
+	MyTestObject.GenerateJson()
+
+	# can't check as printing pointers for REF
+	#LogCheck(MyTestObject.AsJSON(), "\{\"Head\":0,\"Tail\":\{\"Head\":1,\"Tail\":\"Ref/@0x00000267E97F4140\",\"Ref\":\"@0x00000267E97F45C0\"\},\"Ref\":\"@0x00000267E97F4140\"\}")

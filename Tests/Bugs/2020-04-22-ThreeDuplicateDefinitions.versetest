@@ -1,0 +1,19 @@
+# This erroneous code previously caused the compiler to get stuck in a loop until it ran out of memory.
+
+assert_semantic_error(3532,3532,3532):
+    C := class:
+        m:int
+        m:int
+        m:int
+    
+assert_semantic_error(3532,3532,3532):
+    C := class:
+        f():int=1
+        f():int=2
+        f():int=3
+
+assert_semantic_error(3532,3532,3532):
+    C := class {}
+    C := class {}
+    C := class {}
+    

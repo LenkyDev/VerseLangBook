@@ -1,0 +1,376 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+### for making sure accessors actually get called:
+LogWrite(X:string)<transacts>:void =
+    if (LogRead() <> ""):
+        CoroUtils.LogEvent(",")
+    CoroUtils.LogEvent("{X}")
+
+LogRead()<transacts>:string = CoroUtils.GetEventLogString()
+
+LogCheck(Expected:string):void =
+    Actual := LogRead()
+    if (Actual <> Expected):
+        Err("Expected: '{Expected}' but got '{Actual}'")
+
+### passthrough tests; to make sure proxy functions forward values properly
+### when no proxy exists
+passthru := module:
+    t1<public> := class:
+        var I<public>:int = 44
+        var AF<public>:[]float = array{2.2}
+        var AAF<public>:[][]float = array{array{2.2}}
+        var AS<public>:[]s2 = array{s2{}}
+        var AAS<public>:[][]s2 = array{array{s2{}}}
+        var MI<public>:[int]int = map{3 => 5}
+        var SM<public>:s4 = s4{}
+        var C<public>:t2 = t2{}
+        var String<public>:string = "hello"
+        var AOI<public>:[]s3 = array{s3{}, s3{}}
+
+    t2<public> := class:
+        var I<public>:int = 44
+        var S<public>:s2 = s2{}
+
+    s2<public> := struct<computes>:
+        I<public>:int = 66
+        AI<public>:[]int = array{66}
+
+    s3<public> := struct<computes>:
+        OI<public>:?int = option{66}
+        X<public>:float = 0.4
+
+    s4<public> := struct<computes>:
+        MI<public>:[int]int = map{3 => 5}
+
+assert:
+    T := passthru.t1{}
+
+    set T.I = 444
+    T.I = 444
+
+    set T.AF[0] = 22.2
+    T.AF[0] = 22.2
+
+    set T.AS[0].I = 666
+    T.AS[0].I = 666
+
+    set T.AAF[0][0] = 22.2
+    T.AAF[0][0] = 22.2
+
+    set T.AS[0].AI[0] = 666
+    T.AS[0].AI[0] = 666
+
+    set T.AAS[0][0].AI[0] = 666
+    T.AAS[0][0].AI[0] = 666
+
+    set T.MI[3] = 8
+    T.MI[3] = 8
+
+    set T.SM.MI[3] = 8
+    T.SM.MI[3] = 8
+
+    set T.String[0] = 'j'
+    T.String = "jello"
+
+    T.AOI[1].OI? = 66
+    set T.AOI[0] = passthru.s3{OI := option{67}}
+    T.AOI[0].OI? = 67
+
+assert:
+    T := passthru.t1{}
+    set T.AF += array{3.3}
+    T.AF[0] = 2.2
+    T.AF[1] = 3.3
+
+with_accessors := module:
+    t1<public> := class:
+        var I<public><getter(GetI)><setter(SetI)>:int = external{}
+        var AF<public><getter(GetAF)><setter(SetAF)>:[]float = external{}
+        var AS<public><getter(GetAS)><setter(SetAS)>:[]s2 = external{}
+        var AAF<public><getter(GetAAF)><setter(SetAAF)>:[][]float = external{}
+        var AAS<public><getter(GetAAS)><setter(SetAAS)>:[][]s2 = external{}
+        var MI<public><getter(GetMI)><setter(SetMI)>:[int]int = external{}
+        var SM<public><getter(GetSM)><setter(SetSM)>:s4 = external{}
+        var C<public><getter(GetC)><setter(SetC)>:t2 = external{}
+        var String<public><getter(GetString)><setter(SetString)>:string = external{}
+        var AOI<public><getter(GetAOI)><setter(SetAOI)>:[]s3 = external{}
+
+        var StringData<private>:string = "hello"
+        GetString(:accessor)<transacts>:string = { LogWrite("GetString1"); StringData }
+        SetString(:accessor, N:string)<transacts>:void = { LogWrite("SetString1"); set StringData = N }
+        GetString(:accessor, J:int)<transacts><decides>:char = { LogWrite("GetString2"); StringData[J] }
+        SetString(:accessor, J:int, N:char)<transacts><decides>:void = { LogWrite("SetString2"); set StringData[J] = N }
+
+        var IData<private>:int = 44
+        GetI(:accessor)<transacts>:int = { LogWrite("GetI1"); IData }
+        SetI(:accessor, N:int)<transacts>:void = { LogWrite("SetI1"); set IData = N }
+
+        var AFData<private>:[]float = array{2.2}
+        GetAF(:accessor)<transacts>:[]float = { LogWrite("GetAF1"); AFData }
+        SetAF(:accessor, N:[]float)<transacts>:void = { LogWrite("SetAF1"); set AFData = N }
+        GetAF(:accessor, Pos:int)<transacts><decides>:float = { LogWrite("GetAF2"); AFData[Pos] }
+        SetAF(:accessor, Pos:int, V:float)<transacts><decides>:void = { LogWrite("SetAF2"); set AFData[Pos] = V }
+
+        var ASData<private>:[]s2 = array{s2{}}
+
+        GetAS(:accessor)<transacts>:[]s2 = { LogWrite("GetAS1"); ASData }
+        SetAS(:accessor, N:[]s2)<transacts>:void = { LogWrite("SetAS1"); set ASData = N }
+        GetAS(:accessor, Pos:int)<transacts><decides>:s2 = { LogWrite("GetAS2"); ASData[Pos] }
+        SetAS(:accessor, Pos:int, N:s2)<transacts><decides>:void = { LogWrite("SetAS2"); set ASData[Pos] = N }
+        GetAS(:accessor, J:int, Member:string)<transacts><decides>:any =
+            LogWrite("GetAS3")
+            case (Member):
+                "I" => ASData[J].I
+                "AI" => ASData[J].AI
+                _ => Err("oops")
+        SetAS(:accessor, J:int, Member:string, Value:any)<transacts><decides>:void =
+            LogWrite("SetAS3")
+            case (Member):
+                "I" => set ASData[J].I = UnsafeCast(Value, int)
+                "AI" => set ASData[J].AI = UnsafeCast(Value, []int)
+                _ => Err("oops")
+        GetAS(:accessor, J:int, Member:string, K:int)<transacts><decides>:int =
+            LogWrite("GetAS4")
+            case (Member):
+                "AI" => ASData[J].AI[K]
+                _ => Err("oops")
+        SetAS(:accessor, J:int, Member:string, K:int, Value:int)<transacts><decides>:void =
+            LogWrite("SetAS4")
+            case (Member):
+                "AI" => set ASData[J].AI[K] = Value
+                _ => Err("oops")
+
+        var AAFData<private>:[][]float = array{array{2.2}}
+        GetAAF(:accessor)<transacts>:[][]float =
+            LogWrite("GetAAF1")
+            AAFData
+        SetAAF(:accessor, N:[][]float)<transacts>:void =
+            LogWrite("SetAAF1")
+            set AAFData = N
+        GetAAF(:accessor, Pos:int)<transacts><decides>:[]float =
+            LogWrite("GetAAF2")
+            AAFData[Pos]
+        SetAAF(:accessor, Pos:int, V:[]float)<transacts><decides>:void =
+            LogWrite("SetAAF2")
+            set AAFData[Pos] = V
+        GetAAF(:accessor, J:int, K:int)<transacts><decides>:float =
+            LogWrite("GetAAF3")
+            AAFData[J][K]
+        SetAAF(:accessor, J:int, K:int, V:float)<transacts><decides>:void =
+            LogWrite("SetAAF3")
+            set AAFData[J][K] = V
+
+        var AASData<private>:[][]s2 = array{array{s2{}}}
+        GetAAS(:accessor)<transacts>:[][]s2 = { LogWrite("GetAAS1"); AASData }
+        SetAAS(:accessor, N:[][]s2)<transacts>:void = { LogWrite("SetAAS1"); set AASData = N }
+        GetAAS(:accessor, J:int)<transacts><decides>:[]s2 = { LogWrite("GetAAS2"); AASData[J] }
+        SetAAS(:accessor, J:int, N:[]s2)<transacts><decides>:void = { LogWrite("SetAAS2"); set AASData[J] = N }
+        GetAAS(:accessor, J:int, K:int)<transacts><decides>:s2 = { LogWrite("GetAAS3"); AASData[J][K] }
+        SetAAS(:accessor, J:int, K:int, N:s2)<transacts><decides>:void = { LogWrite("GetAAS3"); set AASData[J][K] = N }
+        GetAAS(:accessor, J:int, K:int, Member:string)<transacts><decides>:any =
+            LogWrite("GetAAS4")
+            case (Member):
+                "AI" => AASData[J][K].AI
+                _ => Err("unimplemented")
+        SetAAS(:accessor, J:int, K:int, Member:string, N:any)<transacts><decides>:void =
+            LogWrite("SetAAS4")
+            case (Member):
+                "AI" => set AASData[J][K].AI = UnsafeCast(N, []int)
+                _ => Err("unimplemented")
+        GetAAS(:accessor, J:int, K:int, Member:string, L:int)<transacts><decides>:int =
+            LogWrite("GetAAS5");
+            case (Member):
+                "AI" => AASData[J][K].AI[L]
+                _ => Err("unimplemented")
+        SetAAS(:accessor, J:int, K:int, Member:string, L:int, N:int)<transacts><decides>:void =
+            LogWrite("SetAAS5")
+            case (Member):
+                "AI" => set AASData[J][K].AI[L] = N
+                _ => Err("unimplemented")
+
+        var MIData<private>:[int]int = map{3 => 5}
+        GetMI(:accessor)<transacts>:[int]int = { LogWrite("GetMI1"); MIData }
+        SetMI(:accessor, N:[int]int)<transacts>:void = { LogWrite("SetMI1"); set MIData = N }
+        GetMI(:accessor, J:int)<transacts><decides>:int = { LogWrite("GetMI2"); MIData[J] }
+        SetMI(:accessor, J:int, N:int)<transacts><decides>:void = { LogWrite("SetMI2"); set MIData[J] = N }
+
+        var SMData<private>:s4 = s4{}
+        GetSM(:accessor)<transacts>:s4 = { LogWrite("GetSM1"); SMData }
+        SetSM(:accessor, N:s4)<transacts>:void = { LogWrite("SetSM1"); set SMData = N }
+        GetSM(:accessor, Member:string)<transacts>:[int]int = { LogWrite("GetSM2"); SMData.MI }
+        SetSM(:accessor, Member:string, N:[int]int)<transacts>:void = { LogWrite("SetSM2"); set SMData.MI = N }
+        GetSM(:accessor, Member:string, J:int)<transacts><decides>:int = { LogWrite("GetSM3"); SMData.MI[J] }
+        SetSM(:accessor, Member:string, J:int, N:int)<transacts><decides>:void = { LogWrite("SetSM3"); set SMData.MI[J] = N }
+
+        var CData<private>:t2 = t2{}
+        GetC(:accessor)<transacts>:t2 =
+            LogWrite("GetC1")
+            CData
+        SetC(:accessor, N:t2)<transacts>:void =
+            LogWrite("SetC1")
+            set CData = N
+
+        var AOIData<private>:[]s3 = array{s3{}, s3{}}
+        GetAOI(:accessor)<transacts>:[]s3 =
+            LogWrite("GetAOI1")
+            AOIData
+        SetAOI(:accessor, V:[]s3)<transacts>:void =
+            LogWrite("SetAOI1")
+            set AOIData = V
+        GetAOI(:accessor, J:int)<transacts><decides>:s3 =
+            LogWrite("GetAOI2")
+            AOIData[J]
+        SetAOI(:accessor, J:int, V:s3)<transacts><decides>:void =
+            LogWrite("SetAOI2")
+            set AOIData[J] = V
+        GetAOI(:accessor, J:int, Name:[]char)<transacts><decides>:any =
+            LogWrite("GetAOI3")
+            case (Name):
+                "OI" => AOIData[J].OI
+                _ => Err("unimplemented")
+        SetAOI(:accessor, J:int, Name:[]char, V:any)<transacts><decides>:void =
+            LogWrite("SetAOI3")
+            case (Name):
+                "OI" => set AOIData[J].OI = UnsafeCast(V, ?int)
+                _ => Err("unimplemented")
+
+    t2<public> := class:
+        var I<public><getter(GetI)><setter(SetI)>:int = external{}
+        var S<public>:s2 = s2{}
+
+        var IData<private>:int = 44
+        GetI(:accessor)<transacts>:int =
+            LogWrite("GetI1")
+            IData
+        SetI(:accessor, N:int)<transacts>:void =
+            LogWrite("SetI1")
+            set IData = N
+
+    s2<public> := struct<computes>:
+        I<public>:int = 66
+        AI<public>:[]int = array{66}
+
+    s3<public> := struct<computes>:
+        OI<public>:?int = option{66}
+        F<public>:float = 42.2
+
+    s4<public> := struct<computes>:
+        MI<public>:[int]int = map{3 => 5}
+
+### make sure getters/setters actually get called
+assert:
+    T := with_accessors.t1{}
+    set T.I = 444
+    T.I = 444
+    LogCheck("SetI1,GetI1")
+assert:
+    T := with_accessors.t1{}
+    set T.AF[0] = 22.2
+    T.AF[0] = 22.2
+    LogCheck("SetAF2,GetAF2")
+assert:
+    T := with_accessors.t1{}
+    set T.AS[0].I = 666
+    T.AS[0].I = 666
+    LogCheck("SetAS3,GetAS3")
+assert:
+    T := with_accessors.t1{}
+    Temp := set T.AAF[0][0] = 22.2
+    T.AAF[0][0] = 22.2
+    LogCheck("SetAAF3,GetAAF3")
+assert:
+    T := with_accessors.t1{}
+    set T.AS[0].AI[0] = 666
+    T.AS[0].AI[0] = 666
+    LogCheck("SetAS4,GetAS4")
+assert:
+    T := with_accessors.t1{}
+    set T.AAS[0][0].AI[0] = 666
+    T.AAS[0][0].AI[0] = 666
+    LogCheck("SetAAS5,GetAAS5")
+assert:
+    T := with_accessors.t1{}
+    set T.MI[3] = 8
+    T.MI[3] = 8
+    LogCheck("SetMI2,GetMI2")
+assert:
+    T := with_accessors.t1{}
+    set T.SM.MI[3] = 8
+    T.SM.MI[3] = 8
+    LogCheck("SetSM3,GetSM3")
+assert:
+    T := with_accessors.t1{}
+    set T.String[0] = 'j'
+    T.String = "jello"
+    LogCheck("SetString2,GetString1")
+assert:
+    T := with_accessors.t1{}
+    T.AF[0] = 22.2 or true     # fail after proxy call
+    T.AF[1] = 22.2 or true     # fail during proxy call
+    T.AF[0] = 222 or true      # successful proxy call w/ short-circuit `or`
+    LogCheck("GetAF2,GetAF2,GetAF2")
+assert:
+    T := with_accessors.t1{}
+    (set T.AF[88] = 22.2) or true    # fail at proxy setter call
+    (set T.AF[0] = 22.2) or true     # successful setter call w/ short-circuit `or`
+assert:
+    var T:with_accessors.t1 := with_accessors.t1{}
+    set T.C = with_accessors.t2{S := with_accessors.s2{I := 555}}
+    T.C.S.I = 555
+    set T.C.I = 888
+    T.C.I = 888
+    LogCheck("SetC1,GetC1,GetC1,SetI1,GetC1,GetI1")
+assert:
+    var T:with_accessors.t1 := with_accessors.t1{}
+
+    set T.AOI[0].OI = option{44}
+    T.AOI[0].OI? = 44
+
+    set T.AOI[1].OI = false
+    not T.AOI[1].OI?
+
+    LogCheck("SetAOI3,GetAOI3,SetAOI3,GetAOI3")
+
+### assign-op tests (`+=` etc.):
+assert:
+    var T:with_accessors.t1 := with_accessors.t1{}
+    set T.I = 44
+    T.I = 44
+    set T.I += 1
+    T.I = 45
+    LogCheck("SetI1,GetI1,GetI1,SetI1,GetI1")
+assert:
+    T := with_accessors.t1{}
+    set T.AF += array{3.3}
+    T.AF[0] = 2.2
+    T.AF[1] = 3.3
+    LogCheck("GetAF1,SetAF1,GetAF2,GetAF2")
+
+### structs-in-structs deep mutability
+inner_struct := struct<concrete><computes>:
+    Z:float = 0.0
+outer_struct := struct<concrete><computes>:
+    X:inner_struct = inner_struct{}
+    Y:float = 1.0
+has_outer_struct := class:
+    var C<getter(GetC)><setter(SetC)>:outer_struct = external{}
+    var D:outer_struct = outer_struct{}
+
+    var CData:outer_struct = outer_struct{}
+    var AccessorCalled:logic = false
+
+    GetC(:accessor)<transacts>:outer_struct = Err("unexpected accessor call")
+    GetC(:accessor, :[]char)<transacts>:any = Err("unexpected accessor call")
+    GetC(:accessor, :[]char, :[]char)<transacts>:float = Err("unexpected accessor call")
+
+    SetC(:accessor, :outer_struct)<transacts>:void = Err("unexpected accessor call")
+    SetC(:accessor, :[]char, :any)<transacts>:void = Err("unexpected accessor call")
+
+    SetC(:accessor,:[]char,:[]char,:float)<transacts>:void = (set AccessorCalled = true)
+assert:
+    T := has_outer_struct{}
+    set T.C.X.Z = 3.3
+    T.AccessorCalled = true
+    set T.D.X.Z = 3.3
+    T.D.X.Z = 3.3

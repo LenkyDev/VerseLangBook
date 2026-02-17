@@ -1,0 +1,52 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Verify that we cannot access null UObjects inside of a native class.
+assert_runtime_error:
+    # Verify that we cannot access null UObjects inside of a native class.
+    Object := MakeObjectWithNullField()
+    NullField := Object.MyField
+
+assert:
+    # An optional holding a null UObject will behave like an unset optional, since it represents
+    # "not set" on a T* as a zero value in memory.
+    Object := MakeObjectWithNullOptional()
+    not Object.MyOptional?
+
+assert_runtime_error:
+    # Verify that we cannot access arrays containing a null UObject.
+    Object := MakeObjectWithNullArrayElement()
+    ArrayWithNullElement := Object.MyArray
+
+assert_runtime_error:
+    # Verify that we cannot access array elements holding a null UObject.
+    Object := MakeObjectWithNullArrayElement()
+    NullValueInArray := Object.MyArray[0]
+
+assert:
+    # Verify that native-object arrays with zero elements work normally and don't trigger a runtime error.
+    Object := MakeObjectWithEmptyArray()
+    Object.MyArray = array{}
+
+# TODO: BPVM should trigger a runtime error when directly accessing a null tuple element. #jira SOL-8454
+# (BPVM would throw a runtime error if accessing `Object.MyTuple` as a whole)
+verse_vm_only:
+    assert_runtime_error:
+        Object := MakeObjectWithNullTupleElement()
+        NullTupleElement := Object.MyTuple(0)
+
+assert_runtime_error:
+    # Verify that we cannot access maps with a null UObject in the key.
+    Object := MakeObjectWithNullMapKey()
+    MapWithNullKey := Object.MyMapK
+
+assert_runtime_error:
+    # Verify that we cannot access maps with a null UObject in the value.
+    Object := MakeObjectWithNullMapValue()
+    MapWithNullValue := Object.MyMapV
+
+# TODO: BPVM should trigger a runtime error when directly accessing a null map value. #jira SOL-8454
+verse_vm_only:
+    assert_runtime_error:
+        # Verify that we cannot directly access a map value containing a null UObject.
+        Object := MakeObjectWithNullMapValue()
+        NullValueInMap := Object.MyMapV[123]

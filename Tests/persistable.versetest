@@ -1,0 +1,115 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    enum1 := enum<persistable>:
+        A
+    class1 := class<final><persistable>:
+        A:int
+    struct1 := struct<persistable>:
+        A:int
+    struct2 := struct<persistable>:
+        A:int
+        B:tuple(int, int)
+        C:struct1
+        D:logic
+        F:float
+        H:[]int
+        I:[int]int
+        J:?int
+        K:enum1
+
+assert_semantic_error(3663):
+    class1 := class<persistable> {}
+
+assert_semantic_error(3664):
+    class1 := class<final><unique><persistable> {}
+
+assert_semantic_error(3665):
+    class1 := class{}
+    class2 := class<final><persistable>(class1) {}
+
+assert_semantic_error(3662):
+    class1 := class<final><persistable>:
+        var X:int
+
+assert_semantic_error(3502, 3662):
+    class1(t:type) := class<final><persistable>:
+        X:t
+
+assert_semantic_error(3502):
+    class1() := class<final><persistable>:
+        X:int
+
+assert_semantic_error(3662):
+    struct1 := struct<persistable>:
+        X:any
+
+assert_semantic_error(3662):
+    struct1 := struct<persistable>:
+        X:comparable
+
+assert_semantic_error(3662):
+    struct1 := struct<persistable>:
+        X:type
+
+assert_semantic_error(3662):
+    struct1 := struct<persistable>:
+        X:rational
+
+assert_semantic_error(3662):
+    enum1 := enum:
+        A
+    struct1 := struct<persistable>:
+        G:enum1
+
+assert_semantic_error(3662):
+    interface1 := interface {}
+    struct1 := struct<persistable>:
+        X:interface1
+
+assert_semantic_error(3662):
+    class1 := class {}
+    struct1 := struct<persistable>:
+        X:class1
+
+assert_semantic_error(3662):
+    struct1 := struct<persistable>:
+        X:int -> int
+
+assert_semantic_error(3502, 3662):
+    struct1(t:type) := struct<persistable>:
+        X:t
+
+assert_semantic_error(3502, 3662):
+    struct1(t:type) := struct<persistable>:
+        X:weak_map(int, int)
+
+assert_semantic_error(3502):
+    class1(t:type) := class<final><persistable>:
+        X:int
+
+assert_semantic_error(3502):
+    struct1(t:type) := struct<persistable>:
+        X:int
+
+assert_semantic_error(3665):
+    interface1 := interface {}
+    class1 := class<final><persistable>(interface1) {}
+
+verse_vm_todo
+{
+assert_valid<depends_on_library>:
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    struct1 := struct<persistable>:
+        X:external_persistable_class1
+
+assert_valid<depends_on_library>:
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    struct1 := struct<persistable>:
+        X:external_persistable_struct1
+
+assert_valid<depends_on_library>:
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    struct1 := struct<persistable>:
+        X:external_persistable_enum1
+}

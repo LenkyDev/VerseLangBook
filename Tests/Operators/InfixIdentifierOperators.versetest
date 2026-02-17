@@ -1,0 +1,53 @@
+<#>
+    2021/04/19 - Merge of parser from Tim temporarily disables infix identifiers.
+
+    IntVec2 := class:
+        x:int
+        y:int
+
+    operator'dot'(l:IntVec2, r:IntVec2):int=
+        return(l.x*r.x + l.y*r.y)
+    # Make sure `operator'dot'()` doesn't collide with `dot()`
+    dot(l:IntVec2, r:IntVec2):int=return(-1)
+
+    operator'div'[n:int, d:int]:int={ d <> 0 ; return(n/d) }
+
+    operator'mod'[lhs:int, rhs:int]:int={ rhs <> 0 ; return(lhs-(lhs/rhs*rhs)) }
+
+    <# @TODO: SOL-1709, need to handle method overloading before we can properly test intrinsic operators
+    operator'-'(v0:IntVec2, v1:IntVec2):int=return(v0 dot v1)
+    operator'scale'(l:IntVec2, r:int):IntVec2=return(IntVec2{x:=l.x * r, y:=l.y * r})
+    operator'*'(i:int, v:IntVec2):IntVec2=return(v scale i)
+    # Test that precedence remains the same for overloaded operators
+    assert:
+        v0 := IntVec2{x:=0,y:=1}
+        v1 := IntVec2{x:=1,y:=3}
+        657 * v0 - v1 + 724 = (((v0 scale 657) dot v1) + 724)
+    #>
+
+    assert{ (IntVec2{x:=3, y:=6} dot IntVec2{x:=2, y:=6}) = 42 }
+    assert{ (24601 div 9) = 2733 }
+    assert{ not (1337 div 0) }
+
+    # arbitrary/new infix operators have the same precedence as multiplication
+    assert{ 36 + 4 mod 911 * 6 = (36 + ((4 mod 911) * 6))  }
+
+    assert_semantic_error(3512):
+        C := class:
+            operator'equals'[i0:int, i1:int]:void={ i0 = i1 }
+            f():void={ 42 equals 42 } # `equals` was defined as something which could fail, so it needs a failure context
+
+    assert_semantic_error(3508):
+        C := class:
+            operator'ternary'(b:logic, i0:int, i1:int):int={ return(if (b?) then i0 else i1) }
+            f():void={ true ternary 42 }
+    assert_valid: 
+        C := class:
+            operator'ternary'(b:logic, i0:int, i1:int):int={ return(if (b?) then i0 else i1) }
+            f():int=operator'ternary'(true, 42, 1337)
+
+    assert_valid: 
+        C := class:
+            operator':-)'(i0:int, i1:int):void={}
+            f():void={ operator':-)'(1337, 42) }
+    assert_syntax_error(<#S71#>3100){"1337 :-) 42"}

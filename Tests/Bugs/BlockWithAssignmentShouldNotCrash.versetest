@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+# jira SOL-3315
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+C1 := class:
+    IntField<public>:int = 42
+    block:
+        RandomVariable := 42
+
+assert:
+    X := C1 { }
+    X.IntField = 42
+
+C3 := class:
+    var Test<public>:int = 0
+    block:
+        Test2:int = 5
+        set Test = Test2
+
+assert:
+    A:[]C3 := for (I := 1..100) { C3 { } }
+    A[0].Test = 5

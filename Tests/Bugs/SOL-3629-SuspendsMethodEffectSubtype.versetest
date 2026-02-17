@@ -1,0 +1,14 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+base_class := class<abstract>:    
+    Method<public>()<suspends><transacts>:void
+
+child_class := class(base_class):        
+    Method<override>()<suspends><computes>:void=
+        return
+
+assert:
+    ChildClassInstance := child_class{}
+    spawn{ChildClassInstance.Method()}

@@ -1,0 +1,65 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid_syntax      {"c := class\{f:int\}\nFoo():int =\n O:c := c\{f:=42\}\n O.f"}
+assert_valid_syntax      {"c := class\{f:int\}\nFoo():int =\n O:c := c\{f:=42\}\n O. f"}
+assert_syntax_error(3100){"c := class\{f:int\}\nFoo():int =\n O:c := c\{f:=42\}\n O.\nf"}
+assert_syntax_error(3100){"c := class\{f:int\}\nFoo():int =\n O:c := c\{f:=42\}\n O.<\#comment\#\>f"}
+assert_valid_syntax      {"c := class\{f:int\}\nFoo():int =\n O:c := c\{f:=42\}\n O<\#comment\#\>.f"}
+
+assert:
+    var Num:int = 123
+    if (1 < 2). set Num = 42
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block
+    if (1 < 2). set Num = 42
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block for both
+    if (1 < 2). set Num = 42
+    else. set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block for both
+    if (1 < 2). set Num = 42 else. set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block for both
+    set Num = if (1 < 2). 42 else. 56
+    Num = 42
+
+assert: # Using dot space in one line
+    var Num:int = 123
+    if (1 > 2). set Num = 42
+    else if (3 > 4). set Num = 56
+    else. set Num = 78
+    Num = 78
+
+assert: # Using dot space in one line
+    var Num:int = 123
+    set Num = if(1 > 2). 42 else if(3 > 4). 56 else. 78
+    Num = 78
+
+assert:
+    var Num:int = 123
+    if. 1 > 2
+    then. set Num = 42
+    else if. 3 > 4
+    then. set Num = 56
+    else. set Num = 78
+    Num = 78
+
+assert: # Using dot space in one line
+    var Num:int = 123
+    set Num = if. 1 > 2 then. 42 else if. 3 > 4 then. 56 else. 78
+    Num = 78

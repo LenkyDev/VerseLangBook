@@ -175,7 +175,6 @@ logged_entity := class:
 # Prints: "Creating entity with ID: 42"
 ```
 <!-- #> -->
-```
 
 Block clauses have access to all fields of the class, including
 `Self`, and can modify mutable fields. They execute in the order they
@@ -333,7 +332,6 @@ player := class(character):  # player inherits from character
         set Score += Points
 ```
 <!-- #> -->
-```
 
 Inheritance creates a type hierarchy where a `player` is also a
 `character`, and a `character` is also an `entity`. This means you can
@@ -501,7 +499,6 @@ character := class(entity):
         set Stamina -= 1.0
 ```
 <!-- #> -->
-```
 
 **With Effect Specifiers:**
 
@@ -560,7 +557,6 @@ transactional_derived := class(transactional_base):
         set Counter += 1
 ```
 <!-- #> -->
-```
 
 **Virtual Dispatch Through Parent Methods:**
 

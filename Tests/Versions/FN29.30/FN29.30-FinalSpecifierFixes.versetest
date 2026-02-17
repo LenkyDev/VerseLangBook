@@ -1,0 +1,30 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Overriding a final field in an archetype should be allowed before 29.30, and an error in 29.30+.
+assert_valid               {vpackage(P0, /A, ?UploadedAtFNVersion:=2920){snippet{c:=class{X<final>:int=0}; F():void=c{X:=1}}}}
+assert_semantic_error(3568){vpackage(P0, /A, ?UploadedAtFNVersion:=2930){snippet{c:=class{X<final>:int=0}; F():void=c{X:=1}}}}
+assert_semantic_error(3568){vpackage(P0, /A                            ){snippet{c:=class{X<final>:int=0}; F():void=c{X:=1}}}}
+
+# Final fields without an initializer should be allowed before 29.30, and an error in 29.30+.
+assert_valid               {vpackage(P0, /A, ?UploadedAtFNVersion:=2920){snippet{c:=class{X<final>:int};}}}
+assert_semantic_error(3673){vpackage(P0, /A, ?UploadedAtFNVersion:=2930){snippet{c:=class{X<final>:int};}}}
+assert_semantic_error(3673){vpackage(P0, /A                            ){snippet{c:=class{X<final>:int};}}}
+
+assert_valid               {vpackage(P0, /A, ?UploadedAtFNVersion:=2920){snippet{c:=class{F<final>:void};}}}
+assert_semantic_error(3673){vpackage(P0, /A, ?UploadedAtFNVersion:=2930){snippet{c:=class{F<final>:void};}}}
+assert_semantic_error(3673){vpackage(P0, /A                            ){snippet{c:=class{F<final>:void};}}}
+
+# The final specifier on locals should be allowed before 29.30, and an error in 29.30+.
+assert_valid               {vpackage(P0, /A, ?UploadedAtFNVersion:=2920){snippet{F():void={X<final>:int=0}}}}
+assert_semantic_error(3674){vpackage(P0, /A, ?UploadedAtFNVersion:=2930){snippet{F():void={X<final>:int=0}}}}
+assert_semantic_error(3674){vpackage(P0, /A                            ){snippet{F():void={X<final>:int=0}}}}
+
+# The final specifier on module-scoped variables should be allowed before 29.30, and an error in 29.30+.
+assert_valid               {vpackage(P0, /A, ?UploadedAtFNVersion:=2920){snippet{X<final>:int=0}}}
+assert_semantic_error(3674){vpackage(P0, /A, ?UploadedAtFNVersion:=2930){snippet{X<final>:int=0}}}
+assert_semantic_error(3674){vpackage(P0, /A                            ){snippet{X<final>:int=0}}}
+
+# The final specifier on module-scoped functions should be an error in all versions.
+assert_semantic_error(3674){vpackage(P0, /A, ?UploadedAtFNVersion:=2920){snippet{F<final>():void={}}}}
+assert_semantic_error(3674){vpackage(P0, /A, ?UploadedAtFNVersion:=2930){snippet{F<final>():void={}}}}
+assert_semantic_error(3674){vpackage(P0, /A                            ){snippet{F<final>():void={}}}}

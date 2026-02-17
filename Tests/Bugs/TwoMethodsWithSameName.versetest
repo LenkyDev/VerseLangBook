@@ -1,0 +1,9 @@
+assert_semantic_error(3532):
+    C1 := class:
+        method():int= {return (1)}
+        method():int= {return (2)}
+
+assert_semantic_error(3532):
+    C2 := module:
+        method<public>():int= {return (1)}
+        method<public>():int= {return (2)}

@@ -1,0 +1,31 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Before fix ShiftAdd((A:int,B:int), C:int) and ShiftAdd(A:int, B:int, C:int) had the same mangled name,
+# and would collide in the code generator,
+# Note that if they are <native> then they will both mapped to ShiftAdd(int,int,int)
+# - trading power for usability.
+
+ShiftAdd(A:int, B:int):int = return A*10+B
+ShiftAdd((A:int,B:int), C:int):int = return ShiftAdd(ShiftAdd(A,B), C)
+ShiftAdd(A:int, B:int, C:int):int = return ShiftAdd((A,B), C)
+
+assert:
+    ShiftAdd(1, 2, 3) = 123
+
+
+test_class := class:
+  ShiftAddMethod(A:int, B:int):int = return A*10+B
+  ShiftAddMethod((A:int,B:int), C:int):int = return ShiftAddMethod(ShiftAddMethod(A,B), C)
+  ShiftAddMethod(A:int, B:int, C:int):int = return ShiftAddMethod((A,B), C)  
+
+assert:
+    Object := test_class{}
+
+    Object.ShiftAddMethod(1, 2, 3) = 123
+
+Signature1((A:int, B:int), C:int):int = A + B + C
+Signature2(AB:tuple(int,int), C:int):int = C
+
+CheckSignatures(A:type, B:type):int = 1
+CheckSignatures(A:t, B:t, C:int where t:type):int = 2
+CheckSignatures(A:t, B:t, C:float where t:subtype(comparable)):int = 2

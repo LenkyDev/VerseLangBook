@@ -1,0 +1,148 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    @deprecated
+    X:int = 1
+
+assert_valid:
+    @deprecated
+    class1 := class{}
+
+assert_valid:
+    @deprecated
+    struct1 := struct{}
+
+assert_valid:
+    @deprecated
+    F():void = {}
+
+assert_valid:
+    @deprecated
+    enum1 := enum:
+        A
+
+assert_valid:
+    enum1 := enum:
+        @deprecated
+        A
+
+assert_valid:
+    @deprecated
+    interface1 := interface{}
+
+assert_semantic_error(3604):
+    F(X:int):void =
+        @deprecated
+        X
+
+assert_semantic_error(3596):
+    F(@deprecated X:int):void = {}
+
+assert_semantic_error(3596):
+    X<deprecated>:int = 0
+
+assert_semantic_error(2009):
+    @deprecated
+    X:int = 1
+    F():int = X
+
+assert_semantic_error(2009):
+    @deprecated
+    class1 := class{}
+    F():void =
+        class1{}
+
+assert_semantic_error(2009):
+    @deprecated
+    struct1 := struct{}
+    F():void =
+        struct1{}
+
+assert_semantic_error(2009):
+    @deprecated
+    F():void = {}
+    G():void = F()
+
+assert_semantic_error(2009):
+    @deprecated
+    enum1 := enum:
+        A
+    F():void =
+        enum1.A
+
+assert_semantic_error(2009):
+    enum1 := enum:
+        @deprecated
+        A
+    F():void =
+        enum1.A
+
+assert_valid:
+    enum1 := enum:
+        @deprecated
+        A
+        B
+    F():void =
+        enum1.B
+
+assert_semantic_error(2009):
+    @deprecated
+    interface1 := interface{}
+    F(:interface1):void = {}
+
+assert_semantic_error(2009):
+    @deprecated
+    interface1 := interface{}
+    class1 := class(interface1) {}
+
+assert_semantic_error(2009):
+    @deprecated
+    class1(t:type) := class{}
+    F():void =
+        class1(int){}
+
+assert_semantic_error(2009):
+    @deprecated
+    F(:int):void = {}
+    F(:float):void = {}
+    G():void = F(0)
+
+assert_valid:
+    @deprecated
+    F(:int):void = {}
+    F(:float):void = {}
+    G():void = F(0.0)
+
+assert_semantic_error<depends_on_library>(2009):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    F():void = TestDeprecated()
+
+# Test that deprecated definitions can use another deprecated definition.
+assert_semantic_error(2009){@deprecated c := class<computes>{};             X:?c=false}
+assert_valid               {@deprecated c := class<computes>{}; @deprecated X:?c=false}
+
+assert_semantic_error(2009){@deprecated c := class<computes>{};             F(X:c):void={}}
+assert_valid               {@deprecated c := class<computes>{}; @deprecated F(X:c):void={}}
+
+assert_semantic_error(2009){@deprecated c := class<computes>{};             F():?c=false}
+assert_valid               {@deprecated c := class<computes>{}; @deprecated F():?c=false}
+
+assert_semantic_error(2009){@deprecated c := class<computes>{};             F():void=c{}}
+assert_valid               {@deprecated c := class<computes>{}; @deprecated F():void=c{}}
+
+assert_semantic_error(2009){@deprecated c := class<computes>{};             d := class(c){}}
+assert_valid               {@deprecated c := class<computes>{}; @deprecated d := class(c){}}
+
+assert_semantic_error(2009){@deprecated c := class<computes>{};             t := type{_(:c):void}}
+assert_valid               {@deprecated c := class<computes>{}; @deprecated t := type{_(:c):void}}
+
+assert_valid:
+    @deprecated TestModule := module{}
+
+assert_semantic_error(2009):
+    @deprecated TestModule := module{}
+    using{/Verse.org/VerseTests/TestModule}
+
+assert_semantic_error(2009):
+    @deprecated TestModule := module{TestFunc<public>():void = {}}
+    F():void = TestModule.TestFunc()

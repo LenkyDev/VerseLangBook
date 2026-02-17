@@ -1,0 +1,119 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Concurrency }
+using { /Verse.org/Restricted }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+int_array_ref := class:
+    var Contents:[]int = ()
+
+Await4(Arg:awaitable(int))<suspends>:[]int =
+    for (I := 1..4):
+        Arg.Await()
+    
+Signal4(Arg:signalable(int))<suspends>:void =
+    for (I := 1..4):
+        Arg.Signal(I)
+
+Signal1(Arg:signalable(int))<suspends>:void =
+    Arg.Signal(1)
+
+EventTest(Arg:event(int), Result:int_array_ref)<suspends>:void =
+    X := sync:
+        Await4(Arg)
+        Signal4(Arg)
+    set Result.Contents = X(0)
+
+assert:
+    X := event(int){}
+    Result := int_array_ref{}
+    spawn{EventTest(X, Result)}
+    CoroUtils.Tick(1)
+    Result.Contents = (1, 2, 3, 4)
+
+StickyEventTest(Arg:sticky_event(int), Result:int_array_ref)<suspends>:void =
+    X := sync:
+        Await4(Arg)
+        Signal1(Arg)
+    set Result.Contents = X(0)
+
+assert:
+    X := sticky_event(int){}
+    Result := int_array_ref{}
+    spawn{StickyEventTest(X, Result)}
+    CoroUtils.Tick(1)
+    Result.Contents = (1, 1, 1, 1)
+
+reentrant_event_test := class:
+    Event:event(logic) = event(logic){}
+    Awaiter()<suspends>:void=
+        Argument := Event.Await()
+        spawn{Awaiter()}
+        if (Argument?):
+            Event.Signal(false)
+assert:
+    Test:=reentrant_event_test{}
+    spawn{Test.Awaiter()}
+    Test.Event.Signal(true)
+
+
+subscribe_test := class:
+    Event:subscribable_event_intrnl(float) = subscribable_event_intrnl(float){}
+    var X:float = 0.0
+
+    Run()<decides>:void=
+        Cancelable := Event.Subscribe(HandleEvent)
+
+        # Subscribe works
+        Event.Signal(1.0)
+        X = 1.0
+
+        # Handles consecutive signals
+        Event.Signal(2.0)
+        X = 2.0
+
+        # Unsubscribe works
+        Cancelable.Cancel()
+        Event.Signal(3.0)
+        X = 2.0
+
+    HandleEvent(Result:float):void=
+        set X = Result
+
+assert:
+    Test := subscribe_test{}
+    Test.Run[]
+
+subscribe_transacts_test := class:
+    Event:subscribable_event_intrnl(int) = subscribable_event_intrnl(int){}
+    var X:int = 0
+
+    Run()<decides>:void=
+        RunSubscribeTest[]
+        RunCancelTest[]
+
+    RunSubscribeTest()<decides>:void=
+        if:
+            Cancelable := Event.Subscribe(HandleEvent)
+            false?
+        
+        Event.Signal(1)
+        X = 0
+
+    RunCancelTest()<decides>:void=
+        Cancelable := Event.Subscribe(HandleEvent)
+        
+        if:
+            Cancelable.Cancel()
+            false?
+        
+        Event.Signal(1)
+        X = 1
+
+        
+    HandleEvent(Result:int):void=
+        set X = Result
+
+assert:
+    Test := subscribe_transacts_test{}
+    Test.Run[]

@@ -1,0 +1,39 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+array_of_int := class(serializable_class):
+    Value:[]int=array{12345}
+
+array_of_char := class(serializable_class):
+    Value:[]char=array{0o42}
+    
+# Versioned binary serialization roundtripping tests
+
+assert{Instance := array_of_int{Value:=array{       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{1      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{2, 0, 3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_char{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'a'           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'b', 0o00, 'c'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char); RoundtrippedInstance.Value = Instance.Value}
+
+# Unversioned binary serialization roundtripping tests
+
+assert{Instance := array_of_int{Value:=array{       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{1      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{2, 0, 3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_char{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'a'           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'b', 0o00, 'c'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Value = Instance.Value}
+
+# Text serialization roundtripping  tests
+
+assert{Instance := array_of_int{Value:=array{       }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{1      }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_int{Value:=array{2, 0, 3}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_int, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+
+assert{Instance := array_of_char{Value:=array{              }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'a'           }}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}
+assert{Instance := array_of_char{Value:=array{'b', 0o00, 'c'}}; RoundtrippedInstance := SerializeAndDeserialize(Instance, array_of_char, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Value = Instance.Value}

@@ -1,0 +1,59 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3588, 3532, 3588):
+    c := class{}
+    c(I:int):c=c{}
+
+<#
+
+Some test code that we can't use until we allow functions with same name as class
+
+#Fail
+   c := class{}
+   c(I:int):c=c{}
+   F(I:int):void = {}
+   F(C:c):void={}    # F should accept both c and int
+
+
+#Fail
+   c := class{}
+   c(I:int):c=c{}
+
+   M0 := module:
+       F<public>(I:int):void={}
+
+   M1 := module:
+       F<public>(C:c):void={}
+
+   using {M0}
+   using {M1}
+
+   G():void=F(0) # ambiguous because int is in the domain of c.
+
+#Ok
+   c := class{}
+
+   M0 := module:    
+       F<public>(I:int):void={}
+       c(I:int):c=c{}
+
+   M1 := module:
+       F<public>(C:c):void={}
+
+   using {M0}
+   using {M1}
+
+   G():void=F(0) # Must be M0.F, M1.F didn't know about c(I:int) when it was defined.
+
+#Ok
+   M0 := module:
+       c<public> := class{}
+  
+   using { M0 }
+
+   F<public>(I:int):void={}
+   c(I:int):c=c{}
+
+   F<public>(C:M0.c):void={} # This F can not accept an int
+
+#>

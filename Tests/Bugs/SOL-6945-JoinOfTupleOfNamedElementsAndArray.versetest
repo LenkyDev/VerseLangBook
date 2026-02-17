@@ -1,0 +1,67 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3509):
+    F1(G(:[]int):int):int = G(1, 2, 3)
+    F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+    H(X:[]int):int = X.Length
+    Main():void =
+        F := if (false?) then F1 else F2
+        F(H)
+
+assert_semantic_error(3509):
+    F1(G(:[]int):int):int = G(1, 2, 3)
+    F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+    H(Y:[]int, ?X:int):int = Y.Length + X
+    Main():void =
+        F := if (false?) then F1 else F2
+        F(H)
+
+assert_semantic_error(3509):
+    F1(G(:[]int):int):int = G(1, 2, 3)
+    F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+    H(Y:int, ?X:int = 1):int = Y + X
+    Main():void =
+        F := if (false?) then F1 else F2
+        F(H)
+
+assert_semantic_error(3509):
+    F1(G(:[]int):int):int = G(1, 2, 3)
+    F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+    H(Y:[]int, ?X:int = 1):int = Y.Length + X
+    Main():void =
+        F := if (false?) then F1 else F2
+        F(H)
+
+bp_vm_only:
+    # Not implemented
+    assert_ir_error(3502, 3502):
+        F1(G(:[]int):int):int = G(1, 2, 3)
+        F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+        H(:any):int = 1
+        Main()<decides>:void =
+            F := if (false?) then F1 else F2
+            F(H) = 1
+
+    assert_ir_error(3502, 3502):
+        F1(G(:[]int):int):int = G(1, 2, 3)
+        F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+        H(:any):int = 2
+        Main()<decides>:void =
+            F := if (true?) then F1 else F2
+            F(H) = 2
+verse_vm_only:
+    assert_valid:
+        F1(G(:[]int):int):int = G(1, 2, 3)
+        F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+        H(:any):int = 1
+        Main()<decides>:void =
+            F := if (false?) then F1 else F2
+            F(H) = 1
+
+    assert_valid:
+        F1(G(:[]int):int):int = G(1, 2, 3)
+        F2(G(:int, ?X:int):int):int = G(1, ?X := 2)
+        H(:any):int = 2
+        Main()<decides>:void =
+            F := if (true?) then F1 else F2
+            F(H) = 2

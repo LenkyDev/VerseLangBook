@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+a_class := class:
+    Thing:float = 2.2
+
+assert:
+    # before the bugfix, the solaris codegen would've generated two local
+    # properties called Thing, which would later confuse serialization
+    # code that looks up properties by name (instead of eg. by offset).
+
+    # the codegen now avoids this, and will emit an ICE if it happens
+    # again (eg. as a result of further codegen changes)
+
+    Thing := a_class{Thing := 3.3}
+    Thing.Thing = 3.3

@@ -1,0 +1,86 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Test type with function declarations as subexpressions.
+f0()<transacts>:int=return 0
+f1()<transacts>:int=return 1
+
+f2(x:int, y:int):int=return x * y
+f3(x:int, y:int):int=return x + y
+
+f4(g:type{_()<transacts>:int}):int=return g()
+f5(g:type{_(:int, :int):int}, x:int, y:int):int=return g(x, y)
+
+assert{f4(f0)=0}
+assert{f4(f1)=1}
+
+assert{f5(f2, 3, 4) = 12}
+assert{f5(f3, 3, 4) = 7}
+
+# Require type function declarations to have a return type but not a body.
+assert_valid               {C := class {a:type{f():void}}}
+assert_semantic_error(3552){C := class {a:type{f():void={}}}}
+assert_semantic_error(3552){C := class {a:type{f():void={}}}}
+
+# Test type used as the type of a class member
+C0 := class:
+    f:type{_()<transacts>:int}
+
+assert{C0{f:=f0}.f()=0}
+assert{C0{f:=f1}.f()=1}
+
+# Test type used as the type of a local
+f6(b:logic):int=
+    g:type{_()<transacts>:int} := if (b?) { f0 } else { f1 }
+    return g()
+assert{f6(true)=0}
+assert{f6(false)=1}
+
+# Test type used to create an optional function type
+f7(g:?type{_()<transacts>:int}):int=
+    return g?() or -1
+assert{f7(false)=-1}
+assert{f7(option{f0})=0}
+assert{f7(option{f1})=1}
+
+# Test type used to create a mutable function type
+f8():int=
+    var g:type{_()<transacts>:int} = f0
+    r0 := g()
+    set g = f1
+    r1 := g()
+    return r0 - r1
+assert{f8()=-1}
+
+# Test type used to create an array of functions
+f9(gs:[]type{_()<transacts>:int}):int=
+    var (local:)result:int = 0
+    for(g : gs) { set (local:)result += g() }
+    return (local:)result
+assert{f9(array{})=0}
+assert{f9(array{f0})=0}
+assert{f9(array{f1})=1}
+assert{f9(array{f1,f1})=2}
+assert{f9(array{f1,f1,f0})=2}
+
+assert_valid{f():void= type{_():int} }
+assert_valid{f():void={type{_():int}}}
+
+# Typedef does not yet support anything other than function declarations as subexpressions.
+assert_semantic_error(3544)      {C := class {a:type{}}}
+assert_semantic_error(3552)      {C := class {a:type{x:int}}}
+assert_semantic_error(3544)      {C := class {a:type{x:int,y:float}}}
+assert_semantic_error(3552, 3552){C := class {a:type{1..4}}}
+assert_semantic_error(3552)      {C := class {a:type{option{x:int}}}}
+assert_semantic_error(3552)      {C := class {a:type{1}}}
+assert_semantic_error(3552)      {C := class {a:type{""}}}
+assert_semantic_error(3552)      {C := class {a:type{C}}}
+assert_semantic_error(3552, 3670){C := class {a:type{attribute}}}
+assert_semantic_error(3502)      {C := class {a:type{array}}}
+assert_semantic_error(3502)      {C := class {a:type{option}}}
+assert_semantic_error(3552)      {C := class {a:type{int}}}
+assert_semantic_error(3502)      {C := class {a:type{F()}}; F():void={}}
+
+# Test declaring function effects in a type
+assert_valid:
+    f10()<computes>:int=return 0
+    f11():void= { X:type{_()<computes>:int} := f10 }

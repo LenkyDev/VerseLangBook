@@ -1,0 +1,73 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+c0 := class:
+    var M0:[int]int = map{0=>0}
+assert:
+    C0C:c0 = c0{}
+    if:
+        set C0C.M0[0] = 42
+        false?
+    then:
+        false?
+    else:
+        C0C.M0[0] = 0
+
+assert:
+    C0C:c0 = c0{}
+    C0C.M0[0] = 0
+    if (block:
+        set C0C.M0[0] = 42
+        false = true
+    ):
+        false?
+    else:
+        C0C.M0[0] = 0
+
+assert:
+    C0C:c0 = c0{}
+    C0C.M0[0] = 0
+    if (set C0C.M0[0] = 42; false?):
+        false?
+    else:
+        C0C.M0[0] = 0
+
+assert:
+    C0C:c0 = c0{}
+    C0C.M0[0] = 0
+    if (set C0C.M0[0] = 42, false?):
+        false?
+    else:
+        C0C.M0[0] = 0
+
+c1 := class:
+    var A0:[]int = array{0}
+assert:
+    C1C:c1 = c1{}
+    if:
+        set C1C.A0[0] = 42
+        false?
+    then:
+        false?
+    else:
+        C1C.A0[0] = 0
+
+assert:
+    C1C:c1 = c1{}
+    C1C.A0[0] = 0
+    if (block {
+        set C1C.A0[0] = 42
+        false = true
+    }):
+        false?
+    else:
+        C1C.A0[0] = 0
+
+closure := class:
+    var M1 : [int]int = map{0=>0}
+    DoSet()<transacts><decides>:void=
+        set M1[0] = 42
+        false?
+assert:
+    Closure := closure{}
+    not Closure.DoSet[]
+    Closure.M1[0] = 0

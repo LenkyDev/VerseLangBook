@@ -1,0 +1,93 @@
+super_class := class<unique>{I:int}
+sub_class := class(super_class) {}
+
+# Ensure doesn't mutate the original array
+assert:
+    arr := array{86,75,309}
+    originalCount := arr.Length
+    newArr := arr + arr
+    newArr=array{86,75,309,86,75,309}
+
+# Ensure combined array match in expected count and order
+assert:
+    arrA := array{1,2,3,4}
+    arrB := array{1,2,3}
+    arrAB := arrA + arrB
+    arrBA := arrB + arrA
+    arrAB = array{1,2,3,4,1,2,3}
+    arrBA = array{1,2,3,1,2,3,4}
+
+# Ensure you can combine arrays of differing related types
+assert:
+    Super1 := super_class{I:=1}
+    Super9 := super_class{I:=9}
+    Sub8 := sub_class{I:=8}
+    Sub4 := sub_class{I:=4}
+    SuperArray:[]super_class = array{Super1, Super9}
+    SubArray:[]sub_class = array{Sub8, Sub4}
+
+    SuperSubArray := SuperArray + SubArray
+    SuperSubArray=array{Super1, Super9, Sub8, Sub4}
+
+    SubSuperArray := SubArray + SuperArray
+    SubSuperArray=array{Sub8, Sub4, Super1, Super9}
+
+
+# Combining a super-object array into a sub-object array, does not produce a sub-object array
+assert_semantic_error(3510):
+    super_class := class{}
+    sub_class := class(super_class){}
+    F(A:[]super_class, B:[]sub_class):[]sub_class=A + B
+
+# Test combining arrays of disjoint types. The result should be an array of type []any.
+assert:
+    A:[]int = array{0}
+    B:[]float = array{0.0}
+    (A + B)=array{0, 0.0}
+
+# Test the += operator.
+assert:
+    var a:[]int=array{1,2}
+    set a += array{3}
+    a = array{1,2,3}
+
+# Test that += requires the RHS to be a subtype of the LHS value type.
+assert_valid:
+    Parent := class{}
+    Child := class(Parent){}
+    f():void=
+        var a:[]Parent = array{Parent{}}
+        b:[]Child = array{Child{}}
+        set a += b
+assert_semantic_error(3509):
+    Parent := class{}
+    Child := class(Parent){}
+    f():void=
+        var a:[]Child = array{Child{}}
+        b:[]Parent = array{Parent{}}
+        set a += b
+
+# Test that you can't use += on non-pointer array types.
+assert_semantic_error(3509){ f():void={a:[]int=array{}; set a += array{1}} }
+
+# Test on arrays with non-POD elements.
+assert:
+    ComparableArray1:[]comparable = array{1,2,3,4}
+    ComparableArray2:[]comparable = array{'a','b','c','d'}
+    ComparableArray1+ComparableArray2 = array{1,2,3,4,'a','b','c','d'}
+
+# Test in-place concatenation.
+assert:
+    var ComparableArray:[]comparable = array{1,2,3,4}
+    set ComparableArray += array{'a','b','c','d'}
+    ComparableArray = array{1,2,3,4,'a','b','c','d'}
+
+assert:
+    var ComparableArray:[]comparable = array{'a','b','c','d'}
+    set ComparableArray = array{1,2,3,4} + ComparableArray
+    ComparableArray = array{1,2,3,4,'a','b','c','d'}
+
+assert:
+    var ComparableArray:[]comparable = array{1,2,3,4}
+    set ComparableArray = ComparableArray + ComparableArray
+    ComparableArray = array{1,2,3,4,1,2,3,4}

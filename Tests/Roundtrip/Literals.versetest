@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_roundtrip{X}
+assert_roundtrip{5}
+assert_roundtrip{15.0}
+assert_roundtrip{"literal"}
+assert_roundtrip{"interpolated {10 + 1} literal"}
+assert_roundtrip{"interpolated {Y} literal"}
+assert_roundtrip("hidden {
+       } newline"
+){"hidden {} newline"
+}
+assert_roundtrip{'l'}
+assert_roundtrip{true}
+assert_roundtrip{false}

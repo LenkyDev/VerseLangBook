@@ -1,0 +1,225 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+test_class_a := class
+{
+    text:string := "[]"
+    block:
+        CoroUtils.LogEvent(text)
+}
+
+test_struct_a := struct
+{
+    C0<public>:?test_class_a = option{test_class_a{}}
+    C1<public>:?test_class_a = option{test_class_a{text:="[C1]"}}
+    C2<public>:?test_class_a = false
+}
+
+# This bug was about default initializing types before doing init-overrides. In the above types, this 
+# meant that we always initialized two test_class_a-type instances (and observed their side-effects) even if
+# we immediately threw them away through overrides.
+
+
+# Default case with no overrides
+assert:
+    SA := test_struct_a{}
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="[][C1]"
+
+# override everything to empty
+assert:
+    SA := test_struct_a:
+        C0:=false
+        C1:=false
+        C2:=false
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()=""
+
+# override some things to alternate values
+assert:
+    SA := test_struct_a:
+        C0:=option{ test_class_a{text:="[ALT]"} }
+        C1:=option{ test_class_a{} }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="[ALT][]"
+
+# override some things to alternate values out of order
+assert:
+    SA := test_struct_a:
+        C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        C0:=false
+        C1:=option{ test_class_a{} }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}[]"
+
+# override some things to alternate values out of order - skipping a "middle" value
+assert:
+    SA := test_struct_a:
+        C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        C0:=false
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}[C1]"
+
+assert:
+    SA := test_struct_a:
+        C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        C1:=option{ test_class_a{text:="<AngledC1>"} }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}<AngledC1>[]"
+
+
+# -----------------
+# Now do it all over again with classes in classes instead of classes in structs
+
+test_class_b := class
+{
+    C0<public>:?test_class_a = option{test_class_a{}}
+    C1<public>:?test_class_a = option{test_class_a{text:="[C1]"}}
+    C2<public>:?test_class_a = false
+}
+
+
+# Default case with no overrides
+assert:
+    CB := test_class_b{}
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="[][C1]"
+
+# override everything to empty
+assert:
+    CB := test_class_b{ C0:=false, C1:=false, C2:=false }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()=""
+
+# override some things to alternate values
+assert:
+    CB := test_class_b:
+        C0:=option{ test_class_a{text:="[ALT]"} }
+        C1:=option{ test_class_a{} }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="[ALT][]"
+
+# override some things to alternate values out of order
+assert:
+    CB := test_class_b:
+        C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        C0:=false
+        C1:=option{ test_class_a{} }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}[]"
+
+# override some things to alternate values out of order - skipping a "middle" value
+assert:
+    CB := test_class_b:
+        C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        C0:=false
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}[C1]"
+
+assert:
+    CB := test_class_b:
+        C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        C1:=option{ test_class_a{text:="<AngledC1>"} }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}<AngledC1>[]"
+
+# -----------------
+# Now do it all over again with classes in structs in classes
+
+test_class_c := class:
+    S0<public>:?test_struct_a = option{ test_struct_a{} }
+    S1<public>:?test_struct_a =
+        option:
+            test_struct_a:
+                C1 := option{ test_class_a{ text:="[SC1]" } }
+    S2<public>:?test_struct_a = false
+
+
+# VerseVM produces "[SC1][]" rather than "[][SC1]" at the end here, following the
+# "archetype fields -> class fields" ordering for test_struct_a.C1,C0 in test_class_c.S1
+# Default case with no overrides
+assert:
+    CC := test_class_c{}
+    #DebugPrint(CoroUtils.GetEventLogString())
+    bp_vm_only. CoroUtils.GetEventLogString()="[][C1][][SC1]"
+    verse_vm_only. CoroUtils.GetEventLogString()="[][C1][SC1][]"
+
+# override everything to empty
+assert:
+    CC := test_class_c{ S0:=false, S1:=false, S2:=false }
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()=""
+
+# override some things to alternate values
+assert:
+    CC := test_class_c:
+    	S0:=option:
+    		test_struct_a:
+    			C1:=option{ test_class_a{text:="[ALT]"} }
+    	S1:=option{ test_struct_a{} }
+
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="[ALT][][][C1]"
+
+# override some things to alternate values
+assert:
+    CC := test_class_c:
+        S2:=option:
+            test_struct_a:
+                C2:=option{ test_class_a{text:="\{FancyC2\}"} }
+        S0:=option:
+            test_struct_a:
+                C0:=option{test_class_a{text:="[ALT]"}}
+                C1:=option{test_class_a{}}
+        S1:=option:
+            test_struct_a:
+                C0:=option{ test_class_a{} }
+                C2:=option{ test_class_a{} }
+
+    #DebugPrint(CoroUtils.GetEventLogString())
+    CoroUtils.GetEventLogString()="\{FancyC2\}[][C1][ALT][][][][C1]"
+
+# VerseVM produces "[SC1][]" rather than "[][SC1]" at the end here, following the
+# "archetype fields -> class fields" ordering for test_struct_a.C1,C0 in test_class_c.S1
+# override some things to alternate values out of order - skipping a "middle" value
+assert:
+    CC := test_class_c:
+        S2:=option:
+            test_struct_a:
+                C1:=option{test_class_a{text:="\{FancyC2\}"} }
+        S0:=option:
+            test_struct_a:
+                C0:=option{test_class_a{text:="[ALT]"}}
+                C1:=option{test_class_a{}}
+    #DebugPrint(CoroUtils.GetEventLogString())
+    bp_vm_only. CoroUtils.GetEventLogString()="\{FancyC2\}[][ALT][][][SC1]"
+    verse_vm_only. CoroUtils.GetEventLogString()="\{FancyC2\}[][ALT][][SC1][]"
+
+# -----------------
+
+test_class_d := class:
+    Property:int
+    # Don't invoke this for `test_class_d`'s CDO
+    block:
+        CoroUtils.LogEvent("test_class_d ")
+test_class_e := class:
+    # Don't invoke this for `test_class_e`'s CDO
+    block:
+        if (Property?):
+            CoroUtils.LogEvent("IS THERE ")
+        else:
+            CoroUtils.LogEvent("NOT THERE ")
+        CoroUtils.LogEvent("test_class_e ")
+    # But will `test_class_d`'s block be invoked when initializing `test_class_e`'s CDO?
+    Property:?test_class_d = option{test_class_d{Property := 1}}
+
+# VerseVM produces "pre test_class_e test_class_d IS THERE post", following the ordering of
+# fields and blocks as written in test_class_e's body, with a further twist due to leniency.
+assert:
+    CoroUtils.LogEvent("pre ")
+    # This is causing a crash in the new VM.
+    verse_vm_todo. C2:test_class_e = test_class_e{} 
+    CoroUtils.LogEvent("post")
+    #DebugPrint(CoroUtils.GetEventLogString())
+    verse_vm_todo. CoroUtils.GetEventLogString()="pre test_class_d IS THERE test_class_e post"

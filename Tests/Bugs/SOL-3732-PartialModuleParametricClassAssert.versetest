@@ -1,0 +1,13 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+bp_vm_only
+{
+assert_link_error():
+    vpackage(P0,/M,?Scope:=InternalAPI):
+        snippet:
+            c1<public>(t:type) := class{}
+            c2<public> := class<computes>{Field<public>:int}
+    vpackage(P1,/M,?Scope:=InternalAPI,?Dependencies:=(P0)):
+        snippet:
+            C2:c2 = c2{Field:=1}
+}

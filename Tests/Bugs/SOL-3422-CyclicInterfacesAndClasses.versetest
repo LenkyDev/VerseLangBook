@@ -1,0 +1,45 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3557, 3523):
+    i0 := interface(i1){}
+    i1 := interface(i0){}
+    super_class := class:
+        F(:i0):void={}
+    sub_class := class(super_class):
+        F<override>(:comparable):void={}
+
+assert_semantic_error(3557, 3523):
+    i0 := interface(i1){}
+    i1 := interface(i0){}
+    i2 := interface(i1){}
+    super_class := class:
+        F(:i0):void={}
+    sub_class := class(super_class):
+        F<override>(:comparable):void={}
+
+assert_semantic_error(3557, 3523):
+    c0 := class(c1) {
+        Bar():void = {}
+    }
+    c1 := class(c0) {
+        Foo():void = {}
+    }
+    super_class := class:
+        F(:c0):void={}
+    sub_class := class(super_class):
+        F<override>(:comparable):void={}
+
+assert_semantic_error(3557, 3523):
+    c0 := class(c1) {
+        Bar():void = {}
+    }
+    c1 := class(c0) {
+        Foo():void = {}
+    }
+    c2 := class(c1) {
+        Baz():void = {}
+    }
+    super_class := class:
+        F(:c0):void={}
+    sub_class := class(super_class):
+        F<override>(:comparable):void={}

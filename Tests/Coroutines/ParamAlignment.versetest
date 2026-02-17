@@ -1,0 +1,18 @@
+using { /Verse.org/Tests/VerseTestScriptCmd/test_vni }
+
+logic_result := class:
+    var Value:logic
+
+Call(R:logic_result, X:float, Y:logic)<suspends>:void =
+    Value := ParamAlignment(X, Y)
+    set R.Value = Value
+
+assert:
+    A := logic_result{Value := false}
+    spawn{Call(A, 42.0, true)}
+    A.Value = true
+
+assert:
+    A := logic_result{Value := true}
+    spawn{Call(A, 42.0, false)}
+    A.Value = false

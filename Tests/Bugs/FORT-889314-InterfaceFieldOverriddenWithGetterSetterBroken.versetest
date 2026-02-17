@@ -1,0 +1,46 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# A simplifed variant of the code that triggered a bug for fields in interfaces overridden in a class by a field using accessors.
+
+bank_vault_interface3<public> := interface:
+    var RequireThermite<public>:int = 123
+
+bank_vault_class3<public> := class(bank_vault_interface3):
+
+
+armored_transport_vault_dummy3 := class<concrete><final>(bank_vault_interface3):
+    Spawner:?vehicle_spawner_armored_transport_device3 = false
+
+    var RequireThermite<override><getter(MyGetRequireThermite)><setter(MySetRequireThermite)>:int = external{}
+
+    MyGetRequireThermite<private>(:accessor)<transacts>:int=
+        if (ValidSpawner := Spawner?):
+            return ValidSpawner.RequireThermite
+        return 234
+    MySetRequireThermite<private>(:accessor, V:int)<transacts>:void=
+        if (ValidSpawner := Spawner?):
+            set ValidSpawner.RequireThermite = V
+    
+vehicle_spawner_armored_transport_device3<public> := class<concrete><final>:
+    block:
+        set Vault = armored_transport_vault_dummy3{
+            Spawner := option { Self }
+        }
+
+    var<private> Vault<public>:bank_vault_interface3 = armored_transport_vault_dummy3{}
+
+    
+    var RequireThermite<getter(MyGetRequireThermite)><setter(MySetRequireThermite)>:int = external{}
+
+    MyGetRequireThermite<private>(:accessor)<transacts>:int={ return GetRequireThermiteFunction() }
+    MySetRequireThermite<private>(:accessor, V:int)<transacts>:void={ SetRequireThermiteFunction(V) }
+
+    var SecretValue:int = 567
+    GetRequireThermiteFunction()<transacts>:int = SecretValue
+    SetRequireThermiteFunction(V:int)<transacts>:void = set SecretValue = V
+
+assert:
+    Truck : vehicle_spawner_armored_transport_device3 = vehicle_spawner_armored_transport_device3{}
+    567 = Truck.Vault.RequireThermite
+    set Truck.Vault.RequireThermite = 678
+    678 = Truck.Vault.RequireThermite

@@ -1,0 +1,260 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Basic digest generation tests.
+
+assert_digest_generated(
+# Module import path: /A/Module
+Module<public> := module:
+    Class<public> := class:
+        FieldA<public>():void = external{}
+
+        FieldC<public>:int = external{}
+){
+    vpackage(P0, /A):
+        snippet:
+            Module<public> := module:
+                Class<public> := class:
+                    FieldA<public>():void = {}
+                    FieldB():void = {}
+                    FieldC<public>:int = 42
+}
+
+assert_digest_generated(
+# Module import path: /A/Module
+Module<public> := module:
+    (/A/Module:)Class<public> := class:
+        FieldA<public>():void = external{}
+
+        FieldC<public>:int = external{}
+
+# Module import path: /A/Module2
+Module2<public> := module:
+    (/A/Module2:)Class<public> := class:
+        FieldD<public>():void = external{}
+
+        FieldF<public>:int = external{}
+){
+    vpackage(P0, /A):
+        snippet:
+            Module<public> := module:
+                Class<public> := class:
+                    FieldA<public>():void = {}
+                    FieldB():void = {}
+                    FieldC<public>:int = 42
+    
+        snippet:
+            Module2<public> := module:
+                Class<public> := class:
+                    FieldD<public>():void = {}
+                    FieldE():void = {}
+                    FieldF<public>:int = 42
+}
+
+assert_digest_generated(
+# Module import path: /A/Module
+Module<public> := module:
+    Class<public> := class:
+        FieldA<public>():void = external{}
+){
+    vpackage(P0, /A):
+        snippet:
+            Module<public> := module:
+                Class<public> := class:
+                    FieldA<public>():void = {}
+                    FieldB():void = {}
+}    
+
+# TODO: A non-visible interface field should not generate an overridden field definition in the digest,
+# but today, we make them show up anyway because the asset manifest today relies on this implementation detail for
+# generating `scoped` definitions regardless that are preserved to the final asset digest.
+assert_digest_generated(
+# Module import path: /A/Module
+Module<public> := module:
+    Class<public> := class:
+        FieldA<override>():void = external{}
+
+        FieldB<public>():void = external{}
+){
+    vpackage(P0, /A):
+        snippet:
+            Module<public> := module:
+                Interface := interface:
+                    FieldA<scoped{/A}>():void = {}
+    
+                Class<public> := class(Interface):
+                    FieldA<override>():void = {}
+                    FieldB<public>():void = {}
+}
+
+# Interfaces that have fields with default values should not have their IR-generated definitions show up in the digest.
+assert_digest_generated(
+# Module import path: /A/Module
+Module<public> := module:
+    Class<public> := class:
+        FieldA<override>:int = external{}
+
+        FieldB<override>():int = external{}
+){
+    vpackage(P0, /A):
+        snippet:
+            Module<public> := module:
+                Interface := interface:
+                    FieldA<public>:int = 42
+                    FieldB<public>():int = { 42 + 42 }
+
+                Class<public> := class(Interface):
+                    FieldA<override>:int = 84
+                    FieldB<override>():int = 100
+}
+
+# No variance requirement
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class {}
+}
+
+# Covariant requirement
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_():tuple(t)} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        Data<private>:?t = false
+}
+
+# Contravariant requirement
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_(:t):tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        Method<private>(:t):void = {}
+}
+
+# Covariant and contravariant requirement
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_(:t):tuple(t)} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        Method<private>(X:t):t = X
+}
+
+# Multiple variance requirements
+assert_digest_generated(
+    class1<public>(t:type, u:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_(:t):tuple(t, u)} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type, u:type) := class:
+        Method<private>(X:t):t = X
+        Data<private>:?u = false
+}
+
+# Variance and subclasses
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+
+    class2<public>(t:type) := class(class1(t)):
+        (/A/class2:)class2_Variance<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class {}
+    class2<public>(t:type) := class(class1(t)) {}
+}
+
+assert_valid:
+    class1<public>(t:type) := class:
+        class2_Variance<public>:int = 0
+    class2<public>(t:type) := class(class1(t)):
+        F():int = class2_Variance
+
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+
+        class2_Variance<public>:int = external{}
+
+    class2<public>(t:type) := class(class1(t)):
+        (/A/class2:)class2_Variance0<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        class2_Variance<public>:int = 0
+    class2<public>(t:type) := class(class1(t)) {}
+}
+
+# Variance newlines
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance<private>:?type{_():tuple()} = external{}
+
+        Data<public>:int = external{}
+
+    class2<public>(t:type) := class(class1(t)):
+        (/A/class2:)class2_Variance<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        Data<public>:int = 0
+    class2<public>(t:type) := class(class1(t)) {}
+}
+
+# "Variance" name taken
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance0<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        class1_Variance:int = 0
+}
+
+assert_digest_generated(
+    class1_Variance<public>:int = external{}
+
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance0<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1_Variance<public>:int = 0
+    class1<public>(t:type) := class {}
+}
+
+# "Variance" and "Variance0" name taken
+assert_digest_generated(
+    class1<public>(t:type) := class:
+        (/A/class1:)class1_Variance1<private>:?type{_():tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    class1<public>(t:type) := class:
+        class1_Variance:int = 0
+        class1_Variance0:int = 0
+}
+
+# `struct` do not need to have `Variance`, as they cannot have hidden data.
+assert_digest_generated(
+    struct1<public>(t:type) := struct:
+        Data:?t = external{}
+){
+vpackage(P0, /A). snippet:
+    struct1<public>(t:type) := struct:
+        Data:?t = false
+}
+
+# `interface` requirement
+assert_digest_generated(
+    interface1<public>(t:type) := interface:
+        (/A/interface1:)interface1_Variance<private>:?type{_(:t):tuple()} = external{}
+){
+vpackage(P0, /A). snippet:
+    interface1<public>(t:type) := interface:
+        Data<private>:?(t -> void) = false
+}

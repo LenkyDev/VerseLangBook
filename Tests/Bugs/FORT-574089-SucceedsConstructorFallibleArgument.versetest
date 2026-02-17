@@ -1,0 +1,30 @@
+class1 := class:
+    Property:int
+
+Class1<constructor>(Property:int)<transacts> := class1:
+    Property := Property
+
+assert:
+    X := array{1, 2, 3}
+    Y := Class1(X[1])
+    Y.Property = 2
+
+assert:
+    X := array{1, 2, 3}
+    not Class1(X[3])
+
+DecidesClass1<constructor>(Arg:[]int, I:int)<transacts><decides> := class1:
+    Class1<constructor>(Arg[I])
+
+assert:
+    X := array{array{1, 2}}
+    Y := DecidesClass1[X[0], 1]
+    Y.Property = 2
+
+assert:
+    X := array{array{1, 2}}
+    not DecidesClass1[X[0], 2]
+
+assert:
+    X := array{array{1, 2}}
+    not DecidesClass1[X[1], 1]

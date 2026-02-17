@@ -1,0 +1,1261 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Concurrency }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Basic tests of defining nominal parametric types
+assert_valid{t():=class{}}
+assert_valid{t(u:type):=class{}}
+assert_valid{t(u:type):=struct{}}
+assert_valid{t(u:type):=class(){}}
+assert_valid{t( :type):=class{}}
+
+assert_semantic_error(3540){t(u) := class{}}
+
+assert_semantic_error(3503){t(u:type where v:type) := class{}}
+assert_semantic_error(3503){t(u:type, v:type where w:type) := class{}}
+
+# Basic tests of defining structural parametric types
+assert_valid{t(u:type):=type{F(:u):u}}
+assert_valid{t(u:type):=tuple(u,u)}
+assert_valid{t(u:type):=u->u}
+assert_valid{t(u:type):=[]u}
+assert_valid{t(u:type):=[int]u}
+
+# Basic tests of instantiating parametric types
+assert_valid{t(u:type):=class{}; F():void=(t(int)){}}
+assert_valid{t(u:type):=class{}; F():void=t(int){}}
+
+assert_valid{t(u:type):=class{}; F():void={t}}
+assert_semantic_error(3547){t(u:type):=class{}; F(X:t):void={}}
+
+assert_valid               {t(u:type):=class{}; F():void=t(int){}}
+assert_semantic_error(3605){t(u:type):=class{}; F():void=t{}}
+assert_semantic_error(3509){t(u:type):=class{}; F():void=t(){}}
+assert_semantic_error(3509, 3509){t(u:type):=class{}; F():void=t() of {}}
+assert_semantic_error(3509){t(u:type):=class{}; F():void=t(int,float){}}
+
+assert_valid               {t(u:type,v:type):=class{}; F():void=t(int,float){}}
+
+c0(t:type):=class:
+    X:t
+    GetX():t=X
+
+F0(X:int):c0(int)=c0(int){X:=X}
+F1(C:c0(int)):int=C.X
+F2(X:int):int=F1(F0(X))
+
+assert{F0(0)}
+assert{F0(1)}
+assert{F0(10)}
+assert{F2(10)=10}
+assert{F0(10).GetX()=10}
+
+c1():=class{X:int}
+F3():c1()=(c1()){X:=10}
+assert{F3().X=10}
+
+# Test the implicit variance of parametric types.
+assert_valid               {super_class:=class{}; sub_class:=class(super_class){}; bivariant_class    (t:type):=class<abstract>{Method(   ):void}; F(C:bivariant_class    (super_class)):void={}; G(C:bivariant_class    (sub_class  )):void=F(C)}
+assert_valid               {super_class:=class{}; sub_class:=class(super_class){}; bivariant_class    (t:type):=class<abstract>{Method(   ):void}; F(C:bivariant_class    (sub_class  )):void={}; G(C:bivariant_class    (super_class)):void=F(C)}
+
+assert_valid               {super_class:=class{}; sub_class:=class(super_class){}; covariant_class    (t:type):=class<abstract>{Method(   ):t   }; F(C:covariant_class    (super_class)):void={}; G(C:covariant_class    (sub_class  )):void=F(C)}
+assert_semantic_error(3509){super_class:=class{}; sub_class:=class(super_class){}; covariant_class    (t:type):=class<abstract>{Method(   ):t   }; F(C:covariant_class    (sub_class  )):void={}; G(C:covariant_class    (super_class)):void=F(C)}
+
+assert_valid               {super_class:=class{}; sub_class:=class(super_class){}; contravariant_class(t:type):=class<abstract>{Method(X:t):void}; F(C:contravariant_class(sub_class  )):void={}; G(C:contravariant_class(super_class)):void=F(C)}
+assert_semantic_error(3509){super_class:=class{}; sub_class:=class(super_class){}; contravariant_class(t:type):=class<abstract>{Method(X:t):void}; F(C:contravariant_class(super_class)):void={}; G(C:contravariant_class(sub_class  )):void=F(C)}
+
+assert_semantic_error(3509){super_class:=class{}; sub_class:=class(super_class){}; invariant_class    (t:type):=class<abstract>{Method(X:t):t   }; F(C:invariant_class    (sub_class  )):void={}; G(C:invariant_class    (super_class)):void=F(C)}
+assert_semantic_error(3509){super_class:=class{}; sub_class:=class(super_class){}; invariant_class    (t:type):=class<abstract>{Method(X:t):t   }; F(C:invariant_class    (super_class)):void={}; G(C:invariant_class    (sub_class  )):void=F(C)}
+
+# TODO: classes containing pointer members aren't allowed.
+#assert_semantic_error(3509){super_class:=class{}; sub_class:=class(super_class){}; invariant_class    (t:type):=class<abstract>{var X:t            }; F(C:invariant_class    (sub_class  )):void={}; G(C:invariant_class    (super_class)):void=F(C)}
+#assert_semantic_error(3509){super_class:=class{}; sub_class:=class(super_class){}; invariant_class    (t:type):=class<abstract>{var X:t            }; F(C:invariant_class    (super_class)):void={}; G(C:invariant_class    (sub_class  )):void=F(C)}
+
+super_class:=class{}
+sub_class:=class(super_class){}
+bivariant_class(t:type):=class{}
+covariant_class(t:type):=class{Method():?t=false}
+contravariant_class(t:type):=class{Method(X:t):void={}}
+invariant_class(t:type):=class{Method(X:t):t=X}
+
+assert{C:bivariant_class    (super_class) = bivariant_class    (sub_class  ){}}
+assert{C:bivariant_class    (sub_class  ) = bivariant_class    (super_class){}}
+assert{C:covariant_class    (super_class) = covariant_class    (sub_class  ){}}
+assert{C:contravariant_class(sub_class  ) = contravariant_class(super_class){}}
+
+F4(C:invariant_class(t), X:t where t:type):t=C.Method(X)
+assert{F4(invariant_class(int){}, 0)=0}
+
+# TODO: classes containing pointer members aren't allowed.
+# pointer_class(t:type):=class{var X:t}
+# assert{C:=pointer_class(int){X:=10}; set C.X = 11; C.X = 11}
+# assert{C:=pointer_class([]int){X:=array{1,2,3}}; set C.X[0] = 11; C.X = array{11,2,3}}
+
+assert_valid{super_class := class{}; my_type(t:type):=class(super_class){}}
+assert_valid{my_type(t:type):=class{}; sub_class := class(my_type(int)){}}
+
+# Combining parametric types and parametric functions.
+c2(t:type, u:type):=class{X:t, F(Y:u):tuple(t,u)=(X,Y)}
+F5(C:c2(t,u), Y:u where t:type, u:type):tuple(t,u)=C.F(Y)
+
+assert{Tuple:=F5(c2(int,float){X:=1}, 2.0); Tuple(0)=1; Tuple(1)=2.0}
+assert{Tuple:=F5(c2(float,int){X:=3.0}, 4); Tuple(0)=3.0; Tuple(1)=4}
+<#> TODO:
+    No overload of the function `operator'='` matches the provided arguments (:t,:[]int).
+    No overload of the function `postfix'()'` matches the provided arguments (:u,:int).
+    No overload of the function `postfix'()'` matches the provided arguments (:u,:int).
+#assert{Tuple:=F5(c2([]int,tuple(int,float)){X:=array{5,6}}, (7,8.0)); Tuple(0)=array{5,6}; Tuple(1)(0)=7; Tuple(1)(1)=8.0}
+
+assert_semantic_error(3509){c(      ):=class{}; F(:c(int)):void={}}
+assert_semantic_error(3509){c(t:type):=class{}; F(C:c()):void={}}
+assert_semantic_error(3509){c(t:type):=class{}; F(C:c(int,int)):void={}}
+
+bp_vm_only{
+assert_ir_error(3502, 3502):
+    my_type(t:type):=class:
+        F:t->t
+    F1(FLocal:t->t where t:type):my_type(t)=my_type(t){F:=FLocal}
+    F2(X:int):int=X+1
+    F3()<decides>:void=
+        C:=F1(F2)
+        C.F(0)=1
+    F4(X:int, Y:int):tuple(int,int)=(Y,X)
+    F5()<decides>:void=
+        C:=F1(F4)
+        C.F(1,2)
+}
+verse_vm_only
+{
+assert_valid:
+    my_type(t:type):=class:
+        F:t->t
+    F1(FLocal:t->t where t:type):my_type(t)=my_type(t){F:=FLocal}
+    F2(X:int):int=X+1
+    F3()<decides>:void=
+        C:=F1(F2)
+        C.F(0)=1
+    F4(X:int, Y:int):tuple(int,int)=(Y,X)
+    F5()<decides>:void=
+        C:=F1(F4)
+        C.F(1,2)
+}
+
+assert_valid{my_type(t:type):=class{X:t}}
+assert_valid{my_type(t:type):=struct{X:t}}
+
+assert_valid:
+    my_type(t:type):=class{F(Y:t):t=Y}
+    G(X:t where t:type):my_type(t)=my_type(t){}
+    H():void=int(G(1).F(2))
+
+assert_semantic_error(3509):
+    my_type(t:type):=class{F(Y:t):t=Y}
+    G(X:t where t:type):my_type(t)=my_type(t){}
+    H():void=int(G(1).F(2.0))
+
+# Don't allow recursive parametric types.
+assert_semantic_error(3502){t(u:type) := []t(u)}
+assert_semantic_error(3502){t(u:type) := [int]t(u)}
+assert_semantic_error(3502){t(u:type) := ?t(u)}
+assert_semantic_error(3502){t(u:type) := u->t(u)}
+assert_semantic_error(3502){t(u:type) := t(u)->u}
+assert_semantic_error(3590){t(u:type) := class(t(u)){}}
+assert_semantic_error(3599){t(u:type) := interface(t(u)){}}
+
+assert_valid:
+    list(t:type):=class{Value:t, Next:?list(t)}
+    SumList(List:?list(int)):int=if(Head := List?) then Head.Value + SumList(Head.Next) else 0
+
+# Polymorphic recursion is not yet supported.
+assert_semantic_error(3509):
+    my_type(t:type):=class{Next:my_type(?t)}
+assert_semantic_error(3509):
+    bi_list(t:type, u:type):=class{Value:t, Next:?bi_list(u,t)}
+
+# Mutual recursion is not yet supported.
+assert_semantic_error(3509, 3509):
+    t1(t:type):=class{Next:?t2(t)}
+    t2(t:type):=class{Next:?t1(t)}
+
+assert_semantic_error(3502){t(u:type) := []t(u); c:=class{X:t(int)}}
+assert_semantic_error(3502){t(u:type) := []t(u); F(X:t(int)):void={}}
+assert_semantic_error(3502){t(u:type) := []t(u); F():t(int)=F()}
+
+assert_valid:
+    c1(t:type) := class{X:t}
+    c2(t:type) := class{C:c1(t)}
+    F1(C:c1(t) where t:type):t=C.X
+    F2(C:c2(t) where t:type):t=C.C.X
+
+assert_valid:
+    c1(t:type) := class{X:t}
+    c2(t:type) := class{F(X:t):t=X}
+    Main(C1:c1(t), C2:c2(t) where t:type):t=C2.F(C1.X)
+
+# Parametric enums/modules aren't yet supported.
+assert_semantic_error(3502){t(u:type):=enum{}}
+assert_semantic_error(3502){t(u:type):=module{}}
+
+assert_valid:
+    t(u:type) := subtype(u)
+
+# See SOL-2758
+# make_subtype(t:type) := subtype(t)
+
+# IntIdentity(X:t where t:make_subtype(t)):t = X
+
+# assert:
+#     IntIdentity(0) = 0
+
+# Test using a parametric type alias.
+
+t0(u:type):=[int]u
+F6(Map:t0(string))<decides>:string=Map[10]
+assert{F6[map{9=>"9", 10=>"10", 11=>"11"}]="10"}
+
+t1(u:type) := []?u
+assert:
+    T:t1(int) = array{option{5},false,option{6}}
+    for(MaybeElement : T; Element := MaybeElement?){Element} = array{5,6}
+
+# Test uses of parametric type aliases from other parametric type aliases.
+assert_valid{t0(u:type):=[int]u ; t1(u:type):=[]t0(u); F(X:t1(u) where u:type)<decides>:u=X[0][1]}
+assert_valid:
+    # `t0` must occur before `t1` because bodies of functions without return
+    # types occurs during the `Type` phase.  It cannot occur later (say
+    # during `ValidateType`) because it must occur before `LinkOverrides`.
+    t0(u:type) := [int]u
+    t1(u:type) := []t0(u)
+    F(X:t1(u) where u:type)<decides>:u = X[0][1]
+
+assert_semantic_error(3502):
+    my_type(t:type):=class{}
+    my_type(X:int):my_type(int)=my_type(int){}
+
+# Test returning an invariant parametric type from a function that infers the type parameter.
+c3(t:type):=class{Method(X:t):t=X}
+F7(X:t where t:type):c3(t)=c3(t){}
+
+assert{F7(0).Method(1)=1}
+assert{F7(false).Method(true)=true}
+# TODO: No overload of the function `operator'='` matches the provided arguments (:t,:[]int).
+#assert{Array:=F7(array{0}).Method(array{1,2}); Array.Length=2; Array[0]=1; Array[1]=2}
+
+# Test using an externally-defined parametric types.
+assert:
+    T := test_external_parametric_type(int, float){U:=1.0}
+    T.Method(2)=1.0
+
+assert:
+    T := test_external_parametric_type2(float){T:=test_external_parametric_type(float,int){U:=3}}
+    T.T.Method(4.0)=3
+
+assert:
+    T:test_external_parametric_type3(int) = array{option{5},false,option{6}}
+    for(MaybeElement : T; Element := MaybeElement?){Element} = array{5,6}
+
+assert:
+    X := test_external_parametric_type5(int):
+        Property := 0
+    X.Method[0]
+    not X.Method[1]
+
+test_internal_parametric_type<public>(t:subtype(comparable)) := class(test_external_parametric_type4(t)):
+    Property<public>:t
+    Method<override>(Arg:comparable)<computes><decides>:t = Property = Arg
+
+assert:
+    X := test_internal_parametric_type(int):
+        Property := 0
+    X.Method[0]
+    not X.Method[1]
+
+assert_valid               {t(u:type)<computes>           := class{}}
+assert_valid               {t(u:type)<computes><decides>  := class{}}
+assert_valid               {t(u:type)<computes><suspends> := class{}}
+assert_semantic_error(3565){t(u:type)<converges>          := class{}}
+assert_valid               {t(u:type)<reads><allocates>   := class{}}
+assert_valid               {t(u:type)<transacts>          := class{}}
+assert_valid               {t(u:type)<reads>              := class{}}
+assert_valid               {t(u:type)<writes>             := class{}}
+assert_valid               {t(u:type)<allocates>          := class{}}
+
+# Allow native parametric types.
+assert_valid {t<native>(u:type) := class{}}
+assert_valid {t<native>(u:type) := class{}; c<native>:=class{DataMember<native>:t(int)}}
+
+# Test native parametric types.
+assert:
+    T := test_native_parametric_type(int){DataMember:=10}
+    T.Get()=10
+
+assert:
+    T := test_native_parametric_type(int){DataMember:=11}
+    T.GetNative()=11
+
+assert:
+    T := test_native_parametric_type(int){DataMember:=12}
+    GetFromTestNativeParametricType(T)=12
+
+assert:
+    T := test_native_parametric_type(int){DataMember:=13}
+    GetFromTestNativeParametricTypeInt(T)=13
+
+verse_vm_todo{
+assert:
+    X := TestNativeTypeFunction(test_native_type_function_sub)
+    X.Property = 42
+
+assert:
+    X := TestNativeTypeFunction(test_native_type_function_sub)
+    X.Property = 42
+} #verse_vm_todo
+
+assert:
+    X := test_native_parametric_type_inheritance1(int):
+        Property1 := 13
+    X.Get() = 13
+
+assert:
+    X := test_native_parametric_type_inheritance2(int):
+        Property1 := 13
+        Property2 := 42
+    X.Get() = 42
+
+assert:
+    X:test_native_parametric_iface(int) = test_native_parametric_impl{}
+    X.Method() = 13
+
+verse_vm_todo{
+Double(X:int):int = X * 2
+
+# Native overrides implement the overridden prototype,
+# so coercions are required around direct calls.
+assert:
+    X:test_native_parametric_impl = test_native_parametric_impl{}
+    X.Map(Double) = 84
+} #verse_vm_todo
+
+# Test the abstract attribute on parametric classes.
+assert_valid               {t(u:type) := class<abstract>{F():void}}
+assert_semantic_error(3591){t(u:type) := class          {F():void}}
+assert_semantic_error(3571){t(u:type) := class<abstract>{}; X:t(int)=t(int){}}
+
+# Test the final attribute on parametric classes.
+assert_valid{t(u:type) := class<final>{}}
+
+# Test parametric structs.
+s0(t:type):=struct{X:t}
+F9(S:s0(t) where t:type):t=S.X
+assert{F9(s0(int){X:=10})=10}
+assert{F9(s0(float){X:=10.0})=10.0}
+assert{F9(F9(s0(s0(int)){X:=s0(int){X:=11}}))=11}
+
+# Ensure constructor effects of prototype is copied to each instance
+assert_valid:
+    class1(t:type) := class<computes>:
+        Property:t
+    X:class1(int) = class1(int){Property := 1}
+
+assert_semantic_error(3512):
+    class1(t:type) := class<transacts>:
+        Property:t
+    X:class1(int) = class1(int){Property := 1}
+
+# Ensure constructor access of prototype is copied to each instance
+assert_valid:
+    module1 := module:
+        class1<public>(t:type) := class<public>:
+            Property<public>:t
+    Main():void =
+        X:module1.class1(int) = module1.class1(int){Property := 1}
+
+assert_semantic_error(3593):
+    module1 := module:
+        class1<public>(t:type) := class<internal>:
+            Property<public>:t
+    Main():void =
+        X:module1.class1(int) = module1.class1(int){Property := 1}
+
+# See SOL-2758
+# assert_valid:
+#     class1(t:type) := class:
+#         Property:t
+#     class1_identity(t:subtype(class1(u)), u:type) := class:
+#         Invoke(X:t):t = X
+#     Main()<decides>:void =
+#         X := class1_identity(class1(int), int){}
+#         X.Invoke(class1(int){Property := 1}).Property = 1
+
+# assert_semantic_error(0):
+#     class1 := class:
+#     class1_identity(t:subtype(class1)) := class:
+#         Invoke(X:t):t = X
+#     class2 := class:
+#         Property:int
+#     Main()<decides>:void =
+#         X := class1_identity(class2){}
+#         X.Invoke(class2{Property := 1}).Property = 1
+
+# Covariant subtyping
+assert_valid:
+    base := class:
+    sub := class(base):
+    covariant_class(t:type) := class:
+        Property:t
+    Main():void =
+        X:covariant_class(sub) = covariant_class(sub){Property := sub{}}
+        Y:covariant_class(base) = X
+        Z:base = Y.Property
+
+assert_semantic_error(3509):
+    base := class:
+    sub := class(base):
+    covariant_class(t:type) := class:
+        Property:t
+    Main():void =
+        X:covariant_class(base) = covariant_class(base){Property := base{}}
+        Y:covariant_class(sub) = X
+        Z:sub = Y.Property
+
+# Contravariant subtyping
+assert_semantic_error(3509):
+    base := class:
+    sub := class(base):
+    contravariant_class(t:type) := class:
+        Method(:t):void = {}
+    Main():void =
+        X:contravariant_class(sub) = contravariant_class(sub){}
+        Y:contravariant_class(base) = X
+        Y.Method(base{})
+
+assert_valid:
+    base := class:
+    sub := class(base):
+    contravariant_class(t:type) := class:
+        Method(:t):void = {}
+    Main():void =
+        X:contravariant_class(base) = contravariant_class(base){}
+        Y:contravariant_class(sub) = X
+        Y.Method(sub{})
+
+# Invariant subtyping
+assert_semantic_error(3509):
+    base := class:
+    sub := class(base):
+    invariant_class(t:type) := class:
+        Method(X:t):t = X
+    Main():void =
+        X:invariant_class(sub) = invariant_class(sub){}
+        Y:invariant_class(base) = X
+        Z:base = Y.Method(base{})
+
+assert_semantic_error(3509):
+    base := class:
+    sub := class(base):
+    invariant_class(t:type) := class:
+        Method(X:t):t = X
+    Main():void =
+        X:invariant_class(base) = invariant_class(base){}
+        Y:invariant_class(sub) = X
+        Z:sub = Y.Method(sub{})
+
+# Instantiated parametric type property access
+assert_valid:
+    covariant_class(t:type) := class:
+        Property:t
+    Identity(X:t where t:type):t = X
+    Make(X:t where t:type):covariant_class(t) =
+        covariant_class(t){Property := X}
+    Main()<decides>:void =
+        Identity(Make(1)).Property = 1
+
+assert_valid:
+    c0(t:type) := class:
+        F(:t):void={}
+    c1 := class(c0(tuple())):
+        F<override>():void={}
+
+# Recursive data type
+cons(t:type) := class:
+    Head:t
+    Tail:?cons(t)
+
+list(t:type) := ?cons(t)
+
+Nil(t:type):list(t) = false
+
+Cons(Head:t, Tail:list(t) where t:type)<transacts>:list(t) = option:
+    cons(t):
+        Head := Head
+        Tail := Tail
+
+Singleton(Head:t where t:type):list(t) =
+    Cons(Head, false)
+
+Uncons(X:list(t) where t:type)<transacts><decides>:tuple(t, list(t)) =
+    Y := X?
+    (Y.Head, Y.Tail)
+
+assert:
+    X := Nil(int)
+    not Uncons[X]
+
+assert:
+    X:list(int) := Singleton(1)
+    Y := Uncons[X]
+    Y(0) = 1
+    not Y(1)?
+
+# Function with type argument used at type level
+FalseOption(t:type):?t = false
+
+assert:
+    X := FalseOption(int)
+    not X?
+
+EmptyArray(t:type):[]t = array{}
+
+assert:
+    X := EmptyArray(int)
+    X.Length = 0
+
+# Inheriting from parameteric class
+true_predicate(t:type) := class:
+    Filter(X:t)<transacts><decides>:t = X
+
+zero_predicate := class(true_predicate(int)):
+    Filter<override>(X:int)<transacts><decides>:int = X = 0
+
+value_predicate(t:subtype(comparable)) := class(true_predicate(t)):
+    Value:t
+    Filter<override>(X:t)<transacts><decides>:t = X = Value
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class {}
+    class3(t:subtype(class1)) := class {}
+    class4(t:type) := class3(class2)
+
+assert:
+    X := 1
+    F := true_predicate(int){}
+    F.Filter[X]
+
+assert:
+    X := 0
+    F := zero_predicate{}
+    F.Filter[X]
+
+assert:
+    X := 1
+    F:true_predicate(int) = zero_predicate{}
+    not F.Filter[X]
+
+assert:
+    X := 0
+    F := value_predicate(int){Value := 0}
+    F.Filter[X]
+
+assert:
+    X := 0
+    F:true_predicate(int) = value_predicate(int){Value := 1}
+    not F.Filter[X]
+
+# Interfaces
+equivalence(t:type, u:type) := interface:
+    Equal(:t, :u)<transacts><decides>:t
+
+comparable_equivalence(t:subtype(comparable)) := class(equivalence(t, comparable)):
+    Equal<override>(X:t, Y:comparable)<transacts><decides>:t = X = Y
+
+int_equivalence := class(equivalence(int, comparable)):
+    Equal<override>(X:int, Y:comparable)<transacts><decides>:int = X = Y
+
+assert:
+    F := comparable_equivalence(int){}
+    F.Equal[0, 0]
+
+assert:
+    F:equivalence(int, comparable) = comparable_equivalence(int){}
+    not F.Equal[0, 1]
+
+assert:
+    F := int_equivalence{}
+    F.Equal[0, 0]
+
+assert:
+    F:equivalence(int, comparable) = int_equivalence{}
+    not F.Equal[0, 1]
+    
+errorable(result_type:type, error_type:type) := class:
+    Ok:?result_type
+    Error:?error_type
+    
+CreateSuccess(Result:t, ErrorType:type where t:type):errorable(t, ErrorType) =
+    errorable(t,ErrorType){Ok := option{Result}, Error := false}
+
+CreateError(Error:t where t:type):errorable(false, t) =
+    errorable(false, t){Ok := false, Error := option{Error}}
+
+assert:
+    X := CreateSuccess(1, any)
+    X.Ok? = 1
+    not X.Error?
+
+assert:
+    X := CreateError(1)
+    not X.Ok?
+    X.Error? = 1
+
+# Ensure this produces code
+subtype_params := module:
+    class1 := class {}
+    F1(:subtype(class1)):void = {}
+    F2(t:subtype(class1)):void = F1(t)
+    F4():void = F2(class1)
+    F5():void =
+        t2:subtype(class1) = class1
+
+assert_semantic_error(3509):
+    class1 := class {}
+    F1(:subtype(class1)):void = {}
+    F2(t:type):void = F1(t)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class {}
+    F1(:subtype(class1)):void = {}
+    F2(t:subtype(class2)):void = F1(t)
+
+assert_semantic_error(3509):
+    class1 := class {}
+    F1():void =
+        t:subtype(class1) = type
+    
+assert_semantic_error(3509):
+    class1 := class {}
+    class2 := class {}
+    F1():void =
+        t:subtype(class1) = class2
+
+assert_semantic_error(3509):
+    class1 := class {}
+    F1(:subtype(class1)):void = {}
+    F2():void =
+        t:type = int
+        F1(t)
+
+default_param := module:
+    class1<public>(t:type) := class:
+        Property<public>:int
+    class1<public>() := class1(int)
+    F1<public>(X:class1()):tuple(class1(), int) = (X, X.Property)
+    F2<public>(X:class1()):tuple(class1(), int) = F1(X)
+    F4<public>()<transacts>:?class1() = false
+    F5<public>():class1() = class1():
+        Property := 3
+
+assert:
+    not default_param.F4()?.Property
+
+assert:
+    default_param.F5().Property = 3
+
+overrides := module:
+    interface1<public>(t:type) := interface:
+        Method1<public>():?t
+    interface2<public> := interface(interface1(int)):
+        Method2<public>():?int
+    class1<public> := class(interface2):
+        Method1<override>():?int = option{1}
+        Method2<override>():?int = option{2}
+    class2<public>(t:type) := class:
+        Method2<public>():?t = false
+    class3<public> := class(interface1(int), class2(int)):
+        Method1<override>():?int = option{3}
+        Method2<override>():?int = option{4}
+
+assert:
+    X := overrides.class1{}
+    X.Method1() = option{1}
+    X.Method2() = option{2}
+ 
+assert:
+    X := overrides.class3{}
+    X.Method1() = option{3}
+    X.Method2() = option{4}
+
+out_of_order := module:
+    class1<public>(t:type) := class2(t)
+    
+    class2<public>(t:type) := class:
+        Property<public>:t
+    
+    class3<public>(t:type) := class:
+        Property<public>:t
+    
+    class4<public>(t:type) := class3(t)
+
+    class5<public>(t:type) := class:
+        Method<public>():int = 5
+    
+    class6<public>(t:type) := class(class5(t)):
+        Method<override>():int = 6
+    
+    class7<public>(t:type) := class(class8(t)):
+        Method<override>():int = 7
+
+    class8<public>(t:type) := class:
+        Method<public>():int = 8
+
+assert:
+    X := out_of_order.class1(int):
+        Property := 1
+    X.Property = 1
+
+assert:
+    X := out_of_order.class2(int):
+        Property := 2
+    X.Property = 2
+
+assert:
+    X := out_of_order.class3(int):
+        Property := 3
+    X.Property = 3
+
+assert:
+    X := out_of_order.class4(int):
+        Property := 4
+    X.Property = 4
+
+assert:
+    X := out_of_order.class5(int) {}
+    X.Method() = 5
+
+assert:
+    X := out_of_order.class6(int) {}
+    X.Method() = 6
+    
+assert:
+    X := out_of_order.class7(int) {}
+    X.Method() = 7
+    
+assert:
+    X := out_of_order.class8(int) {}
+    X.Method() = 8
+
+assert_semantic_error(3557):
+    class1<public>(t:type) := class(class2) {}
+    class2<public> := class(class1(int)) {}
+
+overloaded_class_and_interface := module:
+    interface1<public>(t:type) := interface:
+        Method<public>(:t):t
+    interface1<public>() := interface1(void)
+    class1<public>(t:type) := class(interface1(t)):
+        Method<override>(X:t):t = X
+    class1<public>() := class1(void)
+
+assert:
+    X:overloaded_class_and_interface.interface1() = overloaded_class_and_interface.class1(){}
+    X.Method(1)
+
+first_class := module:
+    class1<public>(t:type) := class:
+        Property1<public>:t
+    class2<public> := class:
+        Property2<public>:int
+    class3<public> := class(class2) {}
+
+assert:
+    F := first_class.class1
+    X := F(int)
+    Y := X{Property1 := 1}
+    Y.Property1 = 1
+
+assert:
+    F := first_class.class1
+    X := if (true?) {first_class.class2} else {first_class.class3}
+    Y := F(X)
+    Z := Y{Property1 := first_class.class3{Property2 := 1}}
+    Z.Property1.Property2 = 1
+
+assert_semantic_error(3509):
+    first_class := module:
+        class1<public>(t:type) := class:
+            Property<public>:t
+        class2<public> := class {}
+        class3<public> := class(class2) {}
+    Main():void =
+        F := first_class.class1
+        X := if (true?) {first_class.class2} else {first_class.class3}
+        Y := F(X)
+        Z := Y{Property := first_class.class2{}}
+
+int_ref<public> := class:
+    var Contents<public>:int = 0
+
+AwaitTest(Arg:awaitable(int), Result:int_ref)<suspends>:void =
+    set Result.Contents = Arg.Await()
+
+assert:
+    X:awaitable(int) = test_awaitable{}
+    Result := int_ref{}
+    spawn{AwaitTest(X, Result)}
+    Result.Contents = 13
+
+# Test that it's not possible to inherit from a type variable.
+assert_semantic_error(3590):
+    inherits_from_type_variable(t:type) := class(t){}
+
+assert_semantic_error(3590):
+    c := class{}
+    inherits_from_type_variable(t:subtype(c)) := class(t){}
+
+assert_semantic_error(3599):
+    inherits_from_type_variable(t:type) := interface(t){}
+
+assert_semantic_error(3599):
+    i := interface{}
+    inherits_from_type_variable(t:subtype(i)) := interface(t){}
+
+# Check subtyping where the parent is instantiated with a flow type argument.
+ClassClassSubtyping := module:
+    class1(t:type) := class:
+        Property1:t
+    sup(t:type) := class<abstract>:
+        Method():t
+    sub(t:type) := class(sup(class1(t))):
+        Sub:t
+        Method<override>():class1(t) = class1(t):
+            Property1 := Sub
+    Main<public>()<decides>:void =
+        X:sup(class1(int)) := sub(int):
+            Sub := 19
+        X.Method().Property1 = 19
+
+assert:
+    ClassClassSubtyping.Main[]
+
+ClassInterfaceSubtyping := module:
+    class1(t:type) := class:
+        Property1:t
+    sup(t:type) := interface:
+        Method():t
+    sub(t:type) := class(sup(class1(t))):
+        Sub:t
+        Method<override>():class1(t) = class1(t):
+            Property1 := Sub
+    Main<public>()<decides>:void =
+        X:sup(class1(int)) := sub(int):
+            Sub := 19
+        X.Method().Property1 = 19
+
+assert:
+    ClassInterfaceSubtyping.Main[]
+
+InterfaceInterfaceSubtyping := module:
+    class1(t:type) := class:
+        Property1:t
+    sup(t:type) := interface:
+        Method():t
+    sub(t:type) := interface(sup(class1(t))):
+    impl(t:type) := class(sub(t)):
+        Impl:t
+        Method<override>():class1(t) = class1(t):
+            Property1 := Impl
+    Main<public>()<decides>:void =
+        X:sub(int) := impl(int):
+            Impl := 19
+        Y:sup(class1(int)) = X
+        Y.Method().Property1 = 19
+
+assert:
+    InterfaceInterfaceSubtyping.Main[]
+
+# Check class covariant subtyping
+ClassCovariantSubtyping := module:
+    sup := class:
+        Sup:int
+    sub := class(sup):
+        Sub:int
+    sup_f(t:type) := class:
+        Property:t
+    sub_f(t:type) := class(sup_f(t)):
+    Main<public>()<decides>:void =
+        X:sup_f(sup) := sub_f(sub):
+            Property := sub:
+                Sup := 1
+                Sub := 2
+        X.Property.Sup = 1
+        sub[X.Property].Sub = 2
+
+assert:
+    ClassCovariantSubtyping.Main[]
+
+assert_semantic_error(3509):
+    ClassCovariantSubtyping := module:
+        sup := class:
+            Sup:int
+        sub := class(sup):
+            Sub:int
+        sup_f(t:type) := class:
+            Property:t
+        sub_f(t:type) := class(sup_f(t)):
+        Main<public>()<decides>:void =
+            X:sup_f(sub) := sub_f(sup):
+                Property := sup:
+                    Sup := 1
+
+# Check class contraviant subtyping
+ClassContravariantSubtyping := module:
+    sup := class:
+        Sup:int
+    sub := class(sup):
+        Sub:int
+    sup_f(t:type) := class:
+        Method(:t):void = {}
+    sub_f(t:type) := class(sup_f(t)):
+    Main<public>()<decides>:void =
+        X:sup_f(sub) := sub_f(sup):
+        X.Method(sub{Sup := 1, Sub := 2})
+
+assert:
+    ClassContravariantSubtyping.Main[]
+
+assert_semantic_error(3509):
+    ClassContravariantSubtyping := module:
+        sup := class:
+            Sup:int
+        sub := class(sup):
+            Sub:int
+        sup_f(t:type) := class:
+            Method(:t):void = {}
+        sub_f(t:type) := class(sup_f(t)):
+        Main<public>()<decides>:void =
+            X:sup_f(sup) := sub_f(sub):
+            X.Method(sup{Sup := 1})
+
+# Check class bivariant subtyping
+ClassBivariantSubtyping := module:
+    class1 := class:
+    class2 := class:
+    sup_f(t:type) := class:
+        Method():void = {}
+    sub_f(t:type) := class(sup_f(t)):
+    Main<public>()<decides>:void =
+        X:sup_f(class1) := sub_f(class2):
+        X.Method()
+
+assert:
+    ClassBivariantSubtyping.Main[]
+
+# Check class invariant subtyping
+ClassInvariantSubtyping := module:
+    class1 := class:
+        Property1:int
+    sup_f(t:type) := class:
+        Method(X:t):t = X
+    sub_f(t:type) := class(sup_f(t)):
+    Main<public>()<decides>:void =
+        X:sup_f(class1) := sub_f(class1):
+        X.Method(class1{Property1 := 1}).Property1 = 1
+
+assert:
+    ClassInvariantSubtyping.Main[]
+
+assert_semantic_error(3509):
+    ClassInvariantSubtyping := module:
+        sup := class:
+        sub := class(sup):
+        sup_f(t:type) := class:
+            Method(X:t):t = X
+        sub_f(t:type) := class(sup_f(t)):
+        Main<public>()<decides>:void =
+            X:sup_f(sup) := sub_f(sub):
+
+assert_semantic_error(3509):
+    ClassInvariantSubtyping := module:
+        sup := class:
+        sub := class(sup):
+        sup_f(t:type) := class:
+            Method(X:t):t = X
+        sub_f(t:type) := class(sup_f(t)):
+        Main<public>()<decides>:void =
+            X:sup_f(sub) := sub_f(sup):
+
+# Check interface covariant subtyping
+InterfaceCovariantSubtyping := module:
+    sup := class:
+        Sup:int
+    sub := class(sup):
+        Sub:int
+    sup_f(t:type) := interface:
+        Method():t
+    sub_f(t:type) := interface(sup_f(t)):
+    impl(t:type) := class(sub_f(t)):
+        Property:t
+        Method<override>():t = Property
+    Main<public>()<decides>:void =
+        Sub:sub_f(sub) := impl(sub):
+            Property := sub:
+                Sup := 1
+                Sub := 2
+        Sup:sup_f(sup) := Sub
+        Sup.Method().Sup = 1
+        sub[Sup.Method()].Sub = 2
+
+assert:
+    InterfaceCovariantSubtyping.Main[]
+
+assert_semantic_error(3509):
+    InterfaceCovariantSubtyping := module:
+        sup := class:
+            Sup:int
+        sub := class(sup):
+            Sub:int
+        sup_f(t:type) := interface:
+            Method():t
+        sub_f(t:type) := interface(sup_f(t)):
+        impl(t:type) := class(sub_f(t)):
+            Property:t
+            Method<override>():t = Property
+        Main<public>()<decides>:void =
+            Sub:sub_f(sup) := impl(sup):
+                Property := sup:
+                    Sup := 1
+            Sup:sup_f(sub) := Sub
+
+# Check interface contravariant subtyping
+InterfaceContravariantSubtyping := module:
+    sup := class:
+        Sup:int
+    sub := class(sup):
+        Sub:int
+    sup_f(t:type) := interface:
+        Method(:t):void
+    sub_f(t:type) := interface(sup_f(t)):
+    impl(t:type) := class(sub_f(t)):
+        Method<override>(:t):void = {}
+    Main<public>()<decides>:void =
+        Sub:sub_f(sup) := impl(sup):
+        Sup:sup_f(sub) := Sub
+        Sup.Method(sub{Sup := 1, Sub := 2})
+
+assert:
+    InterfaceContravariantSubtyping.Main[]
+
+assert_semantic_error(3509):
+    InterfaceContravariantSubtyping := module:
+        sup := class:
+            Sup:int
+        sub := class(sup):
+            Sub:int
+        sup_f(t:type) := interface:
+            Method(:t):void
+        sub_f(t:type) := interface(sup_f(t)):
+        impl(t:type) := class(sub_f(t)):
+            Method<override>(:t):void = {}
+        Main<public>()<decides>:void =
+            Sub:sub_f(sub) := impl(sub):
+            Sup:sup_f(sup) := Sub
+
+# Check interface bivariant subtyping
+InterfaceBivariantSubtyping := module:
+    class1 := class:
+    class2 := class:
+    sup_f(t:type) := interface:
+        Method():void
+    sub_f(t:type) := interface(sup_f(t)):
+    impl(t:type) := class(sub_f(t)):
+        Method<override>():void = {}
+    Main<public>()<decides>:void =
+        Sub:sub_f(class1) := impl(class2):
+        Sup:sup_f(class2) := Sub
+        Sup.Method()
+
+assert:
+    InterfaceBivariantSubtyping.Main[]
+    
+# Check interface invariant subtyping
+InterfaceInvariantSubtyping := module:
+    class1 := class:
+        Property1:int
+    sup_f(t:type) := interface:
+        Method(X:t):t
+    sub_f(t:type) := interface(sup_f(t)):
+    impl(t:type) := class(sub_f(t)):
+        Method<override>(X:t):t = X
+    Main<public>()<decides>:void =
+        Sub:sub_f(class1) := impl(class1):
+        Sup:sup_f(class1) := Sub
+        Sup.Method(class1{Property1 := 1}).Property1 = 1
+
+assert:
+    InterfaceInvariantSubtyping.Main[]
+
+assert_semantic_error(3509):
+    InterfaceInvariantSubtyping := module:
+        sup := class:
+        sub := class(sup):
+        sup_f(t:type) := interface:
+            Method(X:t):t
+        sub_f(t:type) := interface(sup_f(t)):
+        impl(t:type) := class(sub_f(t)):
+            Method<override>(X:t):t = X
+        Main<public>()<decides>:void =
+            Sub:sub_f(sub) := impl(sub):
+            Sup:sup_f(sup) := Sub
+
+assert_semantic_error(3509):
+    InterfaceInvariantSubtyping := module:
+        sup := class:
+        sub := class(sup):
+        sup_f(t:type) := interface:
+            Method(X:t):t
+        sub_f(t:type) := interface(sup_f(t)):
+        impl(t:type) := class(sub_f(t)):
+            Method<override>(X:t):t = X
+        Main<public>()<decides>:void =
+            Sub:sub_f(sup) := impl(sup):
+            Sup:sup_f(sub) := Sub
+
+# These run into the polymorphic recursion limitation.
+assert_semantic_error(3509, 3590, 3509, 3509):
+    ClassClassSubtypingCycle := module:
+        class1(t:type) := class:
+        class2(t:type) := class(class3(class1(t))):
+        class3(t:type) := class(class2(class1(t))):
+        Main():void =
+            X:class2(int) := class3(class1(int)) {}
+
+assert_semantic_error(3509, 3590):
+    ClassClassSubtypingCycle := module:
+        class1(t:type) := class:
+        class2(t:type) := class(class2(class1(t))):
+        Main():void =
+            X:class2(class1(int)) := class2(int) {}
+
+assert_semantic_error(3509, 3599, 3509):
+    InterfaceInterfaceSubtypingCycle := module:
+        class1(t:type) := class:
+        interface1(t:type) := interface(interface2(class1(t))):
+        interface2(t:type) := interface(interface1(class1(t))):
+        F(X:interface2(int)):void =
+            Y:interface1(class1(int)) = X
+
+assert_semantic_error(3509, 3599):
+    InterfaceInterfaceSubtypingCycle := module:
+        class1(t:type) := class:
+        interface1(t:type) := interface(interface1(class1(t))):
+        F(X:interface1(int)):void =
+            Y:interface1(class1(int)) = X
+
+assert_semantic_error(3593):
+    class1<public>(t:type) := class<computes> {}
+    class2 := class {}
+    X<public>:class1(class2) = class1(class2) {}
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            class1<public>(t:type) := class<computes> {}
+            class2 := class {}
+            X<public>:class1(class2) = class1(class2) {}
+
+assert_semantic_error(3593):
+    interface1<public>(t:type) := interface {}
+    class2 := class {}
+    X<public>:?interface1(class2) = false
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            interface1<public>(t:type) := interface {}
+            class2 := class {}
+            X<public>:?interface1(class2) = false
+
+assert_semantic_error(3593):
+    class2 := class {}
+    class1<public>(t:subtype(class2)) := class {}
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            class2 := class {}
+            class1<public>(t:subtype(class2)) := class {}
+
+assert_semantic_error(3593):
+    class2 := class {}
+    interface1<public>(t:subtype(class2)) := interface {}
+
+assert_valid:
+    vpackage(P0, /Verse.org/VerseTests/Module, ?Role := Source, ?Scope := InternalUser, ?UploadedAtFNVersion := 3500):
+        snippet:
+            class2 := class {}
+            interface1<public>(t:subtype(class2)) := interface {}
+
+# Ensure type variable constraints have appropriate join
+assert_valid:
+    F(X:int, t:type, u:subtype(t), Y:t, Z:u):t =
+        if (X = 1):
+            Y
+        else:
+            Z
+
+# with arguments in either order.
+assert_valid:
+    F(X:int, t:type, u:subtype(t), Y:t, Z:u):t =
+        if (X = 1):
+            Z
+        else:
+            Y
+
+# Ensure type variable constraints have appropriate meet
+assert_valid:
+    F(X:int, t:type, u:subtype(t), Y(:t):void, Z(:u):void):type{_(:u):void} =
+        if (X = 1):
+            Y
+        else:
+            Z
+
+# with arguments in either order.
+assert_valid:
+    F(X:int, t:type, u:subtype(t), Y(:t):void, Z(:u):void):type{_(:u):void} =
+        if (X = 1):
+            Z
+        else:
+            Y
+
+# Allow parametric type constraints to constrain an implicit type variable,
+# even when the implicit type variable constraints have not yet been processed.
+assert_valid:
+    class1 := class {}
+    class2(t:subtype(class1)) := class:
+        Data:t
+    F(:class2(t) where t:subtype(class1)):void = {}
+
+# Error if a parametric type constraint is not satisfied by an implicit type
+# variable constraint.
+assert_semantic_error(3509):
+    class1 := class {}
+    class2(t:subtype(class1)) := class:
+        Data:t
+    class3 := class {}
+    F(:class2(t) where t:subtype(class3)):void = {}
+
+# Similarly with `castable_subtype`.
+assert_valid:
+    class1 := class {}
+    class2(t:castable_subtype(class1)) := class:
+        Data:t
+    F(:class2(t) where t:castable_subtype(class1)):void = {}
+
+assert_semantic_error(3509):
+    class1 := class {}
+    class2(t:castable_subtype(class1)) := class:
+        Data:t
+    class3 := class {}
+    F(:class2(t) where t:castable_subtype(class3)):void = {}

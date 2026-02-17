@@ -1,0 +1,17 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+
+FailableFunc(S:string)<decides><transacts>: void =
+	S.Length > 0
+
+BuggyNestedLoop(Map: [string]int): []string =
+	for:
+		LK->LV: Map
+		FailableFunc["{LK} {LV}"]
+	do:
+		LK
+
+assert:
+	BuggyNestedLoop( map{ "a"=>1, "b"=>2 } )

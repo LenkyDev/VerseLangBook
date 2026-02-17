@@ -1,0 +1,154 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+<#>
+assert_valid_syntax{"var x:int"}
+assert_valid_syntax{"x:^int"}
+assert_valid_syntax{"set x = 1"}
+assert_valid_syntax{"set x += 1"}
+
+# Test that pointer declarations are valid.
+assert_valid:
+    c0 := class:
+        var x:int=0
+assert_valid { f():void={var x:int=0} }
+
+# Test that non-unique pointer declarations aren't yet valid.
+assert_semantic_error(3552){ x:^int=0 }
+assert_semantic_error(3552){ f(x:^int):void={} }
+assert_semantic_error(3552):
+    c0 := class:
+        var x:int=0
+    f():void={y:^int=c0{}.x}
+
+# Test that mutable declarations without an explicit type are invalid.
+assert_semantic_error(3515):
+    c0 := class:
+        var x := 0
+assert_semantic_error(3515):
+    c0 := class:
+        var x := "0"
+assert_semantic_error(3515):
+    c0 := class:
+        var x := false
+assert_semantic_error(3515):
+    c0 := class:
+        var x := option{0}
+assert_semantic_error(3515){f():void={ var x := 0 } }
+assert_semantic_error(3515){f():void={ var x := "0" } }
+assert_semantic_error(3515){f():void={ var x := false } }
+assert_semantic_error(3515){f():void={ var x := option{0} } }
+assert_semantic_error(3515){C := class { var x := 0 } }
+assert_semantic_error(3515){C := class { var x := "0" } }
+assert_semantic_error(3515){C := class { var x := false } }
+assert_semantic_error(3515){C := class { var x := option{0} } }
+
+# Test a local pointer.
+C0 := module:
+    
+    fac<public>(n:int):int=
+        var (local:)result:int=1
+        for(i:=2..n):
+            set (local:)result *= i
+        return (local:)result
+assert{C0.fac(0)=1}
+assert{C0.fac(1)=1}
+assert{C0.fac(2)=2}
+assert{C0.fac(3)=6}
+assert{C0.fac(4)=24}
+assert{C0.fac(5)=120}
+
+# Test a class pointer.
+C1 := module:
+    
+    C10 := class:
+        var Result<public>:int = 1
+    
+    fac<public>(n:int):int=
+        C10Class:C10 = C10{}
+        set C10Class.Result = 1
+        for(i:=2..n):
+            set C10Class.Result *= i
+        return C10Class.Result
+assert{C1.fac(0)=1}
+assert{C1.fac(1)=1}
+assert{C1.fac(2)=2}
+assert{C1.fac(3)=6}
+assert{C1.fac(4)=24}
+assert{C1.fac(5)=120}
+
+# Test an instance pointer.
+C2 := class:
+    var c2_result:int=1
+    fac(n:int):int=
+        set c2_result = 1
+        for(i:=2..n):
+            set c2_result *= i
+        return c2_result
+assert{C2{}.fac(0)=1}
+assert{C2{}.fac(1)=1}
+assert{C2{}.fac(2)=2}
+assert{C2{}.fac(3)=6}
+assert{C2{}.fac(4)=24}
+assert{C2{}.fac(5)=120}
+
+# Test initializing an instance pointer by default and in an archetype.
+C3 := class { var Property:int=42 }
+assert{C3{}.Property = 42}
+assert{C3{Property:=43}.Property = 43}
+
+# Test non-integer pointers.
+assert{var f:float = 2.0      ; set f = 3.0         ; f = 3.0}
+assert{var b:logic = true     ; set b = false       ; b = false}
+assert{var o:?int = false; set o = option{48}; o? = 48}
+assert{var a:[]int = array{49}; set a = array{50}   ; a = array{50}}
+
+# Test that mutating immutable data is invalid.
+assert_semantic_error(3509){f():void={ x:int = 0; set x = 1 } }
+
+# Test pointers initialized by a code block.
+C4 := module:
+    
+    m<public>:int={x:=1; x+1}
+    
+    f<public>():int=
+        l:int={y:=7; y*3}
+        return l
+
+assert{C4.m = 2}
+assert{C4.f() = 21}
+
+# Test that usage of a class in a data member is independent of the relative order of declaration of the classes
+assert_valid { C1 := class { c2 :C2= C2{} }; C2 := class {} }
+assert_valid { C2 := class {}; C1 := class { c2 :C2= C2{} } }
+
+assert_valid { C1 := class { c2 :C2= C2{} }; C2 := class { c1 :C1= C1{} } }
+assert_valid { C2 := class { c1 :C1= C1{} }; C1 := class { c2 :C2= C2{} } }
+
+assert_valid { C1 := class { c2:C2 }; C2 := class {} }
+assert_valid { C2 := class {}; C1 := class { c2:C2 } }
+
+assert_valid { C1 := class { c2:C2 }; C2 := class { c1:C1 } }
+assert_valid { C2 := class { c1:C1 }; C1 := class { c2:C2 } }
+
+assert{var x:int=0; x=0}
+
+assert_semantic_error(3549):
+    Main():void =
+        var (var X):int = 0
+
+assert_semantic_error(3549):
+    X^:int = 0
+
+assert_semantic_error(3549):
+    class1 := class:
+        Property^:int
+
+assert_semantic_error(3549):
+    Main():void =
+        X^:int = 0
+
+# Reading a var has only the reads effect.
+assert_valid               {c := class{var X:int; F()<reads>    :int=X}}
+assert_semantic_error(3512){c := class{var X:int; F()<writes>   :int=X}}
+assert_semantic_error(3512){c := class{var X:int; F()<allocates>:int=X}}
+assert_semantic_error(3512){c := class{var X:int; F()<computes> :int=X}}

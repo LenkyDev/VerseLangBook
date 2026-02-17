@@ -1,0 +1,47 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+Recurse(N:int, Limit:int)<decides>:void =
+    if (N >= Limit)
+    {
+        if (IsDebuggerEnabled()?)
+        {
+            for (I := 1..10)
+            {
+                S1 := DebugStackTrace()
+                Frame := "Recurse(:int,:int)"
+                S2 := S1.ReplaceAll(Frame, "")
+                S2.Length = S1.Length - Frame.Length * 11
+            }
+        }
+    }
+    else
+    {
+        Recurse[N + 1, Limit]
+    }
+assert:
+    Recurse[0, 10]
+
+Find(S:string, Sub:string)<decides>:int =
+    var I:int = 0
+    loop:
+        if (I >= S.Length):
+            break
+        if (S.Slice[I, I + Sub.Length] = Sub):
+            break
+        set I += 1
+    I < S.Length
+    return I
+
+C(X:int):string =
+    DebugStackTrace()
+B(X:int):string =
+    C(X)
+A(X:int):string =
+    B(X)
+
+assert:
+    if (IsDebuggerEnabled()?):
+        S := A(0)
+        Find[S, "C(:int)"] < Find[S, "B(:int)"] < Find[S, "A(:int)"]

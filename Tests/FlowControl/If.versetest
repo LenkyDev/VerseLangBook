@@ -1,0 +1,998 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Note: Leaning towards examples using significant whitespace, though assume same applies for braced {}, of, etc. variants
+
+
+#============================================
+# Conditional test block variants
+
+
+############################################
+# Conditional must not be empty
+
+# Error: There must be at least one fallible expression in the `if` condition block
+assert_semantic_error(3513):
+    methodFlow():void=
+        if:  # empty conditional and no then block
+        then:  # empty then block
+
+assert_semantic_error(3513):
+    methodFlow():void=
+        if {}  # empty conditional
+        then {} # empty then block
+
+assert_semantic_error(3513):
+    methodFlow():void=
+        if ()  # empty conditional
+        {}     # empty then block
+
+assert_semantic_error(3513):
+    methodFlow():void=
+        if ():  # empty conditional
+            # empty then block
+
+assert_semantic_error(3513):
+    methodFlow():void=
+        if ()  # empty conditional
+        then:
+            # empty then block
+
+assert_semantic_error(3513):
+    methodFlow():void=
+        if ()  # empty conditional
+        then {} # empty then block
+
+############################################
+# Conditional must have at least one expression able to fail
+
+# Error: At least one of the expressions in the `if` condition block must be fallible.
+assert_semantic_error(3513):
+    print(msg:string)<transacts>:void={}
+
+    methodFlow():void=
+        if:
+            print("non-failing condition")
+        then:  # empty then
+
+assert_semantic_error(3513):
+    print(msg:string)<transacts>:void={}
+
+    methodFlow():void=
+        if
+        {
+            print("non-failing condition")
+        }
+        then {}  # empty then
+
+assert_semantic_error(3513):
+    print(msg:string)<transacts>:void={}
+
+    methodFlow():void=
+        if (print("non-failing condition")):
+            # empty then block
+
+
+# Same thing with multiple expressions if still none can fail.
+# Error: At least one of the expressions in the `if` condition block must be fallible.
+assert_semantic_error(3513):
+    print(msg:string)<transacts>:void={}
+
+    methodFlow():void=
+        # vertical form with significant whitespace
+        if: # conditional block with no fallible expression
+            print("non-failing condition 1")
+            print("non-failing condition 2")
+        then:  # empty then
+
+assert_semantic_error(3513):
+    print(msg:string)<transacts>:void={}
+
+    methodFlow():void=
+        # vertical form with braces
+        if # conditional block with no fallible expression
+        {
+            print("non-failing condition 1")
+            print("non-failing condition 2")
+        }
+        then {}  # empty then
+
+assert_semantic_error(3513):
+    print(msg:string)<transacts>:void={}
+
+    methodFlow():void=
+        # invocation form with semicolon delimeters
+        if (print("non-failing condition 1"); print("non-failing condition 2")):
+            # empty then block
+
+
+############################################
+# Simplest `if` just needs condition with single expression that can fail
+
+assert:
+    var X:int = 0
+    if:
+        set X = 1
+        false?
+    X = 0
+    if:
+        set X = 1
+        true?
+    X = 1
+
+# Successful condition variants
+assert:
+    nums := array{10, 20, 30}
+    var Num:int = 42
+    if:
+        nums0 := nums[0]
+        set Num = nums0
+    then:  # empty then
+    Num = 10
+
+assert:
+    nums := array{10, 20, 30}
+    var Num:int = 42
+    if
+    {
+        nums0 := nums[0]
+        set Num = nums0
+    }
+    then {}  # empty then
+    Num = 10
+
+assert:
+    nums := array{10, 20, 30}
+    var Num:int = 42
+    if (nums0 := nums[0]; set Num = nums0) {}
+    Num = 10
+
+
+# Failing condition variants
+assert:
+    nums := array{10, 20, 30}
+    var Num:int = 42
+    if:
+        nums99 := nums[99]
+        set Num = nums99
+    then:  # empty then
+    Num = 42
+
+assert:
+    nums := array{10, 20, 30}
+    var Num:int = 42
+    if
+    {
+        nums99 := nums[99]
+        set Num = nums99
+    }
+    then {}  # empty then
+    Num = 42
+
+assert:
+    nums := array{10, 20, 30}
+    var Num:int = 42
+    if (nums99 := nums[99]; set Num = nums99) {}
+    Num = 42
+
+
+############################################
+# Mutiple expression condition blocks can run to end or exit early if failed
+
+# No failure - run to end of condition
+
+assert:
+    var Num:int = 123
+    if:
+        1 < 2
+        set Num = 42
+    then:  # empty then
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 < 2
+        set Num = 42
+    }
+    then {}  # empty then
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42) {}
+    Num = 42
+
+
+# Failure - exit condition early
+
+assert:
+    var Num:int = 123
+    if:
+        1 > 2
+        set Num = 42
+    then:  # empty then
+    Num = 123
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 > 2
+        set Num = 42
+    }
+    then {}  # empty then
+    Num = 123
+
+assert:
+    Num := 123
+    if (1 > 2; 1 < 2) {}
+    Num = 123
+
+
+#============================================
+# Then blocks
+
+assert:
+    var Num:int = 123
+    if:
+        1 < 2
+    then: # explicit then
+        set Num = 42
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 < 2
+    }
+    then # explicit then
+    {
+        set Num = 42
+    }
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2). set Num = 42  # dot space block
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2):
+        set Num = 42  # implicit then
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2)
+    {
+        set Num = 42  # implicit then
+    }
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2)
+    then: # explicit then
+        set Num = 42
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2)
+    then # explicit then
+    {
+        set Num = 42
+    }
+    Num = 42
+
+
+############################################
+# Then blocks are essentially a comment/memory aid since they can have their expressions
+# tacked onto a condition block and the then block can be omitted or left empty and it
+# will have the same logical effect.
+
+# These all have the identical effect as the examples from the previous section.
+
+assert:
+    var Num:int = 123
+    if:
+        1 < 2
+        set Num = 42
+    then:  # empty then block
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 < 2
+        set Num = 42
+    }
+    then
+    {
+        # empty then block
+    }
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42):  # empty then block
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42) {}  # empty then block
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42)
+    then:  # empty then block
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42)
+    then {}  # empty then block
+    Num = 42
+
+
+
+#============================================
+# Else blocks with then blocks
+
+# then path chosen
+
+assert:
+    var Num:int = 123
+    if:
+        1 < 2
+    then:
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 < 2
+    }
+    then
+    {
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2):
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2)
+    {
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2)
+    then:
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block
+    if (1 < 2). set Num = 42
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block for both
+    if (1 < 2). set Num = 42
+    else. set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    # dot space block for both in one line
+    if (1 < 2). set Num = 42 else. set Num = 56
+    Num = 42
+    
+assert:
+    var Num:int = 123
+    if (1 < 2)
+    then
+    {
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 42
+
+
+# else path chosen
+
+assert:
+    var Num:int = 123
+    if:
+        1 > 2
+    then:
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 > 2
+    }
+    then
+    {
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if (1 > 2):
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if (1 > 2)
+    {
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if (1 > 2)
+    then:
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if (1 > 2)
+    then
+    {
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 56
+
+
+############################################
+# Else blocks with condition blocks only
+
+# then path chosen
+
+assert:
+    var Num:int = 123
+    if:
+        1 < 2
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 < 2
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42) {}
+    else:
+        set Num = 56
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if (1 < 2; set Num = 42) {}
+    else
+    {
+        set Num = 56
+    }
+    Num = 42
+
+
+# else path chosen
+
+assert:
+    var Num:int = 123
+    if:
+        1 > 2
+        set Num = 42
+    else:
+        set Num = 56
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 > 2
+        set Num = 42
+    }
+    else
+    {
+        set Num = 56
+    }
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if (1 > 2; set Num = 42) {}
+    else:
+        set Num = 56
+    Num = 56
+
+assert:
+    var Num:int = 123
+    if (1 > 2; set Num = 42) {}
+    else
+    {
+        set Num = 56
+    }
+    Num = 56
+
+
+#============================================
+# Chained if expressions
+
+assert:
+    var Num:int = 123
+    if:
+        1 > 2
+    then:
+        set Num = 42
+    else if:
+        3 > 4
+    then:
+        set Num = 56
+    else:
+        set Num = 78
+    Num = 78
+
+assert: # Using dot space
+    var Num:int = 123
+    if. 1 > 2
+    then. set Num = 42
+    else if. 3 > 4
+    then. set Num = 56
+    else. set Num = 78
+    Num = 78
+
+assert: # Using dot space in one line
+    var Num:int = 123
+    set Num = if. 1 > 2 then. 42 else if. 3 > 4 then. 56 else. 78
+    Num = 78
+
+assert:
+    var Num:int = 123
+    if
+    {
+        1 > 2
+    }
+    then
+    {
+        set Num = 42
+    }
+    else if
+    {
+        3 > 4
+    }
+    then
+    {
+        set Num = 56
+    }
+    else
+    {
+        set Num = 78
+    }
+    Num = 78
+
+assert:
+    var Num:int = 123
+    if (1 > 2):
+        set Num = 42
+    else if (3 > 4):
+        set Num = 56
+    else:
+        set Num = 78
+    Num = 78
+
+assert: # Using dot space in one line
+    var Num:int = 123
+    if (1 > 2). set Num = 42
+    else if (3 > 4). set Num = 56
+    else. set Num = 78
+    Num = 78
+
+assert: # Using dot space in one line
+    var Num:int = 123
+    set Num = if(1 > 2). 42 else if(3 > 4). 56 else. 78
+    Num = 78
+
+assert:
+    var Num:int = 123
+    if (1 > 2)
+    {
+        set Num = 42
+    }
+    else if (3 > 4)
+    {
+        set Num = 56
+    }
+    else
+    {
+        set Num = 78
+    }
+    Num = 78
+
+assert:
+    var Num:int = 123
+    if (1 > 2)
+    then:
+        set Num = 42
+    else if (3 > 4)
+    then:
+        set Num = 56
+    else:
+        set Num = 78
+    Num = 78
+
+assert:
+    var Num:int = 123
+    if (1 > 2)
+    then
+    {
+        set Num = 42
+    }
+    else if (3 > 4)
+    then
+    {
+        set Num = 56
+    }
+    else
+    {
+        set Num = 78
+    }
+    Num = 78
+
+
+#============================================
+# `if` used as result
+
+assert:
+    var Num:int = if:
+        1 > 2
+    then:
+        42
+    else if:
+        3 > 4
+    then:
+        56
+    else:
+        78
+    Num = 78
+
+assert:
+    var Num:int = if. 1 > 2
+    then. 42
+    else if. 3 > 4
+    then. 56
+    else. 78
+    Num = 78
+
+assert:
+    var Num:int = if. 1 > 2 then. 42 else if. 3 > 4 then. 56 else. 78
+    Num = 78
+
+assert:
+    Num := if
+    {
+        1 > 2
+    }
+    then
+    {
+        42
+    }
+    else if
+    {
+        3 > 4
+    }
+    then
+    {
+        56
+    }
+    else
+    {
+        78
+    }
+    Num = 78
+
+assert:
+    Num := if (1 > 2):
+        42
+    else if (3 > 4):
+        56
+    else:
+        78
+    Num = 78
+
+assert:
+    Num := if (1 > 2). 42
+    else if (3 > 4). 56
+    else. 78
+    Num = 78
+
+assert:
+    Num := if (1 > 2). 42 else if (3 > 4). 56 else. 78
+    Num = 78
+
+assert:
+    Num := if (1 > 2)
+    {
+        42
+    }
+    else if (3 > 4)
+    {
+        56
+    }
+    else
+    {
+        78
+    }
+    Num = 78
+
+assert:
+    Num := if (1 > 2)
+    then:
+        42
+    else if (3 > 4)
+    then:
+        56
+    else:
+        78
+    Num = 78
+
+assert:
+    Num := if (1 > 2)
+    then
+    {
+        42
+    }
+    else if (3 > 4)
+    then
+    {
+        56
+    }
+    else
+    {
+        78
+    }
+    Num = 78
+
+assert:
+    78 = if (1 > 2):
+        42
+    else if (3 > 4):
+        56
+    else:
+        78
+
+# Ensure that `if` cannot be used as expression with result unless all code paths are
+# present and have common denominator type result
+assert_semantic_error(3509):
+    methodFlow():void=
+        # Doing math between type `int` and type `void` is not supported.
+        123 + if (1 < 2):
+            42
+
+
+#============================================
+# Local variables
+
+# Local variables from condition block shared in then block
+
+assert:
+    var Num:int = 123
+    if:
+        1 < 2
+        answer := 42
+    then:
+        set Num = answer
+    Num = 42
+
+assert:
+    var Num:int = 123
+    if:
+        1 > 2
+        answer := 42
+    then:
+        set Num = answer
+    Num = 123
+
+assert:
+    var Num:int = 0
+    if:
+        1 > 2
+        answer := 42
+    then:
+        set Num = answer
+    else if:
+        firstNums := 123
+        9 < 10
+    then:
+        set Num = firstNums
+    else:
+        set Num = 789
+    Num = 123
+
+
+# Local variables from condition block not available in else block
+
+assert_semantic_error(3506):
+    methodFlow():void=
+        var Num:int = 123
+        if:
+            1 < 2
+            answer := 42
+        then:
+            set Num = answer
+        else:
+            set Num = Num - answer  # Error: unknown identifier `answer`
+
+
+# Local variables from if blocks not available in expressions that follow it
+
+assert_semantic_error(3506):
+    methodFlow():void=
+        var Num:int = 123
+        if:
+            1 < 2
+            answer := 42
+        then:
+            set Num = answer
+        set Num = Num - answer  # Error: unknown identifier `answer`
+
+
+# An if with disjoint clause types yields a value of type any.
+c := class {}
+F0():void=if(true?) {1} else {0.0}
+F1():void=if(true?) {1} else {"a"}
+F2():void=if(true?) {1} else {c{}}
+F3():void=if(true?) {1} else {false}
+assert{F0()}
+assert{F1()}
+assert{F2()}
+assert{F3()}
+
+# If should result in an unimplemented error when it occurs in type contexts.
+assert_semantic_error(3502){ F(X:logic, Y:if(X?){int}else{float}):void={} }
+
+#============================================
+# Syntax Errors
+
+# These give appropriate errors though they need addition support before they can work
+# with VerseTest.
+
+<#
+
+############################################
+# Expected a condition block before `then` block while parsing `if`.
+# [Expected error: 3107. Gives error: 14. Neither returned properly by versetest...]
+assert_syntax_error(3107):
+    print(msg:string):void={}
+
+    methodFlow():void=
+        if then:
+            print("then 1")
+
+############################################
+# Found more than one `then` block while parsing `if`.
+# [Expected error: 3106. Gives error: 13. Neither returned properly by versetest...]
+assert_syntax_error(3106):
+    failPrint[msg:string]:void={}
+    print(msg:string):void={}
+
+    methodFlow():void=
+        if (failPrint["condition 1"])
+        then:
+            print("then 1")
+        then:
+            print("then 2")
+
+############################################
+# Found more than one `then` block while parsing `if`.
+# [Expected error: 3106. Gives error: 13. Neither returned properly by versetest...]
+assert_syntax_error(3106):
+    failPrint[msg:string]:void={}
+    print(msg:string):void={}
+
+    methodFlow():void=
+        if (failPrint["condition 1"]):
+            print("then 1")
+        then:
+            print("then 2")
+
+############################################
+# Expected a condition block before `else` block while parsing `if`.
+# [Expected error: 3107. Gives error: 14. Neither returned properly by versetest...]
+assert_syntax_error(3107):
+    failPrint[msg:string]:void={}
+    print(msg:string):void={}
+
+    methodFlow():void=
+        if else:
+            print("else 1")
+
+############################################
+# Unexpected `in` clause while parsing `if`.
+# [Expected error: 3106. Gives error: 13. Neither returned properly by versetest...]
+assert_syntax_error(3106):
+    failPrint[msg:string]:void={}
+    print(msg:string):void={}
+
+    methodFlow():void=
+        if (failPrint["condition 1"])
+        in:
+            print("in 1")
+
+#>

@@ -1,0 +1,33 @@
+assert_valid:
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3720):
+        snippet:
+            my_class := class:
+                # <allocates> in initializer
+                X:[]int = array:
+                    var Y:int = 3
+
+                # <reads> in initializer
+                Z:int = block:
+                    var W:int = 5
+                    W
+
+                # Declaration expressions in initializers are lifted to class scope
+                F():int = Y
+
+assert_semantic_error(3512, 3512, 3506):
+    vpackage(P0, /Verse.org/Verse, ?Scope:=PublicAPI, ?UploadedAtFNVersion:=3730):
+        snippet:
+            my_class := class:
+                # <allocates> in initializer
+                X:[]int = array:
+                    var Y:int = 3
+
+                # <reads> in initializer
+                # NOTE: This cannot currently be rejected because we also use
+                # <reads> for things like floating point math.
+                Z:int = block:
+                    var W:int = 5
+                    W
+
+                # Declaration expressions in initializers are lifted to class scope
+                F():int = Y

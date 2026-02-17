@@ -1,0 +1,232 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+parametric_field(t:subtype(comparable)) := class(serializable_class):
+    Value:t
+
+TestSerializeAndDeserialize(t:subtype(comparable), Value:t, ?Imports:[]any=array{})<transacts><decides>:void=
+    Instance := parametric_field(t){Value:=Value}
+    var AllSucceeded:logic = true
+    for (Mode : array{serialization_mode.VersionedBinary, serialization_mode.UnversionedBinary, serialization_mode.Text}):
+        RoundtrippedInstance := SerializeAndDeserialize(Instance, parametric_field(t), ?Mode:=Mode, ?Imports:=Imports, ?EnableDeltaSerialization:=true)
+        if(Instance.Value <> RoundtrippedInstance.Value):
+            DebugPrint("TestSerializeAndDeserialize failed for {DebugToString(Mode)}:")
+            DebugPrint("Serialized value {DebugToString(Value)}, but deserialized {DebugToString(RoundtrippedInstance.Value)}")
+            set AllSucceeded = false
+    AllSucceeded?
+
+# int
+TestInts:[]int = array{0, -1, +1, -9223372036854775808, +9223372036854775807}
+assert{for(TestInt : TestInts) do TestSerializeAndDeserialize[int, TestInt]}
+
+assert{V:?int=false; TestSerializeAndDeserialize[?int, V]}
+assert{for(TestInt : TestInts) do TestSerializeAndDeserialize[?int, option{TestInt}]}
+
+assert{TestSerializeAndDeserialize[[]int, array{}]}
+assert{for(TestInt : TestInts                      ) do TestSerializeAndDeserialize[[]int, array{TestInt}]}
+assert{for(TestInt1 : TestInts; TestInt2 : TestInts) do TestSerializeAndDeserialize[[]int, array{TestInt1, TestInt2}]}
+
+assert{for(TestInt1 : TestInts; TestInt2 : TestInts) do TestSerializeAndDeserialize[tuple(int, int), (TestInt1, TestInt2)]}
+
+assert{for(TestInt : TestInts                      ) do TestSerializeAndDeserialize[[int]int, map{TestInt=>TestInt}]}
+assert{for(TestInt1 : TestInts; TestInt2 : TestInts) do TestSerializeAndDeserialize[[int]int, map{TestInt1=>TestInt2, TestInt2=>TestInt1}]}
+
+# rational
+GetTestRationals()<computes>:[]rational = array{0/1, -1/2, +1/2, -2/3, +2/3, -9223372036854775808/1, +9223372036854775807/1} or Err()
+assert{for(TestRational : GetTestRationals()) do TestSerializeAndDeserialize[rational, TestRational]}
+
+assert{V:?rational = false; TestSerializeAndDeserialize[?rational, V]}
+assert{for(TestRational : GetTestRationals()) do TestSerializeAndDeserialize[?rational, option{TestRational}]}
+
+assert{TestSerializeAndDeserialize[[]rational, array{}]}
+assert{for(TestRational : GetTestRationals()                                     ) do TestSerializeAndDeserialize[[]rational, array{TestRational}]}
+assert{for(TestRational1 : GetTestRationals(); TestRational2 : GetTestRationals()) do TestSerializeAndDeserialize[[]rational, array{TestRational1, TestRational2}]}
+
+assert{for(TestRational1 : GetTestRationals(); TestRational2 : GetTestRationals()) do TestSerializeAndDeserialize[tuple(rational, rational), (TestRational1, TestRational2)]}
+
+assert{for(TestRational : GetTestRationals()                                     ) do TestSerializeAndDeserialize[[rational]rational, map{TestRational=>TestRational}]}
+assert{for(TestRational1 : GetTestRationals(); TestRational2 : GetTestRationals()) do TestSerializeAndDeserialize[[rational]rational, map{TestRational1=>TestRational2, TestRational2=>TestRational1}]}
+
+
+# float
+TestFloats:[]float = array:
+    0.0
+    1.0
+    -1.0
+    +2.4703282292062327e-324 # largest underflow
+    -2.4703282292062327e-324
+    +2.4703282292062328e-324 # smallest positive denormal
+    -2.4703282292062328e-324
+    +2.2250738585072014e-308 # smallest normal
+    -2.2250738585072014e-308
+    +1.7976931348623158e+308 # largest normal
+    -1.7976931348623158e+308
+    +Inf
+    -Inf
+    NaN
+
+assert{for(TestFloat : TestFloats) do TestSerializeAndDeserialize[float, TestFloat]}
+
+assert{V:?float=false; TestSerializeAndDeserialize[?float, V]}
+assert{for(TestFloat : TestFloats) do TestSerializeAndDeserialize[?float, option{TestFloat}]}
+
+assert{TestSerializeAndDeserialize[[]float, array{}]}
+assert{for(TestFloat : TestFloats) do TestSerializeAndDeserialize[[]float, array{TestFloat}]}
+assert{for(TestFloat1 : TestFloats; TestFloat2 : TestFloats) do TestSerializeAndDeserialize[[]float, array{TestFloat1, TestFloat2}]}
+
+assert{for(TestFloat1 : TestFloats; TestFloat2 : TestFloats) do TestSerializeAndDeserialize[tuple(float, float), (TestFloat1, TestFloat2)]}
+
+# Maps are not yet implemented for float keys.
+assert{for(TestFloat : TestFloats) do TestSerializeAndDeserialize[[float]float, map{TestFloat=>TestFloat}]}
+assert{for(TestFloat1 : TestFloats; TestFloat2 : TestFloats) do TestSerializeAndDeserialize[[float]float, map{TestFloat1=>TestFloat2, TestFloat2=>TestFloat1}]}
+
+# char
+TestChars:[]char = array:
+    0o00
+    '\t'
+    '\n'
+    '\r'
+    ' '
+    '!'
+    '\"'
+    '#'
+    '$'
+    '%'
+    '\&'
+    '\''
+    '('
+    ')'
+    '*'
+    '+'
+    ','
+    '-'
+    '.'
+    '/'
+    '0'
+    '\<'
+    '='
+    '\>'
+    '?'
+    '@'
+    'A'
+    'Z'
+    '['
+    '\\'
+    ']'
+    '^'
+    '_'
+    '`'
+    'a'
+    'z'
+    '\{'
+    '|'
+    '\}'
+    '\~'
+    0o80
+    0o81
+    0off
+
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[char, TestChar]}
+
+assert{V:?char=false; TestSerializeAndDeserialize[?char, V]}
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[?char, option{TestChar}]}
+
+assert{TestSerializeAndDeserialize[[]char, array{}]}
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[[]char, array{TestChar}]}
+assert{for(TestChar1 : TestChars, TestChar2 : TestChars) do TestSerializeAndDeserialize[[]char, array{TestChar1, TestChar2}]}
+
+assert{for(TestChar1 : TestChars; TestChar2 : TestChars) do TestSerializeAndDeserialize[tuple(char, char), (TestChar1, TestChar2)]}
+
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[[char]char, map{TestChar=>TestChar}]}
+assert{for(TestChar1 : TestChars; TestChar2 : TestChars) do TestSerializeAndDeserialize[[char]char, map{TestChar1=>TestChar2, TestChar2=>TestChar1}]}
+
+# char32
+TestChar32s:[]char32 = array:
+    0u00000
+    0u00080
+    0u000a0
+    0u00800
+    0u10000
+    '好'
+    '😀'
+    '🚀'
+assert{for(TestChar32 : TestChar32s) do TestSerializeAndDeserialize[char32, TestChar32]}
+
+assert{V:?char32=false; TestSerializeAndDeserialize[?char32, V]}
+assert{for(TestChar : TestChar32s) do TestSerializeAndDeserialize[?char32, option{TestChar}]}
+
+assert{TestSerializeAndDeserialize[[]char32, array{}]}
+assert{for(TestChar : TestChar32s) do TestSerializeAndDeserialize[[]char32, array{TestChar}]}
+assert{for(TestChar1 : TestChar32s; TestChar2 : TestChar32s) do TestSerializeAndDeserialize[[]char32, array{TestChar1, TestChar2}]}
+
+# string
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[string, "prefix {TestChar} postfix"]}
+
+assert{V:?string=false; TestSerializeAndDeserialize[?string, V]}
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[?string, option{"prefix {TestChar} postfix"}]}
+
+assert{TestSerializeAndDeserialize[[]string, array{}]}
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[[]string, array{"prefix {TestChar} postfix"}]}
+assert:
+    for(TestChar1 : TestChars, TestChar2 : TestChars):
+        TestSerializeAndDeserialize[[]string, array{"prefix {TestChar1} postfix", "prefix {TestChar2} postfix"}]
+
+assert:
+    for(TestChar1 : TestChars, TestChar2 : TestChars):
+        TestSerializeAndDeserialize[tuple(string, string), ("prefix {TestChar1} postfix", "prefix {TestChar2} postfix")]
+
+assert{for(TestChar : TestChars) do TestSerializeAndDeserialize[[string]int, map{"prefix {TestChar} postfix"=>ToUtf8CodeUnit(TestChar)}]}
+assert:
+    for(TestChar1 : TestChars, TestChar2 : TestChars):
+        TestMap := map:
+            "prefix {TestChar1} postfix"=>"prefix {TestChar2} postfix"
+            "prefix {TestChar2} postfix"=>"prefix {TestChar1} postfix"
+        TestSerializeAndDeserialize[[string]string, TestMap]
+
+# logic
+assert{TestSerializeAndDeserialize[logic, false]}
+assert{TestSerializeAndDeserialize[logic, true]}
+
+assert{V:?logic=false; TestSerializeAndDeserialize[?logic, V]}
+assert{TestSerializeAndDeserialize[?logic, option{false}]}
+assert{TestSerializeAndDeserialize[?logic, option{true}]}
+
+assert{TestSerializeAndDeserialize[[]logic, array{}]}
+assert{TestSerializeAndDeserialize[[]logic, array{false}]}
+assert{TestSerializeAndDeserialize[[]logic, array{true}]}
+assert{TestSerializeAndDeserialize[[]logic, array{false, true}]}
+assert{TestSerializeAndDeserialize[[]logic, array{true, false, true}]}
+
+assert{TestSerializeAndDeserialize[tuple(logic, logic), (false, false)]}
+assert{TestSerializeAndDeserialize[tuple(logic, logic), (false, true)]}
+assert{TestSerializeAndDeserialize[tuple(logic, logic), (true, false)]}
+assert{TestSerializeAndDeserialize[tuple(logic, logic), (true, true)]}
+
+assert{TestSerializeAndDeserialize[[logic]logic, map{}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{false=>false}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{false=>true}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{true=>false}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{true=>true}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{false=>true}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{true=>false}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{false=>true, true=>false}]}
+assert{TestSerializeAndDeserialize[[logic]logic, map{true=>false, false=>true}]}
+
+
+# test_enum
+# These tests need a way to reference the test_enum UEnum import in the imports passed to SerializeAndDeserialize.
+<#
+test_enum := enum{A,B,C,D,E,F}
+TestEnums:[]test_enum = array{test_enum.A, test_enum.B, test_enum.C, test_enum.D, test_enum.E, test_enum.F}
+assert{for(TestEnum : TestEnums) do TestSerializeAndDeserialize[test_enum, TestEnum]}
+
+assert{V:?test_enum=false; TestSerializeAndDeserialize[?test_enum, V]}
+assert{for(TestEnum : TestEnums) do TestSerializeAndDeserialize[?test_enum, option{TestEnum}]}
+
+assert{TestSerializeAndDeserialize[[]test_enum, array{}]}
+assert{for(TestEnum : TestEnums) do TestSerializeAndDeserialize[[]test_enum, array{TestEnum}]}
+assert{for(TestEnum1 : TestEnums; TestEnum2 : TestEnums) do TestSerializeAndDeserialize[[]test_enum, array{TestEnum1, TestEnum2}]}
+
+assert{for(TestEnum1 : TestEnums; TestEnum2 : TestEnums) do TestSerializeAndDeserialize[tuple(test_enum, test_enum), (TestEnum1, TestEnum2)]}
+#>

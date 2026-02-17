@@ -1,0 +1,16 @@
+C := module:
+    
+    f<public>():[]int:=
+    {
+        return(array{8,6,7,5})
+    }
+
+# Test that not assigning the returned array (from `C.f()`), does not crash the runtime
+assert:
+    C.f()
+    true?
+
+assert:
+    arr := array{8,6,7,5}
+    arr + array{3,0,9}
+    arr.Length = 4

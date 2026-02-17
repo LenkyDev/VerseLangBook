@@ -1,0 +1,412 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd } # For TestGenerators
+
+# just get the generator into a variable
+assert:
+    iter:generator(int) = TestGenerators.GetIntegerGenerator()
+
+# square brackets are not allowed
+assert_semantic_error(3511):
+    foo:?generator[int] = false
+
+# curly braces are also not allowed, but this causes a different error beca
+assert_semantic_error(3506):
+    foo:?generator{int} = false
+
+# non-simple-types for generator element args
+assert_semantic_error(3547):
+    foo:?generator(1) = false
+assert_semantic_error(3547):
+    foo:?generator("string") = false
+assert_semantic_error(3502):
+    foo:?generator(for) = false         # macro
+assert_semantic_error(3552):
+    foo:?generator(type{int}) = false   # keyword
+assert_semantic_error(3552):
+    foo:?generator(type{1}) = false
+
+assert_valid:
+    foo:?generator(type{X:int where X > 0, X < 10}) = false   # constrained
+
+assert:
+    var total:int = 0
+    for(item : TestGenerators.GetIntegerGenerator()):
+        set total += item;
+    total = 10   # 1+2+3+4
+
+# put the generator in a variable first before using it
+assert:
+    var total:int = 0
+    iter:generator(int) = TestGenerators.GetIntegerGenerator()
+    for(item : iter):
+        set total += item;
+    total = 10
+
+assert:
+    var FloatTarget:float = 1.0
+    for(FloatValue : TestGenerators.GetFloatGenerator()):
+        FloatValue = FloatTarget
+        set FloatTarget *= 2.0
+
+assert_semantic_error<depends_on_library>(3510):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    m<public> := module:
+        c<public> := class:
+            GetArrayAsGenerator<public>()<transacts> : generator(int) = array{1,2,3}  # 3510
+
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    m<public> := module:
+        c<public> := class:
+            f<public>():void = 
+                iter:generator(int) = array{1,2,3}  # 3509
+
+assert_semantic_error<depends_on_library>(3509, 3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    m<public> := module:
+        c<public> := class:
+            f<public>():void = 
+                iter:generator(int) = TestGenerators.GetIntegerGenerator()
+                a:int = iter[0]  # 3509,3509 indexing an generator directly disallowed even though they're arrays in the first implementation
+
+assert:
+    # multiple generators in a single loop
+    var FloatTotal:float = 0.0
+    for(FloatA : TestGenerators.GetFloatGenerator(), FloatB : TestGenerators.GetFloatGenerator()):
+        set FloatTotal += FloatA + FloatB
+    FloatTotal = 10.0*(1.0 + 2.0 + 4.0 + 8.0 + 16.0)
+
+assert:
+    # generator + array in a single loop with conditions
+    var FloatTotal:float = 0.0
+    
+    for(FloatA : TestGenerators.GetFloatGenerator(), FloatB : array{1.0,2.0,4.0,8.0,16.0}, FloatA <> 4.0 and FloatB <> 4.0):
+        set FloatTotal += FloatA + FloatB
+    FloatTotal = 8.0*(1.0 + 2.0 + 8.0 + 16.0)
+
+c:=class:
+    iter_func(iter:generator(float)):float =
+        var FloatTotal:float = 0.0
+        for(FloatValue : iter):
+            set FloatTotal += FloatValue
+        FloatTotal
+
+assert:
+    # passing an generator to a non-native function
+    C:c = c{}
+    Result:float := C.iter_func(TestGenerators.GetFloatGenerator())
+    Result = 1.0+2.0+4.0+8.0+16.0
+
+assert:
+    # passing an generator into a native function
+    Result:float = TestGenerators.SumFloatGenerator(TestGenerators.GetFloatGenerator());
+    Result = 1.0+2.0+4.0+8.0+16.0
+
+assert:
+    # var that is an generator. Set it to different generators
+    var iter:generator(float) = TestGenerators.GetFloatGenerator();
+    TestGenerators.SumFloatGenerator(iter) = 1.0+2.0+4.0+8.0+16.0
+    #reassign the generator and use it again
+    set iter = TestGenerators.GetAnotherFloatGenerator();
+    TestGenerators.SumFloatGenerator(iter) = 1.1+2.2+4.4+8.8+16.16
+
+c_iterfield<public>:=class:
+    iter<public>:generator(int)
+    mult_func<public>():int =
+        var Result:int = 1
+         for(IntValue : iter):
+            set Result *= IntValue
+        Result
+assert:
+    # generator as a field in a class
+    C:c_iterfield = c_iterfield{iter := TestGenerators.GetIntegerGenerator()}
+    C.mult_func() = 1*2*3*4
+
+
+c_return_iter := class:
+    f<public>()<transacts>:generator(float) = TestGenerators.GetFloatGenerator()
+assert:
+    #return value from a non-native function is an generator
+    C:c_return_iter = c_return_iter{}
+    var FloatValue:float = 1.0
+    for(IterValue : C.f()):
+        IterValue = FloatValue
+        set FloatValue *= 2.0
+
+assert_semantic_error(3509):
+    X:[]int = array{1,2,3}
+    Y:generator(int) = X    # 3509 - can't cast an array to an generator(int)
+
+# attempt to assign generators between numerical types
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    c<public> := class:
+        f<public>():void = 
+            X:generator(int) = TestGenerators.GetIntegerGenerator()
+            Y:generator(float) = X    # 3509 - can't cast generator(int) to an generator(float)
+
+# assign generator
+assert:
+    X:generator(int) = TestGenerators.GetIntegerGenerator()
+    Y:generator(int) = X
+
+# iterating an generator with arrow-syntax, the domain and range are observerd to be the same
+assert:
+    var FloatValue:float = 1.0;
+    for(X->Y : TestGenerators.GetFloatGenerator()):
+        Y = X = FloatValue
+        set FloatValue *= 2.0
+
+
+GeneratorToArray(Arg:generator(t) where t:type):[]t = for (X:Arg) {X}
+assert:
+    i1:[]int = GeneratorToArray(TestGenerators.GetIntegerGenerator())
+    i1 = array{1, 2, 3, 4}
+
+assert:
+    f1:[]float = GeneratorToArray(TestGenerators.GetAnotherFloatGenerator())
+    f1 = array{1.1, 2.2, 4.4, 8.8, 16.16}
+
+# assign generator(child) to generator(base)
+assert:
+    IC:generator(TestGenerators.TestChild) = TestGenerators.GetTestChildGenerator()
+    IB:generator(TestGenerators.TestBase) = IC    # OK - CAN implicitly downcast from generator(Child) to generator(Base)
+
+# downcast through a function
+downcast := class:
+    doit(iter:generator(TestGenerators.TestChild)): generator(TestGenerators.TestBase) = iter
+assert:
+    D:downcast = downcast{};
+    iter_base:generator(TestGenerators.TestBase) = D.doit(TestGenerators.GetTestChildGenerator())
+    var Sum:int = 0;
+    for(obj : iter_base):
+        set Sum += obj.Value
+    Sum = 30  # 0+10+20
+
+# assign generator(base) to generator(child)
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():void =
+            IB:generator(TestGenerators.TestBase) = TestGenerators.GetTestBaseGenerator()
+            IC:generator(TestGenerators.TestChild) = IB   # 3509 - cannot implicitly upcast from generator(Base) to generator(Child)
+
+# assign generator(base) to generator(emptychild) - they have the same memory footprint
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():void =
+            IB:generator(TestGenerators.TestBase) = TestGenerators.GetTestBaseGenerator()
+            IC:generator(TestGenerators.TestEmptyChild) = IB   # 3509
+
+# assign generator(child) to generator(emptychild)
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():void =
+            IB:generator(TestGenerators.TestChild) = TestGenerators.GetTestChildGenerator()
+            IC:generator(TestGenerators.TestEmptyChild) = IB   # 3509
+
+# parametric generators - Foo(generator(t) where t:type)
+c_parametricarg<public> := class:
+    Foo(arg:generator(t) where t:type):float=
+        TestGenerators.GetTestValueFromAnyGenerator(arg)
+
+assert:
+    iter := TestGenerators.GetIntegerGenerator()
+    C:c_parametricarg = c_parametricarg{}
+    C.Foo(iter) = 2.0
+
+assert:
+    iter := TestGenerators.GetAnotherFloatGenerator()
+    C:c_parametricarg = c_parametricarg{}
+    C.Foo(iter) = Sqrt(5.0)
+
+assert:
+    TestGenerators.First(TestGenerators.GetIntegerGenerator()) ?= 1
+
+assert:
+    TestGenerators.Last(TestGenerators.GetAnotherFloatGenerator()) ?= 16.16
+
+assert:
+    TestGenerators.Last(TestGenerators.GetEmptyIntegerGenerator()) = false
+
+# semantic error when passing non compatible types to the t in generator(t)
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():void =
+            value:int = TestGenerators.Last(TestGenerators.GetAnotherFloatGenerator())  #3509 - the float type flows through the any-return of Last
+
+
+# casting generator to any will work, but using an any in place of an does not
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        ConvertToAny(iter:any):any=iter
+        f()<decides>:void =
+            AnyIter:any = ConvertToAny(TestGenerators.GetAnotherFloatGenerator())
+            TestGenerators.Last(AnyIter) = 16.16  # 3509 - any -> generator(any) is invalid
+
+assert:
+    Obj:TestGenerators.TestChild = TestGenerators.Last(TestGenerators.GetTestChildGenerator())?
+    Obj.ValueChild = 200
+    Obj.Value = 20
+
+assert:
+    TestGenerators.Last(TestGenerators.GetEmptyTestEmptyChildGenerator()) = false
+
+assert_valid<depends_on_library>:
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    P:?int = false
+    C := class:
+        f():generator(TestGenerators.TestBase)=
+            Y:generator(TestGenerators.TestChild) = TestGenerators.GetTestChildGenerator()
+            Z:generator(TestGenerators.TestEmptyChild) = TestGenerators.GetTestEmptyChildGenerator()
+            X:generator(TestGenerators.TestBase) = if (P?) then Y else Z
+            X
+
+assert_valid<depends_on_library>:
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():generator(TestGenerators.TestBase)=
+            Y:generator(TestGenerators.TestChild) = TestGenerators.GetTestChildGenerator()
+            Z:generator(TestGenerators.TestEmptyChild) = TestGenerators.GetTestEmptyChildGenerator()
+            P:?int = false
+            if (P?) then Y else Z
+
+assert_valid<depends_on_library>:
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():generator(TestGenerators.TestBase)=
+            Y:generator(TestGenerators.TestChild) = TestGenerators.GetTestChildGenerator()
+            Z:generator(TestGenerators.TestBase) = TestGenerators.GetTestEmptyChildGenerator()
+            P:?int = false
+            if (P?) then Y else Z
+
+assert_semantic_error<depends_on_library>(3510):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C := class:
+        f():generator(TestGenerators.TestChild)=                  # Causes 3510
+            Y:generator(TestGenerators.TestChild) = TestGenerators.GetTestChildGenerator()
+            Z:generator(TestGenerators.TestEmptyChild) = TestGenerators.GetTestEmptyChildGenerator()
+            P:?int = false
+            if (P?) then Y else Z
+
+assert_valid:
+    int1 := type{X:int where X > 0, X < 10}
+    int2 := type{X:int where X > 5, X < 20}
+    int3 := type{X:int where X > 5, X < 10}
+    F1(:generator(int1)):void = {}
+    F2(:generator(int2)):void = {}
+    f<public>():void =
+        P:?int = false
+        F3:type{_(:generator(int3)):void} = if (P?) then F1 else F2
+        
+assert_semantic_error(3509):
+    int1 := type{X:int where X > 0, X < 10}
+    int2 := type{X:int where X > 5, X < 20}
+    int3 := type{X:int where X > 1, X < 10}  # causes 3509 because the range isn't constrained to the Meet of int1/int2
+    F1(:generator(int1)):void = {}
+    F2(:generator(int2)):void = {}
+    f<public>():void =
+        P:?int = false
+        F3:type{_(:generator(int3)):void} = if (P?) then F1 else F2
+
+assert:
+    if (not (TestGenerators.MaybeGetAGenerator[])) {}
+    X:?generator(int) = TestGenerators.MaybeGetAGenerator[]
+    if (not (X?)) {}
+
+assert:
+    T := test_external_parametric_type(generator(int), float){U:=1.0}
+    T.Method(TestGenerators.GetIntegerGenerator())=1.0
+
+assert:
+    T := test_external_parametric_type2(generator(float)){T:=test_external_parametric_type(generator(float),int){U:=3}}
+    T.T.Method(TestGenerators.GetFloatGenerator())=3
+
+assert:
+    A:[]int = array{1,2,3}
+    T := test_external_parametric_type(generator(int),[]int){U:=A}
+    T.Method(TestGenerators.GetIntegerGenerator())=A
+
+assert_semantic_error<depends_on_library>(3509):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    C<public> := class:
+        F<public>():int= 
+            I:generator(int) = TestGenerators.GetIntegerGenerator()
+            A:[]int = array{1,2,3}
+            T := test_external_parametric_type([]int, generator(int)){U:=I}
+            temp:generator(int) := T.Method(A)
+            if (temp=I) then 1 else 0
+
+# Generators are gated by UploadedFNAtVersion == 29.30
+assert_valid:
+    vpackage(P0, /A):
+        snippet:
+            M<public> := module:
+                GeneratorToArray(Arg:generator(t) where t:type):[]t = for (X:Arg) {X}
+
+# 2930 is the actual version where this should go live. The test environment defaults to max-int for this version
+assert_valid:
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2930):
+        snippet:
+            M<public> := module:
+                GeneratorToArray(Arg:generator(t) where t:type):[]t = for (X:Arg) {X}
+
+assert_semantic_error(3506,3503,3524):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            M<public> := module:
+                GeneratorToArray(Arg:generator(t) where t:type):[]t = for (X:Arg) {X}
+
+assert_semantic_error(3506,3503,3524):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            M<public> := module:
+                GeneratorToArray(Arg:generator(t) where t:type):[]t = for (X:Arg) {X}
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            generator<public> := module:                    # module named generator is ok in older versions
+                generatorClass := class:
+                    generatorFunc<public>(v:int):int = 42
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            generatorModule<public> := module:
+                generator := class:                         # class named generator is ok in older versions
+                    generatorFunc<public>(v:int):int = 42   
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            generatorModule<public> := module:
+                generatorClass := class:
+                    generator<public>(v:int):int = 42       # function named generator is ok in older versions
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            generatorModule<public> := module:
+                generatorClass := class:
+                    generator:int = 42                      # variable named generator is ok in older versions
+                    generatorFunction<public>(v:int):int = generator
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            M<public> := module:
+                generator():int = 42
+                func():int = generator()
+
+assert_semantic_error(2015):
+    vpackage(P0, /A, ?UploadedAtFNVersion:=2920):
+        snippet:
+            M<public> := module:
+                generator := class:     # 2015
+                foo:?generator = false

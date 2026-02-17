@@ -1,0 +1,30 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd/CoroUtils }
+
+test_class := class:
+	Event:event(int) = event(int){}
+	G()<suspends>:void={ Event.Signal(0) }
+	F()<suspends>:void=
+		race:
+			block:
+				Event.Await()
+				LogEvent("a")
+			block:
+				defer:
+					LogEvent("c")
+				WaitTicks(1)
+				G()
+				LogEvent("b")
+				WaitTicks(1)
+				LogEvent("X")
+		LogEvent("d")
+
+assert:
+	Var:test_class = test_class{}
+	spawn{ Var.F() }
+	Tick(2)
+
+	# BPVM does not suspend the `race` when canceling the losing (but still running) arm.
+	verse_vm_only{ GetEventLogString() = ",abcd," }
+	bp_vm_only{ GetEventLogString() = ",acdb," }

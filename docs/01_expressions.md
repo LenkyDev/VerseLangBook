@@ -908,7 +908,6 @@ set Arr[Index] = Element      # Array element assignment
 set Map[Key] = MappedValue    # Map entry assignment
 ```
 <!-- #> -->
-```
 
 Set expressions are themselves expressions, though they're typically
 used for their side effects rather than their value. The left-hand
@@ -934,7 +933,6 @@ M()<transacts><decides>:void =
 set Game.Players[CurrentPlayer].Inventory.Items[Slot] = NewItem
 ```
 <!-- #> -->
-```
 
 ## Semicolons vs Commas
 

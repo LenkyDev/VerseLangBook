@@ -1,0 +1,45 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+_testCoro(inTicksToWait:int)<suspends>:int=
+{
+    var ticksToWait:int = inTicksToWait
+
+    localValue := 42
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("A")
+    set ticksToWait = _testCoro2(ticksToWait)
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("B")
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("C")
+    return (localValue)
+}
+
+
+_testCoro2(ticksToWait:int)<suspends>:int=
+{
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("D")
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("E")
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("F")
+    CoroUtils.WaitTicks(ticksToWait)
+    CoroUtils.LogEvent("G")
+    return (ticksToWait * 2)
+}
+
+# Test basic coroutine invocation
+assert:
+    spawn { _testCoro(2) }
+    numCorosAfterSpawn := CoroUtils.GetNumActiveCoroutines()
+    CoroUtils.Tick(18)
+    numCorosInTheEnd := CoroUtils.GetNumActiveCoroutines()
+
+    bp_vm_only{ numCorosAfterSpawn = 2 }
+    numCorosAfterSpawn > 0
+    numCorosInTheEnd = 0
+    CoroUtils.GetEventLogString() = ",,A,,D,,E,,F,,G,,,,B,,,,C"

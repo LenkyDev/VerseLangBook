@@ -1,0 +1,85 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert{+1 + +0 = +1}
+assert{+0 + +1 = +1}
+assert{+1 + +1 = +2}
+assert{-1 + -1 = -2}
+
+assert{+1 + +2 = +3}
+assert{+2 + +1 = +3}
+
+assert{-1 + +1 = +0}
+assert{+1 + -1 = +0}
+
+assert{+1 + -2 = -1}
+assert{-2 + +1 = -1}
+
+# 32bit integer math shouldn't overflow
+assert{+2147483647 + +1}
+assert{+1 + +2147483647}
+assert{-2147483648 + -1}
+assert{-1 + -2147483648}
+
+bp_vm_only
+{
+# 64bit integer addition can overflow
+assert_runtime_error{+9223372036854775807 + +1}
+assert_runtime_error{+1 + +9223372036854775807}
+assert_runtime_error{-9223372036854775808 + -1}
+assert_runtime_error{-1 + -9223372036854775808}
+}
+verse_vm_only
+{
+assert{+9223372036854775807 + +1}
+assert{+1 + +9223372036854775807}
+assert{-9223372036854775808 + -1}
+assert{-1 + -9223372036854775808}
+}
+
+assert{var x:int = +1; set x += +0; x = +1}
+assert{var x:int = +0; set x += +1; x = +1}
+assert{var x:int = +1; set x += +1; x = +2}
+assert{var x:int = -1; set x += -1; x = -2}
+
+assert{var x:int = +1; set x += +2; x = +3}
+assert{var x:int = +2; set x += +1; x = +3}
+
+assert{var x:int = -1; set x += +1; x = +0}
+assert{var x:int = +1; set x += -1; x = +0}
+
+assert{var x:int = +1; set x += -2; x = -1}
+assert{var x:int = -2; set x += +1; x = -1}
+
+# integer addition overflow
+bp_vm_only {
+assert_runtime_error{var x:int = +9223372036854775807; set x += +1}
+assert_runtime_error{var x:int = +1                  ; set x += +9223372036854775807}
+
+assert_runtime_error{var x:int = -9223372036854775808; set x += -1}
+assert_runtime_error{var x:int = -1         ; set x += -9223372036854775808}
+}
+verse_vm_only
+{
+assert{var x:int = +9223372036854775807; set x += +1; x = 9223372036854775807+1}
+assert{var x:int = +1; set x += +9223372036854775807; x = 9223372036854775807+1}
+assert{var x:int = -9223372036854775808; set x += -1; x=-9223372036854775808-1}
+assert{var x:int = -1; set x += -9223372036854775808; x=-9223372036854775808-1}
+}
+
+# Runtime errors inside an assert_runtime_error terminates execution.
+assert_runtime_error:
+    CoroUtils.ResetThenLogEvent("A")
+    CoroUtils.SuppressNextReset()
+    Err("Runtime error")
+    CoroUtils.LogEvent("B")
+assert:
+    # If we run the assert twice (EG. if the retry-transactions mode was enabled
+    # in AutoRTFM), we could purge the event log on the second invocation unless
+    # we explicitly suppress that here!
+    CoroUtils.SuppressNextReset()
+    CoroUtils.GetEventLogString()="A"
+assert:
+    # This assert exists solely to consume any stray `SuppressNextReset`'s that
+    # could have happened above.

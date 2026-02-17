@@ -1,0 +1,21 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    vpackage(P0, /Verse.org/M, ?Scope:=InternalUser, ?VerseVersion:=0, ?UploadedAtFNVersion:=3409):
+        snippet:
+            @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=42} X:int }
+
+assert_valid:
+    vpackage(P0, /Verse.org/M, ?Scope:=InternalUser, ?VerseVersion:=0, ?UploadedAtFNVersion:=3409):
+        snippet:
+            @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=Self.Y} X:int; Y:int = 4711 }
+
+assert_semantic_error(3506,9005):
+    vpackage(P0, /Verse.org/M, ?Scope:=InternalUser, ?VerseVersion:=0, ?UploadedAtFNVersion:=3410):
+        snippet:
+            @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=Y} X:int; Y:int = 4711 }
+
+assert_semantic_error(3548,9005):
+    vpackage(P0, /Verse.org/M, ?Scope:=InternalUser, ?VerseVersion:=0, ?UploadedAtFNVersion:=3410):
+        snippet:
+            @attribscope_data Attr := class<computes>(attribute) { V<public>:int }; C := class { @Attr{V:=Self.Y} X:int; Y:int = 4711 }

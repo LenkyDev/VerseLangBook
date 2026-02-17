@@ -1,0 +1,13 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3625, 3540, 3542):
+    F(X:=0):={}
+
+assert_semantic_error(3625, 3540):
+    F(X:=0):void={}
+
+assert_semantic_error(3625, 3540, 3542, 3552):
+    F(X:=0..10):={}
+
+assert_semantic_error(3625):
+    F(X:int=0):void={}

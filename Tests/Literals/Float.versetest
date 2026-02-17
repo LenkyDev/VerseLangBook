@@ -1,0 +1,121 @@
+using {/Verse.org/Tests/VerseTestScriptCmd} # For TestUtils
+
+# valid
+assert {12.34f64}
+assert {1234f64}
+assert {12.34}
+assert {1234.0}
+
+# f16 and f32 are valid but currently unsupported
+assert_semantic_error(3552){ f():float= 1.23f16 }
+assert_semantic_error(3552){ f():float= 1.23f32 }
+
+# invalid (missing bit depth suffix)
+assert_syntax_error(3109){"1234f"}
+assert_syntax_error(3109){"1234.0f"}
+
+# invalid (unrecognized bit depths)
+assert_syntax_error(3109){"1234f1"}
+assert_syntax_error(3109){"12.34f2"}
+assert_syntax_error(3109){"1234f17"}
+assert_syntax_error(3109){"12.34f1200"}
+
+# floats with unrecognized suffixes are unsupported
+assert_syntax_error(3101){"f():float= 12.34meters"}
+assert_syntax_error(3101){"f():float= 12.34x"}
+assert_syntax_error(3101){"f():float= 12.34h"}
+
+# Test fraction syntax.
+
+assert_syntax_error(3100){"1."}
+
+# Test exponents
+
+assert{1.0e+0 = 1.0}
+assert{1.0e+1 = 10.0}
+assert{1.0e+2 = 100.0}
+assert{1.0e-1 = 0.1}
+assert{1.0e-2 = 0.01}
+assert{123.0e+1 = 1230.0}
+assert{1.23e+0 = 1.23}
+assert{1.23e+1 = 12.3}
+
+assert{1.0e1 = 10.0} # The exponent sign can be omitted.
+
+# Tests for the exact bits produced by float literal parsing.
+
+assert{TestUtils.BitcastFloatToInt(0.0)  = 0x0000000000000000}
+assert{TestUtils.BitcastFloatToInt(1.0)  = 0x3ff0000000000000}
+
+assert{TestUtils.BitcastFloatToInt(-1.0)   = -0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(- 1.0)  = -0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(-(1.0)) = -0x4010000000000000}
+
+assert{TestUtils.BitcastFloatToInt(+1.0)   = 0x3ff0000000000000}
+assert{TestUtils.BitcastFloatToInt(+ 1.0)  = 0x3ff0000000000000}
+assert{TestUtils.BitcastFloatToInt(+(1.0)) = 0x3ff0000000000000}
+
+assert{TestUtils.BitcastFloatToInt(- -1.0) = 0x3ff0000000000000}
+assert{TestUtils.BitcastFloatToInt(+ -1.0) = -0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(- +1.0) = -0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(+ +1.0) = 0x3ff0000000000000}
+
+assert{TestUtils.BitcastFloatToInt(- - 1.0) = 0x3ff0000000000000}
+assert{TestUtils.BitcastFloatToInt(+ - 1.0) = -0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(- + 1.0) = -0x4010000000000000}
+assert{TestUtils.BitcastFloatToInt(+ + 1.0) = 0x3ff0000000000000}
+
+assert{TestUtils.BitcastFloatToInt(+0.0) = 0x0000000000000000}
+verse_vm_todo
+{
+assert{TestUtils.BitcastFloatToInt(-0.0) = -0x8000000000000000}
+}
+
+# Floating-point hexadecimal literals
+assert_syntax_error(3100){"0x0.0p0"}#assert{+0.0 = +0x0.0p0}
+assert_syntax_error(3100){"0x1.0p0"}#assert{+1.0 = +0x1.0p0}
+assert_syntax_error(3100){"0x1.0p1"}#assert{+2.0 = +0x1.0p1}
+assert_syntax_error(3100){"0x2.0p0"}#assert{+2.0 = +0x2.0p0}
+assert_syntax_error(3100){"0x1.8p1"}#assert{+3.0 = +0x1.8p1}
+assert_syntax_error(3100){"0x3.0p0"}#assert{+3.0 = +0x3.0p0}
+assert_syntax_error(3100){"0x0.0p0"}#assert{-0.0 = -0x0.0p0}
+assert_syntax_error(3100){"0x1.0p0"}#assert{-1.0 = -0x1.0p0}
+assert_syntax_error(3100){"0x1.0p1"}#assert{-2.0 = -0x1.0p1}
+assert_syntax_error(3100){"0x2.0p0"}#assert{-2.0 = -0x2.0p0}
+assert_syntax_error(3100){"0x2.0P0"}#assert{-2.0 = -0x2.0P0}
+
+assert_syntax_error(3100){"0x1p0"  }#assert{+1.0 = +0x1p0}
+assert_syntax_error(3100){"0x1P0"  }#assert{+1.0 = +0x1P0}
+assert_syntax_error(3100){"0x1p+0" }#assert{+1.0 = +0x1p+0}
+assert_syntax_error(3100){"0x1p-0" }#assert{+1.0 = +0x1p-0}
+assert_syntax_error(3100){"0x1.p0" }#assert{+1.0 = +0x1p+0}
+
+#assert{TestUtils.BitcastFloatToInt(+inf) = 0x7f800000}
+#assert{TestUtils.BitcastFloatToInt(-inf) = 0xff800000}
+
+# Test that float literals round-trip between the VST and text.
+assert_roundtrip{1.234f64}
+assert_roundtrip{1.234}
+
+# Test the smallest representable floats.
+assert{TestUtils.BitcastFloatToInt(+2.4703282292062327e-324) = 0x0000000000000000} # largest underflow
+verse_vm_todo
+{
+assert{TestUtils.BitcastFloatToInt(-2.4703282292062327e-324) = -0x8000000000000000<#0x8000000000000000#>}
+}
+
+assert{TestUtils.BitcastFloatToInt(+2.4703282292062328e-324) = 0x0000000000000001} # smallest positive denormal
+assert{TestUtils.BitcastFloatToInt(-2.4703282292062328e-324) = -0x7fffffffffffffff<#0x8000000000000001#>}
+
+assert{TestUtils.BitcastFloatToInt(+2.2250738585072014e-308) = 0x0010000000000000} # smallest normal
+assert{TestUtils.BitcastFloatToInt(-2.2250738585072014e-308) = -0x7ff0000000000000<#0x8010000000000000#>}
+
+# Test the largest representable floats.
+assert{TestUtils.BitcastFloatToInt(+1.7976931348623158e+308) = 0x7fefffffffffffff} # largest normal
+assert{TestUtils.BitcastFloatToInt(-1.7976931348623158e+308) = -0x0010000000000001<#0xffefffffffffffff#>}
+
+assert_semantic_error(3554){F():float=+1.7976931348623159e+308} # smallest overflow
+assert_semantic_error(3554){F():float=-1.7976931348623159e+308}
+
+assert_semantic_error(3554){F():float=+1.0e+100000} # big overflow
+assert_semantic_error(3554){F():float=-1.0e+100000}

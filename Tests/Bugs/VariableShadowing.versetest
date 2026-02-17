@@ -1,0 +1,46 @@
+# Shadowing parent / child class
+assert_semantic_error(3532)
+{
+    A := class:
+        myMember:int
+        
+    B := class(A):
+        myMember:int
+}
+
+# Shadowing data member / function parameter
+assert_semantic_error(3532)
+{
+    A := class:
+        myMember:int
+        MyFunction(myMember:int):void={}
+}
+
+assert_semantic_error(3532)
+{
+    A := class:
+        myMember:int
+
+    B := class(A):
+        MyFunction(myMember:int):void={}
+}
+
+# Shadowing data member / function body
+assert_semantic_error(3532)
+{
+    A := class:
+        myMember:int
+ 
+        myFunction(param:int):int=
+            myMember:int = 5
+}
+
+assert_semantic_error(3532)
+{
+    A := class:
+        myMember:int
+
+    B := class(A):
+        myFunction(param:int):int=
+            myMember:int = 5
+}

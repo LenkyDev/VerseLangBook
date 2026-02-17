@@ -1,0 +1,358 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Native }  # for available
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Apply available to all the places where it can go
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}
+    M := module {}
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}
+    C := class {}
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}
+    I := interface {}
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}
+    S := struct {}
+
+assert_valid:
+    using { /Verse.org/Native }
+    C := class:
+        @available{MinUploadedAtFNVersion := 0}
+        F():int = 42
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}
+    F():int = 42
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}
+    E := enum {}
+
+assert_valid:
+    using { /Verse.org/Native }
+    E := enum:
+        A
+        @available{MinUploadedAtFNVersion := 0}
+        B
+        C
+
+#An empty @available attribute really has no effect
+assert_semantic_error(3532):
+    using { /Verse.org/Native }
+    c_class := class:
+        I<public>:int = 42
+        @available{}                # does nothing to avoid the ambiguity
+        I<public>:int = 42
+
+c_class := class:
+    @available{}
+    I<public>:int = 42
+
+assert:
+    C:c_class := c_class{ I := 43 }
+    C.I = 43
+
+# Now lets see if we can drop things out of the VST using the attribute
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            M := module:
+                I<public>:int = 0
+            @available{MinUploadedAtFNVersion := 3000}
+            M := module:
+                I<public>:int = 42 # not a duplicate because the version gate removes it
+
+<#> multi-part modules with available aren't yet supported, so this visibility test will fail for the wrong reason
+    assert_semantic_error(3532):
+        vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+            snippet:
+                using { /Verse.org/Native }
+                M := module:
+                    I<public>:int = 0
+                @available{MinUploadedAtFNVersion := 3000}
+                M := module:
+                    I<public>:int = 42  # 3532
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            C := class {}
+            @available{MinUploadedAtFNVersion := 3000}
+            C := class {}
+
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            C := class {}
+            @available{MinUploadedAtFNVersion := 3000}
+            C := class {}
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            I := interface {}
+            @available{MinUploadedAtFNVersion := 3000}
+            I := interface {}
+
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            I := interface {}
+            @available{MinUploadedAtFNVersion := 3000}
+            I := interface {}
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            S := struct {}
+            @available{MinUploadedAtFNVersion := 3000}
+            S := struct {}
+
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            S := struct {}
+            @available{MinUploadedAtFNVersion := 3000}
+            S := struct {}
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            C := class:
+                F():int = 42
+                @available{MinUploadedAtFNVersion := 3000}
+                F():int = 42
+
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            C := class:
+                F():int = 42
+                @available{MinUploadedAtFNVersion := 3000}
+                F():int = 42
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            F():int = 42
+            @available{MinUploadedAtFNVersion := 3000}
+            F():int = 42
+
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            F():int = 42
+            @available{MinUploadedAtFNVersion := 3000}
+            F():int = 42
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            E := enum {}
+            @available{MinUploadedAtFNVersion := 3000}
+            E := enum {}
+
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            E := enum {}
+            @available{MinUploadedAtFNVersion := 3000}
+            E := enum {}
+
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=2930):
+        snippet:
+            using { /Verse.org/Native }
+            E := enum:
+                A
+                B
+                @available{MinUploadedAtFNVersion := 3000}
+                B
+                C
+            
+assert_semantic_error(3532):
+    vpackage(P0, /APath, ?Scope:=InternalUser, ?UploadedAtFNVersion:=3000):
+        snippet:
+            using { /Verse.org/Native }
+            E := enum:
+                A
+                B
+                @available{MinUploadedAtFNVersion := 3000}
+                B
+                C
+
+# Symbol collision tests
+assert_valid:
+    vpackage(P0, /APath, ?Scope:=PublicUser):
+        snippet:
+            using {/Verse.org/Native}
+            available:int = 123                    # user code doesn't see the attribute definition
+
+assert_semantic_error(3593):
+    vpackage(P0, /APath, ?Scope:=PublicUser):
+        snippet:
+            using {/Verse.org/Native}
+            @available{}                           # 3593 because available is not visible as an attribute
+            Value<public>:int = 123
+
+# Some native-tests - see available.native.verse
+assert:
+    TestAvailableAttribute.AvailableFunctionReturns42() = 42
+    TestAvailableAttribute.AvailableFunctionReturns43() = 43
+
+assert_semantic_error<depends_on_library>(3506):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    M := module:
+        C := class:
+            F():int=
+                return TestAvailableAttribute.NonExistantFunction()   # function missing because it's versioned out
+
+assert:
+    C:TestAvailableAttribute.AvailableNativeClass := TestAvailableAttribute.AvailableNativeClass{}
+    C.Returns42() = 42
+
+assert_semantic_error<depends_on_library>(3506):
+    using { /Verse.org/Tests/VerseTestScriptCmd }
+    M := module:
+        C := class:
+            Data:TestAvailableAttribute.AvailableNativeClass := TestAvailableAttribute.AvailableNativeClass{}
+            F():int=
+                Data.NonExistantReturns43()
+
+assert:
+    C:TestAvailableAttribute.MaybeAvailableClass := TestAvailableAttribute.MaybeAvailableClass{}
+    C.Value13 = 13
+
+assert:
+    C:TestAvailableAttribute.MaybeAvailableClass := TestAvailableAttribute.MaybeAvailableClass{}
+    C.FuncReturns42() = 42
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion := 0}             # versioned in
+    M<public> := module:
+        @available{MinUploadedAtFNVersion := 0}         # versioned in
+        C<public> := class:
+            Value<public>:int = 42
+
+    M2 := module:
+        C2<public> := class:
+            F<public>():int=
+                Inst:M.C = M.C{}                        # Valid reference
+                Inst.Value
+
+assert_semantic_error(3506, 3506):
+    @available{MinUploadedAtFNVersion := 4294967295}    # versioned out
+    M<public> := module:
+        @available{MinUploadedAtFNVersion := 0}         # versioned out because a parent scope is versioned out
+        C<public> := class:
+            Value<public>:int = 42
+
+    M2 := module:
+        C2<public> := class:
+            F<public>():int=
+                Inst:M.C = M.C{}                        # 3506, 3506 - M is versioned out, so both these references fail
+                Inst.Value
+
+assert_valid:
+    using { /Verse.org/Native }
+    M<public> := module:                        # OK no modules have available attributes
+        A<public>:int = 42
+    M<public> := module:
+        B<public>:int = 43
+
+    Value:int = M.A + M.B
+
+assert_valid:
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                        # OK all parts have the same version
+        A<public>:int = 42
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                        # OK
+        B<public>:int = 43
+
+    Value:int = M.A + M.B
+
+assert_semantic_error(3552, 3552):
+    using { /Verse.org/Native }
+    M<public> := module:                     # 3552 - some but not all modules have available
+        A<public>:int = 42
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                     # 3552
+        B<public>:int = 43
+
+    Value:int = M.A + M.B
+
+assert_semantic_error(3552, 3552):
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                    # 3552 - some but not all modules have available
+        A<public>:int = 42
+    M<public> := module:                    # 3552
+        B<public>:int = 43
+
+    Value:int = M.A + M.B
+
+assert_semantic_error(3552, 3552):
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                        # 3552 - different parts have different versions
+        A<public>:int = 42
+    @available{MinUploadedAtFNVersion:=3001}
+    M<public> := module:                        # 3552 - different parts have different versions
+        B<public>:int = 43
+
+    Value:int = M.A + M.B
+
+assert_semantic_error(3552, 3552):
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                         # 3552 - not all parts have an available attribute
+        A<public>:int = 42
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:
+        B<public>:int = 43
+    M<public> := module:                         # 3552
+        C<public>:int = 44
+
+    Value:int = M.A + M.B + M.C
+
+
+assert_semantic_error(3552, 3552):
+    using { /Verse.org/Native }
+    @available{MinUploadedAtFNVersion:=3000}
+    M<public> := module:                         # 3552 - not all parts have an available attribute
+        A<public>:int = 42
+    @available{MinUploadedAtFNVersion:=3001}
+    M<public> := module:                         # 3552
+        B<public>:int = 43
+    @available{MinUploadedAtFNVersion:=3002}
+    M<public> := module:                         # we don't report more than one mismatch. Always in pairs
+        C<public>:int = 44
+
+    Value:int = M.A + M.B + M.C

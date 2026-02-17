@@ -1,0 +1,305 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+############################################
+# Helper functions
+Log(Msg:string) : void = {CoroUtils.LogEvent(Msg)}
+GetLogStr() : string =   {return CoroUtils.GetEventLogString()}
+
+############################################
+# Test class with both immediate and async methods.
+
+duper_class:=class:
+    Method0():int = { return 1 }
+    
+super_class:=class(duper_class):
+    Method1():int = { return 2 }
+    
+    Method2()<suspends>:void={ Log("s") } 
+    
+child_class:=class(super_class):
+    
+    Method0<override>():int = { return (super:)Method0() + 10 } # Defined in super super class
+    
+    Method1<override>():int = { return (super:)Method1() + 20 } # defined in super class
+    
+    Method2<override>()<suspends>:void={ Log("c"); (super:)Method2() }
+
+assert{ child_class{}.Method0() = 11 }
+assert{ child_class{}.Method1() = 22 }
+
+assert:
+    Log("<")
+    CS := child_class{}
+    task := spawn:
+                CS.Method2()
+    Log(">")
+    GetLogStr() = "<cs>"
+
+# Overloaded methods and (super:)
+base_class2:=class:
+    value():int= return 10
+sub_class2:=class(base_class2):
+    
+    value<override>():int= return 11
+unrelated_class2:=class:
+    value():int= return 20
+
+super_class2:=class:
+    Method(Unrelated:unrelated_class2):unrelated_class2 = return Unrelated
+    Method(Sub:sub_class2):sub_class2 = return Sub
+child_class2:=class(super_class2):
+    
+    Method<override>(Base:base_class2):sub_class2 = return (super:)Method(sub_class2{})
+
+assert:
+    Base:base_class2= base_class2{}
+    Sub:sub_class2= sub_class2{}
+    Unrelated:unrelated_class2= unrelated_class2{}
+    Child:child_class2=child_class2{}
+
+    Child.Method(Base).value() = 11
+    Child.Method(Sub).value() = 11
+    Child.Method(Unrelated).value() = 20
+
+# Test interposing `super` and `Self` calls.
+c1 := class:
+    Baz():int = 10
+    Foo():int = Self.Baz() + 32
+
+c2 := class(c1):
+    Foo<override>():int = {return (super:)Foo() - 33}
+    Baz<override>():int = {return (super:)Baz() * 2}
+
+assert:
+    test:c2 = c2{}
+    test.Foo() = (10 * 2) + 32 - 33
+
+# Test to make sure that we are loading new functions instead of the one from the constructor/shape directly.
+c3 := class:
+    Bar:int = 42
+    Foo():int = Bar
+    
+assert:
+    test1:c3 = c3{Bar := 24}
+    test2:c3 = c3{}
+    t1 := test1.Foo
+    t2 := test2.Foo
+    t1() = 24
+    t2() = 42
+
+# Test a longer inheritance chain to make sure that there aren't any stray bugs hiding there.
+c4 := class(c2):
+    Foo<override>():int = { return (super:)Foo() + 1 }
+
+c5 := class(c4):
+    Foo<override>():int = { return (super:)Foo() + 3 }
+
+assert:
+    C5 := c5{}
+    C5.Foo() = (10 * 2) + 32 - 33 + 1 + 3
+
+# Check that a field that references a bound method works.
+FooInt():int = 42
+c6a := class(c2):
+    FooSuper:type{_():int} = FooInt
+    Qux():int = { Self.FooSuper()}
+
+assert:
+    Test:c6a = c6a{}
+    Test.Qux() = 42
+
+# More testing of calling `(super:)` from various scopes.
+
+c7 := class:
+    Foo()<transacts>:int = {42}
+    Baz()<transacts>:int = Self.Foo() + 10
+
+c8 := class(c7):
+    Foo<override>()<transacts>:int = { block { (super:)Foo() } + 25 }
+
+c9 := class(c8):
+    Foo<override>()<transacts>:int = { block {(super:)Foo()} + 8}
+    Baz<override>()<transacts>:int = { block {(super:)Baz() + 3}}
+    
+    var x:int = 0
+
+    block:
+        set x = Self.Baz() + 16
+
+assert:
+    Test:c8 = c8{}
+    Test.Foo() = 42 + 25
+
+assert:
+    Test2:c9 = c9{}
+    Test2.x = 42 + 25 + 8 + 10 + 3 + 16
+
+c10 := class:
+    Foo()<transacts>:int = {42}
+
+c11 := class(c10):
+    Foo<override>()<transacts>:int = {(super:)Foo()}
+    Bar()<transacts>:int = Self.Foo() + 3
+    var x:int = 0
+    block:
+        set x = Self.Bar()
+
+assert:
+    Test:c11 = c11{}
+    Test.x = 42 + 3
+
+# Test calling `(super:)` from a parametric class.
+c12(A:type) := class:
+    Foo():int = 42
+
+c13(B:type) := class(c12(int)):
+    Foo<override>():int = (super:)Foo() + 3
+
+assert:
+    Test:c13(int) = c13(int){}
+    Test.Foo() = 42 + 3
+
+############################################
+# Not implemented
+    
+assert_semantic_error(3502):
+    super_class:=class:
+        Method():void= {}
+
+    child_class:=class(super_class):
+        
+        Method<override>():void= { return (super:)Method } # super on references not yet implemented
+
+# Some incorrect usages of (super:)
+assert_semantic_error(3612):
+    super_class:=class:
+        Method():int= { return 41 }
+
+    child_class:=class(super_class):
+        Method2():int = { return (super:)Method2() } # super on method not in super class
+
+assert_semantic_error(3612):
+    super_class:=class:
+        Method():int = { return 41 }
+        Method2():int = { return 14 }
+     
+    child_class:=class(super_class):
+        
+        Method<override>():int = { return 42 }
+        
+        Method2<override>():int = { return (super:)Method() }  # super on another method
+
+assert_semantic_error(3612, 3588, 3588):
+    ReusedName:=class:
+        Method():int = { return 14 }
+     
+    child_class:=class(ReusedName):
+        (child_class:)ReusedName():ReusedName = { return ReusedName{} }
+        
+        Method<override>():int = { return (super:)ReusedName() } # check that same name doesn't fool check
+
+assert_semantic_error(3612):
+    Function():int= (super:)Function()  # super on function
+
+assert_semantic_error(3506):
+    super_class:=class:
+        f():void= { }
+
+    child_class:=class(super_class):
+        Method(a : child_class):void= { a.(super:)f() } # super with context
+
+# No (super:) on enums
+assert_semantic_error(3560):
+    E := enum {a, b, c}
+    E.(super:)a
+
+assert_semantic_error(3560):
+    E := enum {a, b, c}
+    (super:)E.a
+
+# No (super:) on macro
+assert_semantic_error(3552):
+    x():int= (super:)block { return 1 }
+
+# No (super:) on special identifiers
+assert_semantic_error(3560):
+    (super:)true
+
+assert_semantic_error(3560):
+    (super:)false
+
+assert_semantic_error(3552):
+    test_class :=class:
+        GetSelf():test_class= { return (super:)Self; }
+
+# Calling `(super:)` from blocks is not allowed in ShipVerse yet - but we could support some version of this in MaxVerse.
+assert_semantic_error(3612):
+    c := class:
+        Foo():int = 42
+
+    d := class(c):
+       var Bar:int = 0
+       Foo<override>():int = 20
+       block:
+           set Bar = (super:)Foo() + 3
+
+<# When the above is allowed, we can write some form of test like this.
+# Test that calling superclass methods from parametric class types works.
+c14 := class:
+    Foo():int = 3
+
+c14a := class(c14):
+    Foo<override>():int = 5
+
+c14b := class(c14):
+    Foo<override>():int = 8
+
+c15(base:subtype(c14)) := class(base):
+    Foo<override>():int = (super:)Foo() + 13
+
+assert:
+    Test1 := d(c14a){}
+    Test2 := d(c14b){}
+
+    Test1.Foo() = 5 + 13
+    Test2.Foo() = 8 + 13
+#>
+
+# self_class doesn't work anymore.
+assert_semantic_error(3612):
+    test_class := module:
+        Method0<public>():int = { return 42 } 
+        Method1<public>():int = { return (super:)self_class.Method0() }
+
+assert_semantic_error(3552):
+    super_class:=class:
+        Method():int = { return 42 }
+     
+    child_class:=class(super_class):
+        GetSuper():subtype(super_class) = return (super:)super
+
+# (super:) should work when overriding native methods.
+assert_valid:
+    super_class<native>:=class:
+        Method<native>():void
+    child_class:=class(super_class):
+        Method<override>():void=(super:)Method()
+
+# (super:)-qualified calls should be typed according to the overridden method's type, not the overriding method's type.
+assert_semantic_error(3510):
+    super_class := class:
+        CovariantMethod():super_class=Self
+    sub_class := class(super_class):
+        CovariantMethod<override>():sub_class=
+            # This should not type check, as we only know that (super:)CovariantMethod() : base_class.
+            (super:)CovariantMethod()
+
+# (super:)-qualified calls that require coercions should work correctly.
+CoercionTest := module:
+    parametric_super_class<public>(t:type) := class:
+        Method<public>(X:t):t=X
+    sub_class<public> := class(parametric_super_class(int)):
+        Method<override>(X:int):int=(super:)Method(X)+1
+assert{CoercionTest.sub_class{}.Method(1)=2}

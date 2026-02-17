@@ -1,0 +1,47 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# ensure subtype and castable_subtype behave the same way
+assert_valid<depends_on_library>:
+    unique_entity := class<unique><castable>(){}
+    Func(query_type:subtype(unique_entity))<decides>:void=
+        NewEntity:unique_entity = unique_entity{}
+        NewEntity2:unique_entity = unique_entity{}
+        query_type[NewEntity] = NewEntity2
+
+assert_semantic_error<depends_on_library>(3509):
+    unique_entity := class<unique><castable>(){}
+    Func(query_type:subtype(int))<decides>:void=
+        NewEntity:unique_entity = unique_entity{}
+        NewEntity2:unique_entity = unique_entity{}
+        query_type[NewEntity] = NewEntity2
+
+assert_semantic_error<depends_on_library>(3552, 3509):
+    unique_entity := class<unique><castable>(){}
+    Func(query_type:subtype(subtype(int)))<decides>:void=
+        NewEntity:unique_entity = unique_entity{}
+        NewEntity2:unique_entity = unique_entity{}
+        query_type[NewEntity] = NewEntity2
+
+#############
+# actual execute this sample
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+unique_entity := class<unique><castable>(){}
+
+c := class:
+    Func1(query_type:castable_subtype(unique_entity))<decides><transacts>:void=
+        NewEntity:unique_entity = unique_entity{}
+        NewEntity2:unique_entity = unique_entity{}
+        query_type[NewEntity] = NewEntity2
+        
+    Func2(query_type:subtype(unique_entity))<decides><transacts>:void=
+        NewEntity:unique_entity = unique_entity{}
+        query_type[NewEntity] = NewEntity
+
+assert:
+    C := c{}
+    not C.Func1[unique_entity]
+    
+assert:
+    C := c{}
+    C.Func2[unique_entity]

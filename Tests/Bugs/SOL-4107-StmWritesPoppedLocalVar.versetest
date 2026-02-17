@@ -1,0 +1,58 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+# using{ /Verse.org/Tests/VerseTestScriptCmd }
+
+class_with_var := class:
+    var X:int = 0
+
+    Fun(Arg:int)<transacts>:int =
+      var Sum:int = 0
+      for(I:=1..Arg) {set Sum = Sum+I}
+      set X = Sum
+
+# Verify that Fun updates X
+assert:
+    O3 := class_with_var{}
+    O3.X = 0
+    O3.Fun(3) = 6
+    O3.X = 6
+
+# Check that rollback undoes changes to X
+assert:
+    O3 := class_with_var{}
+    O3.X = 0
+    not (O3.Fun(2) = 2)
+    O3.X = 0
+
+LocalArray(Input:[]int, ValueToRemove:int)<transacts><decides>:[]int=
+    var Result:[]int = array{}
+    for(Value : Input; Value<>ValueToRemove):
+        set Result = Result + array{Value}
+    Result.Length<Input.Length
+    Result
+
+# Crashed before, but only with ASAN
+assert{not LocalArray[array{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, 0]}
+
+LocalMap(Input:[int]int, KeyToRemove:int)<transacts><decides>:[int]int=
+    var Result:[int]int = map{}
+    for(Key->Value : Input; Key<>KeyToRemove):
+        set Result = ConcatenateMaps(Result, map{Key=>Value})
+    Result.Length<Input.Length
+    Result
+
+# Crashed before, but only with ASAN
+assert{not LocalMap[map{1=>1}, 0]}
+
+some_recursion := class:
+    var X:int
+    Function(Y:int)<transacts>:int =
+        if (Y>=0):
+            set X += Y
+            Function(Y-1)
+        else:
+            X
+
+# This works since GC is only done when no BPVM code is on the stack, otherwise
+# a GC could free the some_recursion object before the rollback.  
+assert:
+    not (some_recursion{X := 10}.Function(2) <> 13)

@@ -1,0 +1,33 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using{/Verse.org/Tests/VerseTestScriptCmd}
+using{/Verse.org/Tests/VerseTestScriptCmd/FloatConstants}
+
+TestInts:[]int = array{-1,0,+1}
+TestFloats:[]float = array{-PosInfty, -DoubleMax, -0.5 * DoubleMax, -SmallestNormal, -LargestSubnormal,
+                           -SmallestSubnormal, -0.0, SmallestSubnormal, HalfSmallestNormal, SmallestNormal, 1.0, 123.0, DoubleMax, PosInfty, NaN}
+
+ReportFailure(Message:string)<decides>:void =
+    DebugPrint("Tuple comparison test failed: {Message}")
+    false?
+
+TestTupleComparisons()<decides>:void=
+    for(I0 : TestInts; I1 : TestInts; J0 : TestInts; J1 : TestInts):
+        logic{I0 = J0 and I1 = J1} = logic{(I0, I1) = (J0, J1)} or ReportFailure["{DebugToString(I0, I1)} = {DebugToString(J0, J1)}"]
+        logic{I0 <> J0 or I1 <> J1} = logic{(I0, I1) <> (J0, J1)} or ReportFailure["{DebugToString(I0, I1)} <> {DebugToString(J0, J1)}"]
+    
+    for(I0 : TestInts; I1 : TestInts; I2 : TestInts; J0 : TestInts; J1 : TestInts; J2 : TestInts):
+        logic{I0 = J0 and I1 = J1 and I2 = J2} = logic{(I0, I1, I2) = (J0, J1, J2)} or ReportFailure["{DebugToString(I0, I1, I2)} = {DebugToString(J0, J1, J2)}"]
+        logic{I0 <> J0 or I1 <> J1 or I2 <> J2} = logic{(I0, I1, I2) <> (J0, J1, J2)} or ReportFailure["{DebugToString(I0, I1, I2)} \<\> {DebugToString(J0, J1, J2)}"]
+
+    for(I0 : TestFloats; I1 : TestFloats; J0 : TestFloats; J1 : TestFloats):
+        logic{I0 = J0 and I1 = J1} = logic{(I0, I1) = (J0, J1)} or ReportFailure["{DebugToString(I0, I1)} = {DebugToString(J0, J1)}"]
+        logic{I0 <> J0 or I1 <> J1} = logic{(I0, I1) <> (J0, J1)} or ReportFailure["{DebugToString(I0, I1)} <> {DebugToString(J0, J1)}"]
+
+    var Map:[tuple(float,float,float)]float = map{}
+    for(I0 : TestFloats; I1 : TestFloats; I2 : TestFloats):
+        set Map[I0, I1, I2] = I0 + I1 + I2
+    for(I0 : TestFloats; I1 : TestFloats; I2 : TestFloats):
+        (Map[I0, I1, I2] = I0 + I1 + I2) or ReportFailure["Map[{DebugToString(I0, I1, I2)}] = {Map[I0, I1, I2]}"]
+
+assert{TestTupleComparisons[]}

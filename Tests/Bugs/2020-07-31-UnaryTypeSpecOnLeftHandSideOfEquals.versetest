@@ -1,0 +1,1 @@
+assert_valid_syntax{":C=C\{\}"}

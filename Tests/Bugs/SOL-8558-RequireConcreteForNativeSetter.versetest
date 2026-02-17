@@ -1,0 +1,12 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd/TestUtils }
+
+native_setter_require_concrete := class:
+    ForceAPlaceholder:class_that_is_defined_after_usage = class_that_is_defined_after_usage{}
+    MyField<public>:?native_class = option{native_class:
+        NativeGetterSetter := 42
+    }
+
+class_that_is_defined_after_usage := class:
+    A:int = 42

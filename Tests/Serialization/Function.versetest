@@ -1,0 +1,18 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd}
+
+serializable_class_with_method_1 := class(serializable_class):
+    Method():int=1
+
+serializable_class_with_method_2 := class(serializable_class):
+    Method():int=2
+
+assert{Instance := serializable_class_with_method_1{}; RoundtrippedInstance := SerializeAndDeserialize(Instance, serializable_class_with_method_1, ?Mode:=serialization_mode.VersionedBinary); RoundtrippedInstance.Method()=1}
+assert{Instance := serializable_class_with_method_2{}; RoundtrippedInstance := SerializeAndDeserialize(Instance, serializable_class_with_method_2, ?Mode:=serialization_mode.VersionedBinary); RoundtrippedInstance.Method()=2}
+
+assert{Instance := serializable_class_with_method_1{}; RoundtrippedInstance := SerializeAndDeserialize(Instance, serializable_class_with_method_1, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Method()=1}
+assert{Instance := serializable_class_with_method_2{}; RoundtrippedInstance := SerializeAndDeserialize(Instance, serializable_class_with_method_2, ?Mode:=serialization_mode.UnversionedBinary); RoundtrippedInstance.Method()=2}
+
+assert{Instance := serializable_class_with_method_1{}; RoundtrippedInstance := SerializeAndDeserialize(Instance, serializable_class_with_method_1, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Method()=1}
+assert{Instance := serializable_class_with_method_2{}; RoundtrippedInstance := SerializeAndDeserialize(Instance, serializable_class_with_method_2, ?Mode:=serialization_mode.Text); RoundtrippedInstance.Method()=2}

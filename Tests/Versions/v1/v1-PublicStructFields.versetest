@@ -1,0 +1,35 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# v1 deprecates non-public fields in structs.
+assert_semantic_error(2016){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X<private>:int=0}}}}
+assert_semantic_error(3594){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X<private>:int=0}}}}
+
+assert_semantic_error(2016){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X<protected>:int=0}}}}
+assert_semantic_error(3594){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X<protected>:int=0}}}}
+
+assert_semantic_error(2016){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X<internal>:int=0}}}}
+assert_semantic_error(3594){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X<internal>:int=0}}}}
+
+assert_semantic_error(2016){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X<scoped{A}>:int=0}}}}
+assert_semantic_error(3594){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X<scoped{A}>:int=0}}}}
+
+assert_semantic_error(2016){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X<epic_internal>:int=0}}}}
+assert_semantic_error(3594){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X<epic_internal>:int=0}}}}
+
+assert_semantic_error(2016){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X:int=0}}}}
+assert_valid               {vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X:int=0}}}}
+
+assert_valid               {vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{s := struct{X<public>:int=0}}}}
+assert_valid               {vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{s := struct{X<public>:int=0}}}}
+
+# v1 changes the default accessibility of fields in structs to public.
+
+assert_semantic_error(2016,3593){vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=0){snippet{M := module{s<public> := struct{X:int=0}}; F(S:M.s):void=S.X}}}
+assert_valid                    {vpackage(P0, /Verse.org/A, ?Scope:=InternalAPI, ?VerseVersion:=1){snippet{M := module{s<public> := struct{X:int=0}}; F(S:M.s):void=S.X}}}
+
+# Test for allowing struct comparisons.
+s := struct{X:int, Y:int, Z:int}
+
+assert:
+    s{X:=0, Y:=0, Z:=0} = s{X:=0, Y:=0, Z:=0} # succeeds
+    s{X:=0, Y:=0, Z:=0} <> s{X:=0, Y:=0, Z:=1} # fails because Z is different between the two instances

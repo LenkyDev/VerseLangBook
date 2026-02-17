@@ -1,0 +1,25 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+c0 := class:
+    Data:int
+
+F0(C:c0, ?Named:int = 0)<transacts>:void = {}
+
+c1 := class:
+    var Map:weak_map(int,[]c0) = map{}
+
+    F1():void =
+        option:
+            F0(Map[0][0])
+
+    F2():void =
+        option:
+            set Map[0] = array:
+                c0:
+                    Data := 19
+
+assert:
+    X := c1{}
+    X.F2()
+    X.F1()
+    X.Map[0][0].Data = 19

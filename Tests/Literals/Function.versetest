@@ -1,0 +1,23 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Lambdas should be parsed, but produce an error if used outside of a map literal.
+assert_valid_syntax{"()=\>"}
+assert_valid_syntax{"()=\>a"}
+assert_valid_syntax{"() =\> a"}
+assert_valid_syntax{"a =\> b"}
+assert_valid_syntax{"(a,b) =\> c"}
+assert_valid_syntax{"a =\>\n    c"}
+
+assert_semantic_error(3502){ X:int=((Y:int)=>Y) }
+
+assert_roundtrip{() => b}
+assert_roundtrip{a => b}
+assert_roundtrip{a => {b;c}}
+assert_roundtrip{a => {b,c}}
+assert_roundtrip{a => {}}
+
+assert_roundtrip{
+a =>
+    b
+    c
+}

@@ -1,0 +1,663 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+# Copyright 2008 the V8 project authors. All rights reserved.
+# Copyright 1996 John Maloney and Mario Wolczko.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# This implementation of the DeltaBlue benchmark is derived from the JavaScript
+# implementation by the V8 project authors, which was itself derived from the
+# Smalltalk implementation by John Maloney and Mario Wolczko. Some parts have
+# been translated directly, whereas others have been modified more aggresively
+# to make it feel more like a Verse program.
+
+# A Verse implementation of the DeltaBlue constraint-solving algorithm, as
+# described in:
+#
+# "The DeltaBlue Algorithm: An Incremental Constraint Hierarchy Solver"
+#   Bjorn N. Freeman-Benson and John Maloney
+#   January 1990 Communications of the ACM,
+#   also available as University of Washington TR 89-08-06.
+
+
+using { /Verse.org/Verse }
+using { /Verse.org }
+
+strength:=enum:
+	Required
+	StrongPreferred
+	Preferred
+	StrongDefault
+	Normal
+	WeakDefault
+	Weakest
+
+ToString(S:strength)<transacts>:string=
+	case (S):
+		strength.Required => "Required"
+		strength.StrongPreferred => "StrongPreferred"
+		strength.Preferred => "Preferred"
+		strength.StrongDefault => "StrongDefault"
+		strength.Normal => "Normal"
+		strength.WeakDefault => "WeakDefault"
+		strength.Weakest => "Weakest"
+
+ValueOf(S:strength)<computes>:int=
+	case (S):
+		strength.Required => 0
+		strength.StrongPreferred => 1
+		strength.Preferred => 2
+		strength.StrongDefault => 3
+		strength.Normal => 4
+		strength.WeakDefault => 5
+		strength.Weakest => 6
+
+Stronger(A:strength, B:strength)<computes><decides>:void=
+	ValueOf(A) < ValueOf(B)
+Weaker(A:strength, B:strength)<computes><decides>:void=
+	ValueOf(A) > ValueOf(B)
+
+WeakestOf(A:strength, B:strength)<transacts>:strength=
+	if(Weaker[A, B]):
+		A
+	else:
+		B
+
+NextWeaker(S:strength)<transacts>:strength=
+	case (S):
+		strength.Required => strength.Weakest
+		strength.StrongPreferred => strength.WeakDefault
+		strength.Preferred => strength.Normal
+		strength.StrongDefault => strength.StrongDefault
+		strength.Normal => strength.Preferred
+		strength.WeakDefault => strength.StrongPreferred
+		strength.Weakest => Err("Damn")
+
+variable:=class<unique><final>:
+	var Value:int
+	var Constraints:[]constraint
+	var DeterminedBy:?constraint
+	var Mark:int
+	var WalkStrength:strength
+	var Stay:logic
+	var Name:string
+		
+
+	AddConstraint<public>(Constraint:constraint)<transacts>:void=
+		set Constraints += array{Constraint}
+
+	RemoveConstraint<public>(Constraint:constraint)<transacts>:void=
+		if (Found := Constraints.Find[Constraint]):
+			if (C := Constraints.RemoveElement[Found]):
+				set Constraints = C
+			else:
+				Err("UNREACHABLE")
+
+		if (DB := DeterminedBy?; DB = Constraint):
+			set DeterminedBy = false
+
+ToString(V:variable)<transacts>:string=
+	V.Name + "(" + ToString(V.WalkStrength) + ", " + ToString(V.Value) + ")"
+
+MakeVariable<constructor>(N:string, V:int, S:strength):= variable:
+	Value := V
+	Constraints := array{}
+	DeterminedBy := false
+	Mark := 0
+	WalkStrength := S
+	Stay := true
+	Name := N
+
+MakeVariable<constructor>(N:string, V:int):=variable:
+	MakeVariable<constructor>(N, V, strength.Weakest)
+
+MakeVariable<constructor>(N:string):=variable:
+	MakeVariable<constructor>(N, 0)
+
+constraint:=class<unique><abstract>:
+	var Planner:planner
+
+	Strength:strength
+
+	IsSatisfied()<transacts><decides>:void
+	MarkUnsatisfied()<transacts>:void
+	AddToGraph():void
+	RemoveFromGraph()<transacts>:void
+	ChooseMethod(Mark:int)<transacts>:void
+	MarkInputs(Mark:int)<transacts>:void
+	InputsKnown(Mark:int)<transacts><decides>:void
+	Output()<transacts>:variable
+	Execute<public>()<transacts>:void
+	Recalculate<public>()<transacts>:void
+	InputsToString<public>()<transacts>:string
+
+	IsInput()<computes><decides>:void=
+		false?
+
+	AddConstraint<public>():void=
+		AddToGraph()
+		Planner.IncrementalAdd(Self)
+
+	DestroyConstraint<public>():void=
+		if(IsSatisfied[]):
+			Planner.IncrementalRemove(Self)
+		RemoveFromGraph()
+
+	OutputToString<public>()<transacts>:string=
+		ToString(Output())
+
+	Satisfy(Mark:int)<transacts>:?constraint=
+		ChooseMethod(Mark)
+
+		if(not IsSatisfied[]):
+			if(Strength = strength.Required):
+				Err("Could not satisfy a required constraint")
+			false
+		else:
+			# constraint can be satisfied
+
+			# mark inputs to allow cycle detection in addPropagate
+			MarkInputs(Mark)
+
+			Out := Output()
+
+			Overridden := Out.DeterminedBy
+
+			if (DB := Out.DeterminedBy?):
+				DB.MarkUnsatisfied()
+
+			set Out.DeterminedBy = option{Self}
+
+			# TODO: This fails if we don't have the not AddPropagate - but that
+			# is against the original meaning of the benchmark that this was
+			# ported from. We should really keep the side effects of this
+			# call, but it seems to make the projection test fail because it
+			# somehow gets into a state where a bunch of variables have the
+			# `Preferred` strength, which makes them unsatisfied and breaks it.
+			if(not Planner.AddPropagate(Self, Mark)?):
+				Err("Cycle encountered")
+			else:
+				set Out.Mark = Mark
+				Overridden
+
+ToString(C:constraint)<transacts>:string=
+	if(C.IsSatisfied[]):
+		"Satisfied(" + C.InputsToString() + " -> " + C.OutputToString() + ")"
+	else:
+		"Unsatisfied"
+
+unary_constraint:=class<abstract>(constraint):
+	var MyOutput<public>:variable
+	var Satisfied<public>:logic=false
+
+	IsSatisfied<override>()<transacts><decides>:void=
+		Satisfied?
+
+	Output<override>()<transacts>:variable=
+		MyOutput
+
+	MarkUnsatisfied<override>()<transacts>:void=
+		set Satisfied = false
+
+	AddToGraph<override>():void=
+		MyOutput.AddConstraint(Self)
+		set Satisfied = false
+
+	RemoveFromGraph<override>()<transacts>:void=
+		MyOutput.RemoveConstraint(Self)
+		set Satisfied = false
+
+	ChooseMethod<override>(Mark:int)<transacts>:void=
+		if(MyOutput.Mark <> Mark and Stronger[Strength, MyOutput.WalkStrength]):
+			set Satisfied = true
+		else:
+			set Satisfied = false
+
+	MarkInputs<override>(Mark:int)<transacts>:void=
+		# no-op as I have no inputs
+		{}
+
+	InputsKnown<override>(Mark:int)<transacts><decides>:void=
+		true?
+
+	Recalculate<override>()<transacts>:void=
+		set MyOutput.WalkStrength = Strength
+		if(not IsInput[]):
+			set MyOutput.Stay = true
+		else:
+			set MyOutput.Stay = false
+
+		if(MyOutput.Stay?):
+			Execute()
+
+	InputsToString<override>()<transacts>:string=
+		# no-op as I have no inputs
+		""
+
+edit_constraint := class<final>(unary_constraint):
+	IsInput<override>()<computes><decides>:void=
+		{}
+
+	Execute<override>()<transacts>:void=
+		# no-op as edit constraints do nothing
+		{}
+
+MakeEditConstraintInternal<constructor>(P:planner, V:variable, S:strength):=edit_constraint:
+	Planner := P
+	MyOutput := V
+	Strength := S
+
+MakeEditConstraint(P:planner, V:variable, S:strength):edit_constraint=
+	C:=MakeEditConstraintInternal(P, V, S)
+	C.AddConstraint()
+	C
+
+stay_constraint := class<final>(unary_constraint):
+	Execute<override>()<transacts>:void=
+		# no-op as stay constraints do nothing
+		{}
+
+MakeStayConstraintInternal<constructor>(P:planner, V:variable, S:strength):=stay_constraint:
+	Planner:=P
+	MyOutput := V
+	Strength := S
+
+MakeStayConstraint(P:planner, V:variable, S:strength):stay_constraint=
+	C:=MakeStayConstraintInternal(P, V, S)
+	C.AddConstraint()
+	C
+
+direction := enum:
+	Backward
+	NoDirection
+	Forward
+
+ToString(D:direction)<transacts>:string=
+	case (D):
+		direction.Backward => "Backward"
+		direction.NoDirection => "NoDirection"
+		direction.Forward => "Forward"
+
+binary_constraint := class<abstract>(constraint):
+	V1:variable
+	V2:variable
+	var Direction:direction
+
+	IsSatisfied<override>()<transacts><decides>:void=
+		Direction <> direction.NoDirection
+
+	AddToGraph<override>():void=
+		V1.AddConstraint(Self)
+		V2.AddConstraint(Self)
+		set Direction = direction.NoDirection
+
+	RemoveFromGraph<override>()<transacts>:void=
+		V1.RemoveConstraint(Self)
+		V2.RemoveConstraint(Self)
+		set Direction = direction.NoDirection
+
+	ChooseMethod<override>(Mark:int)<transacts>:void=
+		if(V1.Mark = Mark):
+			if (V2.Mark <> Mark; Stronger[Strength, V2.WalkStrength]):
+				set Direction = direction.Forward
+			else:
+				set Direction = direction.NoDirection
+
+		if(V2.Mark = Mark):
+			if (V1.Mark <> Mark; Stronger[Strength, V1.WalkStrength]):
+				set Direction = direction.Backward
+			else:
+				set Direction = direction.NoDirection
+
+		if(V1.Mark <> Mark and V2.Mark <> Mark):
+			if (Weaker[V1.WalkStrength, V2.WalkStrength]):
+				if (Stronger[Strength, V1.WalkStrength]):
+					set Direction = direction.Backward
+				else:
+					set Direction = direction.NoDirection
+			else:
+				if (Stronger[Strength, V2.WalkStrength]):
+					set Direction = direction.Forward
+				else:
+					set Direction = direction.NoDirection
+
+	Input()<transacts>:variable=
+		if (Direction = direction.Forward):
+			V1
+		else:
+			V2
+
+	Output<override>()<transacts>:variable=
+		if (Direction = direction.Forward):
+			V2
+		else:
+			V1
+
+	MarkUnsatisfied<override>()<transacts>:void=
+		set Direction = direction.NoDirection
+
+	MarkInputs<override>(Mark:int)<transacts>:void=
+		I := Input()
+		set I.Mark = Mark
+
+	InputsKnown<override>(Mark:int)<transacts><decides>:void=
+		I := Input()
+		I.Mark = Mark or I.Stay? or not I.DeterminedBy?
+
+	Recalculate<override>()<transacts>:void=
+		In:=Input()
+		Out:=Output()
+
+		set Out.WalkStrength = WeakestOf(Strength, In.WalkStrength)
+
+		set Out.Stay = In.Stay
+		if (Out.Stay?):
+			Execute()
+
+	InputsToString<override>()<transacts>:string=
+		ToString(Input())
+
+equality_constraint := class<final>(binary_constraint):
+	Execute<override>()<transacts>:void=
+		Out:=Output()
+		set Out.Value = Input().Value
+
+MakeEqualityConstraintInternal<constructor>(P:planner, Value1:variable, Value2:variable, S:strength):=equality_constraint:
+	Planner:=P
+	V1 := Value1
+	V2 := Value2
+	Strength := S
+	Direction := direction.NoDirection
+
+MakeEqualityConstraint(P:planner, Value1:variable, Value2:variable, S:strength):equality_constraint=
+	C:=MakeEqualityConstraintInternal(P, Value1, Value2, S)
+	C.AddConstraint()
+	C
+
+scale_constraint := class<final>(binary_constraint):
+	Scale:variable
+	Offset:variable
+
+	AddToGraph<override>():void=
+		(super:)AddToGraph()
+		Scale.AddConstraint(Self)
+		Offset.AddConstraint(Self)
+
+	RemoveFromGraph<override>()<transacts>:void=
+		(super:)RemoveFromGraph()
+		Scale.RemoveConstraint(Self)
+		Offset.RemoveConstraint(Self)
+
+	MarkInputs<override>(Mark:int)<transacts>:void=
+		(super:)MarkInputs(Mark)
+		set Scale.Mark = Mark
+		set Offset.Mark = Mark
+
+	Execute<override>()<transacts>:void=
+		if(Direction = direction.Forward):
+			set V2.Value = V1.Value * Scale.Value + Offset.Value
+		else:
+			if (Div := (V2.Value - Offset.Value) / Scale.Value):
+				set V1.Value = Floor(Div)
+			else:
+				Err("UNREACHABLE")
+
+	Recalculate<override>()<transacts>:void=
+		In:=Input()
+		Out:=Output()
+
+		set Out.WalkStrength = WeakestOf(Strength, In.WalkStrength)
+
+		if(In.Stay? and Scale.Stay? and Offset.Stay?):
+			set Out.Stay = true
+		else:
+			set Out.Stay = false
+
+		if(Out.Stay?):
+			Execute()
+
+MakeScaleConstraintInternal<constructor>(P:planner, Source:variable, Scale:variable, Offset:variable, Dest:variable, S:strength):=scale_constraint:
+	Planner:=P
+	V1 := Source
+	V2 := Dest
+	Scale := Scale
+	Offset := Offset
+	Strength := S
+	Direction := direction.NoDirection
+
+MakeScaleConstraint(P:planner, Source:variable, Scale:variable, Offset:variable, Dest:variable, S:strength):scale_constraint=
+	C:=MakeScaleConstraintInternal(P, Source, Scale, Offset, Dest, S)
+	C.AddConstraint()
+	C
+
+plan:=class:
+	var Constraints:[]constraint
+
+	AddConstraint(C:constraint):void=
+		set Constraints += array {C}
+
+	Execute():void=
+		for (C : Constraints):
+			C.Execute()
+
+planner:=class:
+	var CurrentMark:int = 0
+
+	NewMark()<transacts>:int=
+		set CurrentMark += 1
+		CurrentMark
+
+	IncrementalAdd(C:constraint)<transacts>:void=
+		Mark:=NewMark()
+
+		var Overridden:?constraint=C.Satisfy(Mark)
+
+		loop:
+			if(O := Overridden?):
+				set Overridden = O.Satisfy(Mark)
+			else:
+				break
+
+	IncrementalRemove(C:constraint)<transacts>:void=
+		Out:=C.Output()
+		C.MarkUnsatisfied()
+		C.RemoveFromGraph()
+		Unsatisfied:[]constraint=RemovePropagateFrom(Out);
+		var Strength:strength=strength.Required
+		loop:
+			for (U : Unsatisfied):
+				if (U.Strength = Strength):
+					IncrementalAdd(U)
+
+			set Strength = NextWeaker(Strength)
+
+			if (Strength = strength.Weakest):
+				break;
+
+	AddPropagate(C:constraint, Mark:int)<transacts>:logic=
+		var Todo:[]constraint=array{C}
+
+		loop:
+			if (D:=Todo[0]; ResidualTodo := Todo.Slice[1]; set Todo = ResidualTodo):
+				Out:=D.Output()
+
+				if (Out.Mark = Mark):
+					IncrementalRemove(C)
+					return false
+
+				D.Recalculate()
+				set Todo += GetConsumingConstraints(D.Output())
+			else:
+				break
+
+		true
+			
+	RemovePropagateFrom(Out:variable)<transacts>:[]constraint=
+		set Out.DeterminedBy = false
+		set Out.WalkStrength = strength.Weakest
+		set Out.Stay = true
+
+		var Unsatisfied:[]constraint=array{}
+		var Todo:[]variable=array{Out}
+
+		loop:
+			if (V:=Todo[0]; ResidualTodo := Todo.Slice[1]; set Todo = ResidualTodo):
+				for (C:V.Constraints; not C.IsSatisfied[]):
+					set Unsatisfied += array{C}
+
+				if (DeterminingC := V.DeterminedBy?):
+					for (NextC:V.Constraints; NextC <> DeterminingC; NextC.IsSatisfied[]):
+						NextC.Recalculate()
+						set Todo += array{NextC.Output()}
+			else:
+				break
+
+		Unsatisfied
+
+	ExtractPlanFromConstraints<public>(Constraints:[]constraint):plan=
+		var Sources:[]constraint=array{}
+
+		for (C:Constraints; C.IsInput[]; C.IsSatisfied[]):
+			set Sources += array{C}
+
+		MakePlan(Sources)
+
+	MakePlan<protected>(Sources:[]constraint):plan=
+		Mark:=NewMark()
+		Plan:= plan { Constraints:=array{} }
+
+		var Todo:[]constraint = Sources
+
+		loop:
+			if (C:=Todo[0]; ResidualTodo := Todo.Slice[1]; set Todo = ResidualTodo):
+				Out:=C.Output()
+				if (Out.Mark <> Mark; C.InputsKnown[Mark]):
+					Plan.AddConstraint(C)
+					set Out.Mark = Mark
+					set Todo += GetConsumingConstraints(Out)
+			else:
+				break
+
+		Plan
+
+	GetConsumingConstraints(V:variable)<transacts>:[]constraint=
+		var Collect:[]constraint=array{}
+
+		for(C:V.Constraints):
+			if (DeterminingC := V.DeterminedBy?):
+				if (DeterminingC <> C):
+					if (C.IsSatisfied[]):
+						set Collect += array{C}
+			else:
+				if (C.IsSatisfied[]):
+					set Collect += array{C}
+
+		Collect
+
+ChainTest(N:int)<decides>:void=
+	Planner := planner{}
+
+	var P:?variable=false
+	var F:?variable=false
+	var L:?variable=false
+
+	for(I:=0..(N + 1)):
+		Name:="v" + ToString(I)
+		V:=MakeVariable(Name)
+
+		if (Prev := P?):
+			ec:=MakeEqualityConstraint(Planner, Prev, V, strength.Required)
+
+		if (I = 0):
+			set F = option{V}
+
+		if (I = N):
+			set L = option{V}
+
+		set P = option{V}
+
+	if (First := F?; Last := L?):
+		MakeStayConstraint(Planner, Last, strength.StrongDefault)
+		EditC:=MakeEditConstraint(Planner, First, strength.Preferred)
+
+		Plan:=Planner.ExtractPlanFromConstraints(array{EditC})
+
+		for(I:=0..100):
+			set First.Value = I
+			Plan.Execute()
+
+			Last.Value = I
+
+		EditC.DestroyConstraint()
+
+ProjectionTest(N:int)<decides>:void=
+	Planner := planner{}
+
+	Scale := MakeVariable("scale", 10)
+	Offset := MakeVariable("offset", 1000)
+	var S:?variable=false
+	var D:?variable=false
+
+	var Dests:[]variable = array {}
+
+	for (I:=0..N):
+		Src:=MakeVariable("Src" + ToString(I), I)
+		Dst:=MakeVariable("Dst" + ToString(I), I)
+
+		set Dests += array{Dst}
+
+		MakeStayConstraint(Planner, Src, strength.Normal)
+		MakeScaleConstraint(Planner, Src, Scale, Offset, Dst, strength.Required)
+
+		set S = option{Src}
+		set D = option{Dst}
+
+	if (Src := S?; Dst := D?):
+		Change(Planner, Src, 17)
+
+		Dst.Value = 1170
+
+		Change(Planner, Dst, 1050)
+
+		Src.Value = 5
+
+		Change(Planner, Scale, 5)
+
+		for (I:=0..(N-1); Dest:=Dests[I]):
+			Dest.Value = (I * 5) + 1000
+
+		Change(Planner, Offset, 2000)
+
+		for (I:=0..(N-1); Dest:=Dests[I]):
+			Dest.Value = (I * 5) + 2000
+
+
+Change(Planner:planner, V:variable, N:int):void=
+	EditC:=MakeEditConstraint(Planner, V, strength.Preferred)
+	Plan:=Planner.ExtractPlanFromConstraints(array{EditC})
+
+	for(I:=0..10):
+		set V.Value = N
+		Plan.Execute()
+
+	EditC.DestroyConstraint()
+
+assert:
+	Iterations:=2
+	IterationsFloat:=Iterations * 1.0
+	N:=100
+
+	for (I := 1..Iterations):
+		ChainTest[N]
+		ProjectionTest[N]

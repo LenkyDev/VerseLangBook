@@ -1,0 +1,7 @@
+C := module:
+    
+    f0<public>():void={}
+
+    
+    f1<public>():void=
+        return f0()

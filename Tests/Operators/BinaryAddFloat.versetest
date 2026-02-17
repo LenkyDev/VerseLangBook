@@ -1,0 +1,63 @@
+using{/Verse.org/Tests/VerseTestScriptCmd/FloatConstants};
+
+assert{+1.0 + +0.0 = +1.0}
+assert{+0.0 + +1.0 = +1.0}
+assert{+1.0 + +1.0 = +2.0}
+assert{-1.0 + -1.0 = -2.0}
+
+assert{+1.0 + +2.0 = +3.0}
+assert{+2.0 + +1.0 = +3.0}
+
+assert{-1.0 + +1.0 = +0.0}
+assert{+1.0 + -1.0 = +0.0}
+
+assert{+1.0 + -2.0 = -1.0}
+assert{-2.0 + +1.0 = -1.0}
+
+assert{var x:float = +1.0; set x += +0.0; x = +1.0}
+assert{var x:float = +0.0; set x += +1.0; x = +1.0}
+assert{var x:float = +1.0; set x += +1.0; x = +2.0}
+assert{var x:float = -1.0; set x += -1.0; x = -2.0}
+
+assert{var x:float = +1.0; set x += +2.0; x = +3.0}
+assert{var x:float = +2.0; set x += +1.0; x = +3.0}
+
+assert{var x:float = -1.0; set x += +1.0; x = +0.0}
+assert{var x:float = +1.0; set x += -1.0; x = +0.0}
+
+assert{var x:float = +1.0; set x += -2.0; x = -1.0}
+assert{var x:float = -2.0; set x += +1.0; x = -1.0}
+
+# Overflow of additions to infinity
+assert{DoubleMax + DoubleMax = PosInfty}
+assert{-DoubleMax + -DoubleMax = -PosInfty}
+
+# Infinity plus -DoubleMax is still infinity
+assert{PosInfty + -DoubleMax = PosInfty}
+
+# Large value minus something small should round back to the large value
+assert{DoubleMax + -1.0 = DoubleMax}
+
+# Test rounding to nearest, ties towards even
+assert{Pow2_52 + 0.33 = Pow2_52} # Clearly rounds down
+assert{Pow2_52 + 0.5 = Pow2_52} # Exactly halfway, tie-breaker rounds down
+assert{Pow2_52 + 0.67 = Pow2_52 + 1.0} # Clearly rounds up
+assert{Pow2_52 + 1.5 = Pow2_52 + 2.0} # Exactly halfway, tie-breaker rounds up
+
+# Infinity - infinity should be NaN
+assert{PosInfty + -PosInfty = NaN}
+
+# NaN plus anything should be NaN
+assert{NaN + 0.0 = NaN}
+assert{NaN + LargestSubnormal = NaN}
+assert{NaN + -1.0 = NaN}
+assert{NaN + PosInfty = NaN}
+
+# Exact subnormal result from all-normalized inputs (gradual underflow)
+assert{SmallestNormal + -SmallestNormalTimesOneHalf = -HalfSmallestNormal}
+
+# Exact normalized result from all-subnormal inputs
+assert{LargestSubnormal + SmallestSubnormal = SmallestNormal}
+
+# Subnormal result, subnormal inputs
+assert{HalfSmallestNormal + -SmallestSubnormal = JustUnderHalfSmallestNormal}

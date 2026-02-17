@@ -1,0 +1,44 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# v1 deprecates failure on the RHS of set.
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:int=0; set X=(1=2)}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:int=0; set X=(1=2)}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:[]int=array{}; set X[0]=(1=2)}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:[]int=array{}; set X[0]=(1=2)}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:[]int=array{}; set X[0]=X[1]}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:[]int=array{}; set X[0]=X[1]}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:[]int=array{}; set X=for(I:=0..10){1=2}}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:[]int=array{}; set X=for(I:=0..10){1=2}}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:[]int=array{}; set X=array{0, 1=2}}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:[]int=array{}; set X=array{0, 1=2}}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:[int]int=map{}; set X[0]=(1=2)}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:[int]int=map{}; set X[0]=(1=2)}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:[int]int=map{}; set X[0]=X[1]}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:[int]int=map{}; set X[0]=X[1]}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:int=0; set X=(false?; 1)}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:int=0; set X=(false?; 1)}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void={var X:rational=0/1; set X=1/0}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void={var X:rational=0/1; set X=1/0}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:int={var X:int=0; set X=F[]; X}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:int={var X:int=0; set X=F[]; X}}}}
+
+assert_semantic_error(2011){vpackage(P0, /A, ?VerseVersion:=0){snippet{s:=struct{Y<public>:int=0}; F()<decides>:void={var X:s=s{}; set X=s{Y:=(1=2)}}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{s:=struct{Y<public>:int=0}; F()<decides>:void={var X:s=s{}; set X=s{Y:=(1=2)}}}}}
+
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={var X: int=0; set X=if(1=2) then 3 else 4}}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={var X: int=0; set X=if(1=2) then 3 else 4}}}}
+
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={var X: int=0; set X=(1=2) or 3}}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={var X: int=0; set X=(1=2) or 3}}}}
+
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=0){snippet{F():void={var X:?int=false; set X=option{1=2}}}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=1){snippet{F():void={var X:?int=false; set X=option{1=2}}}}}

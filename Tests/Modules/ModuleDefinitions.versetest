@@ -1,0 +1,363 @@
+
+################################################################################
+# Test module level function definitions
+## 
+
+assert_valid { moduleFunc():void={} }
+assert_valid { moduleFunc():void={} ; C := class{f():void=moduleFunc()} }
+assert_valid { moduleFunc(c:C)<transacts><decides>:void={ D[c] } ; C := class{}; D := class(C){} }
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            f<public>():void={}
+    vmodule(B):
+        snippet:
+            using{ A }
+            g():void={f()}
+
+# Error when missing `using{}`
+assert_semantic_error(3506):
+    vmodule(A):
+        snippet:
+            f<public>():void={}
+    vmodule(B):
+        snippet:
+            g():void={f()}
+
+# Error when referencing non-public function
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+            f():void={}
+    vmodule(B):
+        snippet:
+            using{ A }
+            g():void={f()}
+
+# Error when referencing an internal function
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+            f<internal>():void={}
+    vmodule(B):
+        snippet:
+            using{ A }
+            g():void={f()}
+
+# Colliding definition names are not allowed
+assert_semantic_error(3532):
+    vmodule(A):
+        snippet:
+            f<public>():void=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            f():void=2.718
+# Unambiguous use of `f()`
+assert_valid { f():void={} ; C := class{(C:)f():void={}} ; g():void={f()} }
+
+# Ambiguous identifier -- which `f()`?
+assert_semantic_error(3518):
+    vmodule(A):
+        snippet:
+            F<public>():void=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            (B:)F():void=2.718
+            G():void=F()
+assert_semantic_error(3518):
+    F():void={}
+    c := class:
+        (c:)F():void={}
+        G():void=F()
+
+# Ambiguous identifier -- which `x`?
+assert_semantic_error(3588):
+    vmodule(A):
+        snippet:
+            x<public>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            (B:)x:int=43
+            g():void={x}
+
+assert_semantic_error(3588):
+    x:int=42
+    C := class:
+        (C:)x:int
+        g():void= {x}
+
+# No identifier collision if we don't import
+assert_valid:
+    vmodule(A):
+        snippet:
+            f<public>():void=42
+    vmodule(B):
+        snippet:
+            f():void=2.718
+            g():void={f()}
+
+# Imports are not forwarded from other modules
+assert_semantic_error(3506):
+    vmodule(A):
+        snippet:
+            f<public>():void={}
+    vmodule(B):
+        snippet:
+            using{ A }
+    vmodule(C):
+        snippet:
+            using{ B }
+            h():void={f()}
+
+# Unambiguous since `A.f()` is `internal`
+assert_valid:
+    vmodule(A):
+        snippet:
+            f<internal>():void=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            f():void=2.718
+            g():void={f()}
+
+# Error on prohibited function attributes
+assert_semantic_error(3594){  moduleFunc<protected>():void={} }
+assert_semantic_error(3594){  moduleFunc<private>():void={}   }
+assert_valid               {  moduleFunc():void={}            }
+
+# Error on prohibited reserved identifiers: `self`, etc.
+assert_semantic_error(3548, 3509){ C := class {} ; moduleFunc()<transacts><decides>:void={C[Self]} }
+
+# self_class doesn't work anymore.
+assert_semantic_error(3506):
+    moduleFuncA(c:type):void={}
+    moduleFuncB():void={moduleFuncA(self_class)}
+
+f():int=return(911)
+assert { f() = 911 }
+
+g()<transacts><decides>:void=false?
+h()<transacts><decides>:void=true?
+assert{not g[]}
+assert{h[]}
+
+using { /Verse.org/Tests/VerseTestScriptCmd } # For `moduleFunc_public` (in ModuleDefsUtils.verse)
+assert { moduleFunc_public(365) = 365 }
+
+C0 := class:
+    g(i:int):int=return(moduleFunc_public(i))
+    (C0:)h():int=return(f())
+assert { c := C0{} ; c.g(52) = 52 }
+assert { C0{}.h() = f() }
+
+################################################################################
+# Test module level native function definitions
+##
+assert_valid:
+    AddOne<native><public>(n:int) : int
+
+assert_valid:
+    AddTwo<public><native_callable>(n:int) : int =
+        return n + 2
+
+################################################################################
+# Test module level data definitions
+## 
+
+assert_valid { moduleData:string = "Moo" }
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            i<public>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            g():int={return(i)}
+
+# Error when missing `using{}`
+assert_semantic_error(3506):
+    vmodule(A):
+        snippet:
+            i<public>:int=42
+    vmodule(B):
+        snippet:
+            g():int={return(i)}
+
+# Error when referencing non-public data
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+            i:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            g():int={return(i)}
+
+# Error when referencing internal data
+assert_semantic_error(3593):
+    vmodule(A):
+        snippet:
+            i<internal>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            g():int={return(i)}
+
+# Colliding definition names are not warned about until used
+assert_valid:
+    vmodule(A):
+        snippet:
+            i<public>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            (B:)i:float = 3.14
+# Unambiguous use of `i`
+assert_valid:
+    i:int=42
+    C := class:
+        (C:)i:int=1337
+    j:int= i
+
+# Ambiguous identifier -- which `i`?
+assert_semantic_error(3588):
+    vmodule(A):
+        snippet:
+            i<public>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            (B:)i:float = 3.14
+            j:void = i
+assert_semantic_error(3588):
+    i:int=42
+    C := class:
+        (C:)i:int=1337
+        f():void={i}
+
+# No identifier collision if we don't import
+assert_valid:
+    vmodule(A):
+        snippet:
+            i<public>:int=42
+    vmodule(B):
+        snippet:
+            i:float = 3.14
+            j:float = i
+
+# Imports are not forwarded from other modules
+assert_semantic_error(3506):
+    vmodule(A):
+        snippet:
+            i<public>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+    vmodule(C):
+        snippet:
+            using{ B }
+            h():void={i}
+
+# Unambiguous since `A.i` is `internal`
+assert_valid:
+    vmodule(A):
+        snippet:
+            i<internal>:int=42
+    vmodule(B):
+        snippet:
+            using{ A }
+            i:float = 3.14
+            j:float = i
+
+# Test that calling methods (which may have side-effects) produces an error
+assert_semantic_error(3582):
+    c0 := class:
+        var I:int=0
+    Foo():int=
+        C0:=c0{}
+        set C0.I += 1
+        return C0.I
+    hasSideEffect():int=Foo()
+    j:int=hasSideEffect()
+
+# Error about cyclic initialization
+assert_semantic_error(3502):
+    i:int = j
+    j:int = i
+
+bp_vm_only
+{
+assert_link_error(9000):
+    vmodule(A) { snippet { using{ B }; Ai<public>:int=Bj } }
+    vmodule(B) { snippet { using{ A }; Bj<public>:int=Ai } }
+}
+verse_vm_only
+{
+assert_valid:
+    vmodule(A) { snippet { using{ B }; Ai<public>:int=Bj } }
+    vmodule(B) { snippet { using{ A }; Bj<public>:int=Ai } }
+}
+
+auto_qualify_todo {
+vmodule(C) { snippet {              Ci<public>:int=42 } }
+vmodule(D) { snippet { using{ C }; Dj<public>:int=Ci } }
+using{D}
+assert{Dj=42}
+}
+
+# Error on prohibited data attributes
+assert_semantic_error(3594){  moduleData<protected>:int=42 }
+assert_semantic_error(3594){   moduleData<private>:int=42 }
+
+# Cannot have module-level data-definitions without a default value
+assert_semantic_error(3601){ moduleData:int }
+
+x:int=411
+assert { x = 411 }
+
+test_y := class:
+    var Y:int = 1984
+
+assert:
+    YTest := test_y{}
+    OldY := YTest.Y
+    set YTest.Y = 2020
+    YTest.Y = 2020 and OldY = 1984
+
+test_z := class:
+    var Z:?C0 = false
+assert:
+    TestZ:test_z = test_z{}
+    IsSet := if(TestZ.Z?){true}else{false} ; set TestZ.Z = option{ C0{} } ; not IsSet? and TestZ.Z?
+
+using { /Verse.org/Tests/VerseTestScriptCmd } # For `moduleData_public`, `moduleData_mutable` (in ModuleDefsUtils.verse)
+assert { moduleData_public = 1337 }
+# Module-scoped pointers are not yet supported.
+# assert { set moduleData_mutable = 1618 ; moduleData_mutable = 1618 }
+
+C1 := class:
+    (C1:)f():int=return(x)
+    g(NewY:int, OldY:test_y):int={ Temp := OldY.Y ; set OldY.Y = NewY ; return(Temp) }
+    
+assert { C1{}.f() = x }
+assert:
+    TmpY := test_y{}
+    inst0 := C1{}
+    inst1 := C1{}
+    inst0.g(86, TmpY)
+    setVal := TmpY.Y
+    nextVal := inst1.g(75, TmpY)
+    setVal = 86 and setVal = nextVal and TmpY.Y = 75
+    
+# Require that module-scoped expressions are definitions.
+assert_semantic_error(3585){ f():void={}, f() }
+assert_semantic_error(3560){ 1 }
+assert_semantic_error(3560){ 1+2 }
+assert_semantic_error(3560){ int }
+assert_semantic_error(3560){ []int }
+assert_semantic_error(3560){ :int }

@@ -1,0 +1,38 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+verse_vm_only
+{
+
+box := class:
+    var V:int = 0
+
+Foo(Box:box)<suspends>:void =
+    X:int = 42
+    Y:int = 4242
+    Z:int = 424242
+    await{Box.V}
+    X = 42 or Err("Wrong X")
+    Y = 4242 or Err("Wrong Y")
+    Z = 424242 or Err("Wrong Z")
+    # We can reuse the registers allocated for X/Y/Z when allocating
+    # A/B/C. But this is only sound if we make unification variables
+    # transactional. Currently, this test fails when running with the register allocator.
+    # TODO: SOL-4817. Make this work with regalloc.
+    A:int = 6
+    B:int = 66
+    C:int = 666
+    A = 6 or Err("Wrong A")
+    B = 66 or Err("Wrong B")
+    C = 666 or Err("Wrong C")
+
+assert:
+    B:box = box{}
+    spawn:
+        Foo(B)
+    if:
+        set B.V = 1234
+        0 = 1
+    then{}
+    set B.V = 1111
+
+} # verse_vm_only

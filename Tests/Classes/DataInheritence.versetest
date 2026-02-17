@@ -1,0 +1,33 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Ensure data members are inherited
+ClassA := class:
+    var dataA:int
+
+ClassB := class(ClassA):
+    var dataB:int
+
+ClassC := class(ClassB):
+    var dataC:int
+
+    onCreate():void=
+    {
+        set dataA = 1
+        set dataB = 2
+        set dataC = 3
+    }
+
+
+# Ensure access to all members - inherited or otherwise
+assert:
+    c := ClassC{dataA:=1, dataB:=2, dataC:=3}
+    (c.dataA = 1) and (c.dataB = 2) and (c.dataC = 3)
+
+
+# Ensure catch of shadowed data member: instance to instance
+assert_semantic_error(3532):
+    ClassX := class:
+        dataX:int
+    
+    ClassY := class(ClassX):
+        dataX:int

@@ -1,0 +1,137 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid:
+    C := class:
+
+        var memberMaybeC:?C
+        memberC:C
+
+        f1(maybeC:?C)<transacts><decides>:C = { return maybeC? }
+        f2(maybeC:?C)<transacts>:C = { if(c := maybeC?) {return c} else {return Self} }
+
+        f3()<transacts><decides>:C = { return memberMaybeC?.memberC }
+        f4()<transacts><decides>:C = { return memberMaybeC?.f2(false) }
+
+        f5():?C = { return option{Self} }
+        f6()<transacts>:?C = { return false }
+        
+        f7(c:?C)<transacts><decides>:void := { c?.f6() }
+
+        f9(maybeC:?C):?C = { if(maybeC2 := maybeC?.f6()) {return(maybeC2)} else {return(maybeC)} }
+        f10(maybeC:?C):?C = { return (option{maybeC?}) }
+
+        f11():C   = { return (memberMaybeC? or memberC) }
+        f12():void= { set memberMaybeC = option{memberC} }
+
+# Test that empty option compares equal with false 
+assert{C:?int= false; C = false}
+assert{C:?int= option{1}; C = option{1}}
+
+# Test that o?:T is an error (in contrast to o:?T).
+assert_semantic_error(3549){ D := class { maybeD?:D } }
+assert_semantic_error(3540){ D := class { f(maybeD?:D):void={} } }
+assert_semantic_error(3549){ D := class { f():void={maybeD?:D = self} } }
+
+assert_semantic_error(3509){ C:=class {var m0:?C; f0():void={set m0=?C}}}
+assert_semantic_error(3509){ C:=class {f0(a0:?C)   :void={f0(?C)     }}}
+assert_semantic_error(3510){ C:=class {f0()        :?C  ={return(?C) }}}
+
+
+# Semicolon separated expressions in the option's clause should be interpreted as a sequence.
+assert{option{1;2}?=2}
+
+# Comma separated expressions in the option's clause should be interpreted as a tuple.
+assert{option{1,2}?=(1,2)}
+
+assert{    option{1}? = 1}
+assert{    option{option{2}?}? = 2}
+assert{not option{option{false?}?}?}
+
+assert{         var maybeInt:?int = option{1}; set maybeInt = option{false? and 0}; not maybeInt?   }
+assert{         var maybeInt:?int = option{1}; set maybeInt = option{maybeInt?} ;  maybeInt? = 1 }
+assert{ block { var maybeInt:?int = option{1}; set maybeInt = false              ; not maybeInt? } }
+
+# Test that sibling Object-derived classes can use the other class as an option type.
+assert_valid:
+    Sibling1 := class { sibling2:?Sibling2 }
+    Sibling2 := class { sibling1:?Sibling1 }
+assert_valid:
+    Sibling3 := class { f(sibling4:?Sibling4):?Sibling4 = { return(sibling4) } }
+    Sibling4 := class { f(sibling3:?Sibling3):?Sibling3 = { return(sibling3) } }
+assert_valid:
+    Sibling5 := class { f(sibling6:Sibling6):void = { maybeSibling6:?Sibling6=option{sibling6} } }
+    Sibling6 := class { f(sibling5:Sibling5):void = { maybeSibling5:?Sibling5=option{sibling5} } }
+
+# Test options
+unpackFloat(maybeFloat:?float):float = { if (sureFloat := maybeFloat?) {return(sureFloat)} else {return(-1138.0)} }
+unpackInt(maybeInt:?int):int = { if (sureInt := maybeInt?) {return(sureInt)} else {return(-4711)} }
+unpackInt2(maybeInt:??int):?int = { if (sureMaybeInt := maybeInt?) {return(sureMaybeInt)} else {return(option{-7})} }
+unpackInt3(maybeInt:??int):int = { if (sureInt := maybeInt??) {return(sureInt)} else {return(1984)} }
+
+assert{ sureInt := option{7}?; sureInt=7 }
+assert{ sureInt := option{option{29}}??; sureInt=29 }
+assert{ unpackFloat(option{27.5}) = 27.5 }
+assert{ unpackFloat(false) = -1138.0 }
+assert{ unpackInt(option{42}) = 42 }
+assert{ unpackInt(false) = -4711 }
+assert{ sureInt := unpackInt2(option{option{26}})?; sureInt = 26 }
+assert{ sureInt := unpackInt2(false)?; sureInt = -7 }
+assert{ unpackInt3(option{option{13}}) = 13 }
+assert{ unpackInt3(option{false}) = 1984 }
+
+# Test option strings.
+assert{option{"test"}?}
+assert{maybeString:?string=false; not maybeString?}
+
+# Test option enums.
+E := enum { a, b }
+assert{option{E.a}? = E.a}
+assert{option{E.b}? = E.b}
+
+# Test the option macro syntax.
+assert_semantic_error(3502){ D := class { f(d:D):void={ option(d)          } } }
+assert_semantic_error(3502){ D := class { f(d:D)<decides>:void={ option[d] } } }
+assert_semantic_error(3622){ D := class { f(d:D):void={ option{}           } } }
+assert_semantic_error(3622){ D := class { f(d:D):void={ option{}{}         } } }
+assert_semantic_error(3559){ D := class { f(d:D):void={ option{} do {}     } } }
+assert_semantic_error(3559){ D := class { f(d:D):void={ option{d} do {}    } } }
+assert_semantic_error(3559){ D := class { f(d:D):void={ option{} do {d}    } } }
+assert_semantic_error(3502){ D := class { f(d:D):void={ option of {}       } } }
+assert_valid               { D := class { f(d:D):void={ false              } } }
+
+# Test forming option types from non-type expressions.
+assert_semantic_error(3547){ f(x:?1):void={}                   }
+assert_semantic_error(3547){ f(x:?1.0):void={}                 }
+assert_semantic_error(3547){ f(x:?"1"):void={}                 }
+assert_semantic_error(3502){ f(x:?if(true?){1}else{0}):void={} }
+
+# Test that ?<error> doesn't produce additional errors.
+assert_semantic_error(3506){ f(x:?Undef):void={}   }
+assert_semantic_error(3506){ f(x:??Undef):void={}  }
+
+# Test that unboxing non-options is an error.
+assert_semantic_error(3509){ f(x:int)<decides>:int = { x? } }
+
+# Test that unboxing an option is only allowed in failure contexts.
+assert_semantic_error(3512){ D := class { f(maybeD:?D        ):void={ maybeD?                         } } }
+assert_semantic_error(3512){ D := class { f(maybeD:?D        ):void={ if(true?) {maybeD?}             } } }
+assert_semantic_error(3512){ D := class { f(maybeD:?D        ):void={ if(true?) {Self} else {maybeD?} } } }
+assert_semantic_error(3512){ D := class { f(maybeD:?D, ds:[]D):void={ for(d:ds) { maybeD? }           } } }
+
+# Test that option types are disjoint from non-option types.
+assert_semantic_error(3510){ D := class { f(maybeD:?D): D = { return(maybeD) } } }
+assert_semantic_error(3510){ D := class { f(d     : D):?D = { return(d)      } } }
+
+assert_semantic_error(3510){ D := class { f(maybeD:?D   ):logic = { return(maybeD) } } }
+assert_semantic_error(3510){ D := class { f(b     :logic):?D    = { return(b)      } } }
+
+assert_semantic_error(3509){ D := class { f(maybeD:?D):void={}, g(d     : D):void= { f(d)      } } }
+assert_semantic_error(3509){ D := class { f(d:D):void={}      , g(maybeD:?D):void= { f(maybeD) } } }
+
+assert_semantic_error(3506):
+     Foo():void =
+         x:?int = optional{42}
+
+assert_valid:
+     Foo():void =
+         x:?int = option{42}

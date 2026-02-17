@@ -1,0 +1,115 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using {/Verse.org/Tests/VerseTestScriptCmd/CoroUtils}
+
+# At module scope, commas and semicolons are interchangeable.
+assert_valid {}
+assert_valid {X:int=0}
+assert_valid {X:int=0; <#Y:int=0#>}
+assert_valid {X:int=0; Y:int=0}
+assert_valid {X:int=0, Y:int=0}
+assert_valid {X:int=0 <#Y:int=0#>}
+assert_valid {X:int=0,Y:int=0}
+assert_valid {m:=module{X:int=0,Y:int=0}}
+
+# Test comma vs semicolon in prefix []
+assert_valid               {F(:[int]int):void={}}
+assert_valid               {F(:[int<#int#>]int):void={}}
+assert_valid               {F(:[int;<#int#>]int):void={}}
+assert_semantic_error(3509){F(:[int,int]int):void={}}
+assert_semantic_error(3509){F(:[int,int<#int#>]int):void={}}
+assert_semantic_error(3509){F(:[int;int]int):void={}}
+assert_semantic_error(3509){F(:[int;int<#int#>]int):void={}}
+
+# Test comma vs semicolon in parentheses
+assert_valid               {F():int           =(0; 1)}
+assert_semantic_error(3510){F():tuple(int,int)=(0; 1)}
+assert_valid               {F():tuple(int,int)=(0, 1)}
+assert_semantic_error(3510){F():int           =(0, 1)}
+
+# Test that a;b in the arguments of a call is interpreted as a sequence instead of a tuple.
+F0(A:int, B:int):int=Floor(A/B) or 0
+assert{F0(100,20)=5}
+assert{F0(99;100,20)=5}
+assert{F0(99;100;101,20)=5}
+
+F1(A:int):int=A*10
+assert{F1(1)=10}
+assert{F1(2;3)=30}
+assert{(F1 of (4;5))=50}
+assert:
+    Result:=F1 of:
+        6;7
+    Result=70
+assert:
+    F1(LogEvent("1");2)=20
+    GetEventLogString()="1"
+
+F2(A:int)<decides>:int=A+20
+assert{F2[1]=21}
+assert{F2[2;3]=23}
+<#>
+    The 'at' reserved word seems to be meant to be a counter-part to 'of', but the parser doesn't accept this.
+    assert{(F2 at (4;5))=25}
+    assert:
+        Result:=F2 at:
+            6;7
+        Result=27
+assert:
+    F2[LogEvent("1");2]=22
+    GetEventLogString()="1"
+
+assert_semantic_error(3509){F(A:int,B:int):void={}; G():void=F(0;1)}
+assert_valid               {F(A:int,B:int):void={}; G():void=F(0;1,2)}
+assert_semantic_error(3509){F(A:int,B:int):void={}; G():void=F(0;1,2,3)}
+
+# Test that a;b in a function definition's parameters is rejected.
+assert_semantic_error(3540){ F(A:int;B:int):void={} }
+
+# Test comma vs semicolon vs newline in the RHS of a definition.
+assert:
+    Value :=
+        1, 2, 3
+    Value=(1,2,3)
+
+# Semicolon block with last expression as result
+assert:
+    Value :=
+        1; 2; 3
+    Value=3
+
+# Indented block with last expression as result
+assert:
+    Value :=
+        1
+        2
+        3
+    Value=3
+
+# Test comma vs semicolon in function bodies.
+assert_valid{F():int={1.0;2}}
+assert_valid{F():tuple(float,int)={1.0,2}}
+
+# Test comma vs semicolon in various macro clauses.
+assert{for(X:=1..3; X<>2){X} = for(X:=1..3, X<>2){X}}
+assert{for(X:=1..2){3,X} = array{(3,1),(3,2)}}
+assert{loop{1;break}}
+assert{loop{1, @ignore_unreachable break}}
+
+assert{option{1;2}?=2}
+assert{option{1,2}?=(1,2)}
+
+assert_valid{F():int             =block{1.0;2}}
+assert_valid{F():tuple(float,int)=block{3.0,4}}
+
+assert_valid{F():int             =case(0){_=>{1.0;2}}}
+assert_valid{F():tuple(float,int)=case(0){_=>{3.0,4}}}
+
+assert_semantic_error(3552){F()<suspends>:[]int             =sync(X:=1..2){G();1}; G()<suspends>:float=1.0}
+assert_semantic_error(3552){F()<suspends>:[]tuple(float,int)=sync(X:=1..2){G(),1}; G()<suspends>:float=1.0}
+
+assert_semantic_error(3552){F()<suspends>:int             =rush(X:=1..2){G();1}; G()<suspends>:float=1.0}
+assert_semantic_error(3552){F()<suspends>:tuple(float,int)=rush(X:=1..2){G(),1}; G()<suspends>:float=1.0}
+
+assert_semantic_error(3552){F()<suspends>:int             =race(X:=1..2){G();1}; G()<suspends>:float=1.0}
+assert_semantic_error(3552){F()<suspends>:tuple(float,int)=race(X:=1..2){G(),1}; G()<suspends>:float=1.0}

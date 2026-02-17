@@ -1,0 +1,113 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+SomeFuncThatTakesInt(I : int) : int =
+    return I
+
+assert:
+    R := SomeFuncThatTakesInt of {42}
+    R = 42
+
+assert:
+    R := SomeFuncThatTakesInt of 42
+    R = 42
+
+assert:
+    R := SomeFuncThatTakesInt of:
+        42
+    R = 42
+
+assert:
+    R := SomeFuncThatTakesInt of. 42
+    R = 42
+
+# TODO: We should make this error better, at the minute it says:
+#   This function parameter expects a value of type int,
+#   but this argument is an incompatible value of type int.
+assert_semantic_error(3512, 3509, 3545):
+    Bar(I : int)<transacts> : int = I
+    Foo():void=
+        option:
+            R := Bar of {int}:
+                42
+            R = 42
+
+SomeFuncThatTakesArray(A : []int) : int =
+    var Result : int = 0
+    for (E : A):
+        set Result += E
+    return Result
+
+assert:
+    R := SomeFuncThatTakesArray of array:
+        42
+        -13
+        53
+        10
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray of array:
+        SomeFuncThatTakesInt(42)
+        -13
+        53
+        10
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray of array:
+        42
+        -13
+        53
+        block:
+            5 + 5
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray of array:
+        42,
+        -13,
+        53,
+        10
+    R = 92
+
+assert:
+    R := SomeFuncThatTakesArray of array:
+        42;
+        -13;
+        53;
+        10
+    R = 92
+
+SomeFuncThatTakesMap(M : [int]int) : int =
+    if:
+        E := M[42]
+    then:
+        return E
+    else:
+        Err("Unreachable")
+
+assert:
+    R := SomeFuncThatTakesMap of map:
+        42 => 13
+        -13 => 53
+    R = 13
+
+assert:
+    R := SomeFuncThatTakesMap of:
+        map:
+            42 => 13
+            -13 => 53
+    R = 13
+
+SomeFuncThatTakesMultipleArgs(I : int, F : float) : float =
+    return 1.0 * I + F
+
+assert:
+    R := SomeFuncThatTakesMultipleArgs of:
+        (42, 42.0)
+
+SomeFuncDefinedUsingOfSyntax of {I:int} : int =
+    return I
+
+assert:
+    42 = SomeFuncDefinedUsingOfSyntax(42)

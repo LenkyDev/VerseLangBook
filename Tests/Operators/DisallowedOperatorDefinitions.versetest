@@ -1,0 +1,64 @@
+assert_semantic_error(3514):
+    t := class {}
+    operator'<'(x:t, y:t)<transacts><decides>:void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'<='(x:t, y:t)<transacts><decides>:void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'>'(x:t, y:t)<transacts><decides>:void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'>='(x:t, y:t)<transacts><decides>:void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'='(x:t, y:t)<transacts><decides>:void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'<>'(x:t, y:t)<transacts><decides>:void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'+='(x:t, y:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'-='(x:t, y:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'*='(x:t, y:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'/='(x:t, y:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'foo'(x:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    operator'^'(x:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    prefix'foo'(x:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    prefix'^'(x:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    postfix'foo'(x:t):void = {}
+assert_semantic_error(3514):
+    t := class {}
+    postfix'^'(x:t):void = {}
+
+# Also prohibit references to reserved operator names.
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)<transacts><decides>:void=         operator'<'[X, Y] }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)<transacts><decides>:void=         operator'<='[X, Y] }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)<transacts><decides>:void=         operator'>'[X, Y] }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)<transacts><decides>:void=         operator'>='[X, Y] }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)<transacts><decides>:void=         operator'='[X, Y] }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)<transacts><decides>:void=         operator'<>'[X, Y] }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void={var Z:t=X; operator'+='(Z, Y)} }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void={var Z:t=X; operator'-='(Z, Y)} }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void={var Z:t=X; operator'*='(Z, Y)} }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void={var Z:t=X; operator'/='(Z, Y)} }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void=         operator'foo'(X, Y) }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void=         operator'^'(X, Y) }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void=         prefix'foo'(X, Y) }
+assert_semantic_error(3637){t := class {}; F(X:t, Y:t)                    :void=         prefix'^'(X, Y) }

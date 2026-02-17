@@ -1,0 +1,32 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# The original problem was using a function as type in it's own definition.
+# The compiler tried to follow a nullptr.
+
+assert_semantic_error(3502):
+    name(X:name):int= { return 1 }
+
+# Incorrect error message for the attempt to use the identifier as a class constructor:
+#  Verse compiler error V3547: Expected a type, got function identifier instead.
+# but still better than segmentation fault.
+assert_semantic_error(3502, 3605):
+    name(X:int):name= { return name{} }
+
+
+# Check slightly more complicated cases
+assert_semantic_error(3502):
+    name1(X:name2):int= { return 1 }
+    name2(X:name1):int= { return 2 }
+
+assert_semantic_error(3502, 3605, 3605):
+    name1(X:int):name2= { return name2{} }
+    name2(X:int):name1= { return name1{} }
+
+
+# Checking that recursion still works.
+# Probably tested all over the place, but nice to have a quick check here.
+name(X:int):int = 
+    if (X >0)  { return X * name(X-1)}
+    else { return 1 }
+assert:
+    name(5) = 120

@@ -1,0 +1,70 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+CascadingRetryImmediate()<transacts><decides>:void=
+    if:
+        TestUtils.CauseAutoRTFMRetryTransaction[]
+
+CascadingRetryViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[CascadingRetryImmediate]
+
+CascadingRetryInNestedTransaction()<transacts><decides>:void=
+    if:
+        TestUtils.CauseAutoRTFMRetryTransaction[]
+
+CascadingRetryInNestedTransactionViaNativeCallback()<transacts><decides>:void=
+    TestUtils.InvokeTransacts[CascadingRetryInNestedTransaction]
+
+IndirectCall()<transacts><decides>:void=
+    if:
+        TestUtils.CauseAutoRTFMRetryTransaction[]
+
+# Test that triggering an AbortedByCascadingRetry AutoRTFM error outside of a
+# transaction behaves correctly.
+assert:
+    TestUtils.CauseAutoRTFMRetryTransaction[]
+
+# Test that triggering an AbortedByCascadingRetry AutoRTFM error inside a single
+# transaction behaves correctly.
+assert:
+    if:
+        TestUtils.CauseAutoRTFMRetryTransaction[]
+
+assert:
+    var Counter : int = 0
+    if:
+        set Counter = Counter + 1
+        TestUtils.CauseAutoRTFMRetryTransaction[]
+    then:
+        Counter = 1
+
+# Test that triggering an AbortedByCascadingRetry AutoRTFM error inside a nested
+# transaction behaves correctly.
+assert:
+    if:
+        CascadingRetryInNestedTransaction[]
+
+# Various tests for triggering an AbortedByCascadingRetry AutoRTFM error inside
+# native callback functions (Verse -> C++ -> Verse -> ...).
+assert:
+    TestUtils.InvokeTransacts[CascadingRetryImmediate]
+
+assert:
+    TestUtils.InvokeTransacts[CascadingRetryViaNativeCallback]
+
+assert:
+    if:
+        TestUtils.InvokeTransacts[CascadingRetryViaNativeCallback]
+
+assert:
+    TestUtils.InvokeTransacts[CascadingRetryInNestedTransaction]
+
+assert:
+    if:
+        TestUtils.InvokeTransacts[CascadingRetryInNestedTransaction]
+
+assert:
+    TestUtils.InvokeTransacts[CascadingRetryInNestedTransactionViaNativeCallback]
+
+assert:
+    if:
+        TestUtils.InvokeTransacts[CascadingRetryInNestedTransactionViaNativeCallback]

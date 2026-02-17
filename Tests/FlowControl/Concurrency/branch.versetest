@@ -1,0 +1,179 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# So concurrency features may be tested
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+
+############################################
+# Helper functions
+Log(Msg:string) : void =           CoroUtils.LogEvent(Msg)
+GetLogStr() : string =             return CoroUtils.GetEventLogString()
+Wait(Ticks:int)<suspends> : void = CoroUtils.WaitTicks(Ticks)
+Tick(Ticks:int) : void =           CoroUtils.Tick(Ticks)
+NumActiveCoro() : int =            return CoroUtils.GetNumActiveCoroutines()
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Branch with two suspend points in the branched timeline
+
+TestBranch1()<suspends>:void=
+    Log("A")
+    branch:
+        Log("B")
+        Wait(1)
+        Log("C")
+        Wait(1)
+        Log("D")
+
+    Log("E")
+    Wait(4)
+    Log("F")
+
+assert:
+    spawn { TestBranch1() }
+    numTasksAfterSpawn:int = NumActiveCoro()
+    Tick(4)
+    numTasksInTheEnd:int = NumActiveCoro()
+
+    bp_vm_only { numTasksAfterSpawn = 5 }
+    numTasksAfterSpawn > 0
+    numTasksInTheEnd = 0
+    GetLogStr() = "ABE,C,D,,F"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Branch that completes immediately
+
+TestBranch2()<suspends>:void=
+    Log("A")
+    branch:
+        Log("B")
+        Wait(0)
+        Log("C")
+
+    Log("D")
+    Wait(1)
+    Log("E")
+
+assert:
+    spawn { TestBranch2() }
+    numTasksAfterSpawn:int = NumActiveCoro()
+    Tick(2)
+    numTasksInTheEnd:int = NumActiveCoro()
+
+    bp_vm_only { numTasksAfterSpawn = 3 }
+    numTasksAfterSpawn > 0
+    numTasksInTheEnd = 0
+    GetLogStr() = "ABCD,E,"
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Branch that is still running when the enclosing function returns.
+
+TestBranch3()<suspends>:void=
+    Log("A")
+    branch:
+        Log("B")
+        defer{Log("C")}
+        Wait(1)
+        Log("D")
+
+    Log("E")
+
+assert:
+    spawn { TestBranch3() }
+    Tick(1)
+    GetLogStr() = "ABEC,"
+
+
+############################################
+# Disallow `branch` in method / non-coroutine scope
+assert_semantic_error(3530):
+
+    Coro()<suspends>:void={}
+    StdFunc():void=
+        branch:
+            Coro()
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Allow `branch` in coroutine scope
+assert_valid:
+
+    Coro1()<suspends>:void={}
+
+
+    Coro2()<suspends>:void=
+        branch:
+            Coro1()
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Allow `branch` in coroutine scope - even if within immediate `defer`
+assert_valid:
+
+    Coro1()<suspends>:void={}
+
+
+    Coro2()<suspends>:void=
+        defer:
+            branch:
+                Coro1()
+        Coro1()
+
+# Can't break or return from a branch.
+# TODO: currently this throws 3552 (unsupported) but once
+# we do support branch in a loop then it should throw 3556
+#assert_semantic_error(3556):
+assert_semantic_error(3552):
+    Coro1(X:void)<suspends>:void={}
+
+    Coro2()<suspends>:void=
+        loop:
+            branch:
+                Coro1(@ignore_unreachable break)
+            break
+assert_semantic_error(3556):
+
+    Coro1(X:void)<suspends>:void={}
+
+    Coro2()<suspends>:void=
+        branch:
+            Coro1(@ignore_unreachable return)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Interaction between branch and Software Transaction Memory
+
+test_result := class:
+    var Variable:int = 0
+
+    IncAndTest(Limit:int)<transacts><decides>:int=
+        set Variable = Variable + 1
+        Variable < Limit
+
+TestBranchStm(R:test_result)<suspends>:void=
+    Log("A")
+    branch:
+        Log("B")
+        Wait(1)
+        if (R.IncAndTest[2]) { Log("C") }
+        else { Log("c") }
+        Wait(1)
+        if (R.IncAndTest[4]) { Log("D") }
+        else { Log("d") }
+
+    if (R.IncAndTest[2]) { Log("E") }
+    else { Log("e") }
+    Wait(4)
+    if (R.Variable = 2) { Log("F") }
+    else { Log("f") }
+
+assert:
+    R:test_result = test_result{}
+    spawn { TestBranchStm(R) }
+    numTasksAfterSpawn:int = NumActiveCoro()
+    Tick(4)
+    numTasksInTheEnd:int = NumActiveCoro()
+
+    bp_vm_only { numTasksAfterSpawn = 5 }
+    numTasksAfterSpawn > 0
+    numTasksInTheEnd = 0
+    GetLogStr() = "ABE,c,D,,F"

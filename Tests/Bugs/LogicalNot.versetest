@@ -1,0 +1,8 @@
+# Test that this produces a syntax error instead of crashing.
+assert_syntax_error(3100){"1 != 2"}
+
+# Test that this produces a semantic error instead of a parser assertion.
+assert_semantic_error(3513):
+    c:=class:
+        f()<transacts><decides>:void= not 1
+

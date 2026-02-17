@@ -1,0 +1,78 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# FORT-861412 was about better error messages, which is not tested since assert_semantic_error only checks the error code.
+# These test do however run all paths in the code that builds the error message. 
+
+# Only one possible 'using'
+assert_semantic_error(3506, 3506):
+    vpackage(P0, /A):
+        snippet:
+            x<public> := class{}
+    X:x = x{}
+
+# More than one possible 'using'
+assert_semantic_error(3506, 3506):
+    vpackage(P0, /A):
+        snippet:
+            x<public> := class{}
+    vpackage(P1, /B):
+        snippet:
+            x<public> := class{}
+    X:x = x{}
+
+# One possible qualified name
+assert_semantic_error(3506, 3506):
+    M1<public> := module { x<public> := class{} }
+
+    X:x = x{}
+
+# More than one possible qualified name
+assert_semantic_error(3506, 3506):
+    M1<public> := module { x<public> := class{} }
+    M2<public> := module { x<public> := class{} }
+
+    X:x = x{}
+
+# Only one possible 'using' and one possible qualified name
+assert_semantic_error(3506, 3506):
+    vpackage(P0, /A):
+        snippet:
+            x<public> := class{}
+    M1<public> := module { x<public> := class{} }
+
+    X:x = x{}
+
+
+# Only one possible 'using' and more than one possible qualified name
+assert_semantic_error(3506, 3506):
+    vpackage(P0, /A):
+        snippet:
+            x<public> := class{}
+    M1<public> := module { x<public> := class{} }
+    M2<public> := module { x<public> := class{} }
+    X:x = x{}
+
+# More than one possible 'using' and one possible qualified name
+assert_semantic_error(3506, 3506):
+    vpackage(P0, /A):
+        snippet:
+            x<public> := class{}
+    vpackage(P1, /B):
+        snippet:
+            x<public> := class{}
+    M1<public> := module { x<public> := class{} }
+
+    X:x = x{}
+
+
+# More than one possible 'using' and more than one possible qualified name
+assert_semantic_error(3506, 3506):
+    vpackage(P0, /A):
+        snippet:
+            x<public> := class{}
+    vpackage(P1, /B):
+        snippet:
+            x<public> := class{}
+    M1<public> := module { x<public> := class{} }
+    M2<public> := module { x<public> := class{} }
+    X:x = x{}

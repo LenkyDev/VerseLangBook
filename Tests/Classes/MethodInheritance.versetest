@@ -1,0 +1,120 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd } # For CoroUtils
+
+# Ensure instance and class methods are inherited
+ClassA := class:
+    methodA():int = { return 1 }
+    methodV():int = { return 100 }
+
+    
+    coroV(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); set coroResult = 1000+x }
+
+    var coroResult:int = 0
+
+ClassB := class(ClassA):
+    methodB():int = { return 2 }
+    
+    methodV<override>():int = { return 200 }
+
+    
+    coroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); set coroResult = 2000+x }
+
+ClassC := class(ClassB):
+    methodC():int = { return 3 }
+    
+    methodV<override>():int = { return 300 }
+
+    
+    coroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); set coroResult = 3000+x }
+
+ClassD := class(ClassC) {}
+
+InterfaceA := interface:
+    setCoroResult((local:)result:int):void
+    interfaceCoroV(x:int)<suspends>:void
+
+ClassE := class(InterfaceA):
+    var coroResult:int = 0
+    
+    setCoroResult<override>((local:)result:int):void = { set coroResult = (local:)result }
+    
+    interfaceCoroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); setCoroResult(1000+x) }
+
+ClassF := class(ClassE):
+    
+    interfaceCoroV<override>(x:int)<suspends>:void = { CoroUtils.WaitTicks(0); setCoroResult(2000+x) }
+
+# Ensure access to all instance methods - inherited or otherwise
+assert:
+    c := ClassC{}
+    (c.methodA() = 1) and (c.methodB() = 2) and (c.methodC() = 3)
+
+assert:
+    d := ClassD{}
+    (d.methodA() = 1) and (d.methodB() = 2) and (d.methodC() = 3)
+
+# Ensure overridden methods work properly
+assert:
+    a:ClassA = ClassA{}
+    b:ClassA = ClassB{}
+    c:ClassA = ClassC{}
+    d:ClassA = ClassD{}
+    (a.methodV() = 100) and (b.methodV() = 200) and (c.methodV() = 300) and (d.methodV() = 300)
+
+# Ensure overridden coroutines work properly
+assert:
+    a:ClassA = ClassA{}
+    b:ClassA = ClassB{}
+    c:ClassA = ClassC{}
+    d:ClassA = ClassD{}
+    spawn { a.coroV(10) }
+    spawn { b.coroV(20) }
+    spawn { c.coroV(30) }
+    spawn { d.coroV(40) }
+    (a.coroResult = 1010) and (b.coroResult = 2020) and (c.coroResult = 3030) and (d.coroResult = 3040)
+
+# Ensure overridden interface coroutines work properly
+assert:
+    e := ClassE{}
+    t := InterfaceA[e]
+    spawn { t.interfaceCoroV(50) }
+    e.coroResult = 1050
+assert:
+    f := ClassF{}
+    t := InterfaceA[f]
+    spawn { t.interfaceCoroV(50) }
+    f.coroResult = 2050
+
+# Ensure catch of shadowed method with different signature: instance to instance
+assert_semantic_error(3532, 3532):
+    ClassX := class:
+        methodX():void = {}
+
+    ClassY := class(ClassX):
+        methodX():int = { return 42 }
+
+ClassX := class:
+    methodX()<suspends>:int =
+        CoroUtils.LogEvent("ClassX.methodX")
+        0
+
+ClassY := class(ClassX):
+    methodX<override>():int =
+        CoroUtils.LogEvent("ClassY.methodX")
+        1
+
+assert:
+    X:ClassX = ClassX{}
+    spawn{X.methodX()}
+    CoroUtils.Tick(1)
+    CoroUtils.GetEventLogString() = "ClassX.methodX,"
+    CoroUtils.Reset()
+    Y:ClassY = ClassY{}
+    Y.methodX() = 1
+    CoroUtils.Reset()
+    Z:ClassX = ClassY{}
+    spawn{Z.methodX()}
+    CoroUtils.Tick(1)
+    CoroUtils.GetEventLogString() = "ClassY.methodX,"
+    CoroUtils.Reset()

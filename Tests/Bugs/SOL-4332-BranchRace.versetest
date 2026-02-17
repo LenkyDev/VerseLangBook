@@ -1,0 +1,135 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+############################################
+# Helper functions
+using { CoroUtils }
+
+Immediate()<suspends>:void = {}
+
+BranchRaceTest1()<suspends>:void =
+    LogEvent("A")
+    branch:
+        race:
+            WaitTicks(2)
+            WaitTicks(3)
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+	spawn{BranchRaceTest1()}
+    Tick(1)
+    GetEventLogString() = "AB,"
+
+BranchRaceTest2()<suspends>:void =
+    LogEvent("A")
+    branch:
+        race:
+            WaitTicks(1)
+            WaitTicks(2)
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+	spawn{BranchRaceTest2()}
+    Tick(1)
+    GetEventLogString() = "AB,"
+
+BranchRaceTest3()<suspends>:void =
+    LogEvent("A")
+    branch:
+        race:
+            Immediate()
+            Immediate()
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+    spawn{BranchRaceTest3()}
+    Tick(1)
+    GetEventLogString() = "ACB,"
+
+BranchSyncTest1()<suspends>:void =
+    LogEvent("A")
+    branch:
+        sync:
+            WaitTicks(2)
+            WaitTicks(3)
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+	spawn{BranchSyncTest1()}
+    Tick(1)
+    GetEventLogString() = "AB,"
+
+BranchSyncTest2()<suspends>:void =
+    LogEvent("A")
+    branch:
+        sync:
+            WaitTicks(1)
+            WaitTicks(2)
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+	spawn{BranchSyncTest1()}
+    Tick(1)
+    GetEventLogString() = "AB,"
+
+BranchSyncTest3()<suspends>:void =
+    LogEvent("A")
+    branch:
+        sync:
+            Immediate()
+            Immediate()
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+    spawn{BranchSyncTest3()}
+    Tick(1)
+    GetEventLogString() = "ACB,"
+
+BranchRushTest1()<suspends>:void =
+    LogEvent("A")
+    branch:
+        rush:
+            WaitTicks(2)
+            WaitTicks(3)
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+	spawn{BranchRushTest1()}
+    Tick(1)
+    GetEventLogString() = "AB,"
+
+BranchRushTest2()<suspends>:void =
+    LogEvent("A")
+    branch:
+        rush:
+            WaitTicks(1)
+            WaitTicks(2)
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+	spawn{BranchRushTest2()}
+    Tick(1)
+    GetEventLogString() = "AB,"
+
+BranchRushTest3()<suspends>:void =
+    LogEvent("A")
+    branch:
+        rush:
+            Immediate()
+            Immediate()
+        LogEvent("C")
+    LogEvent("B")
+
+assert:
+    spawn{BranchRushTest3()}
+    Tick(1)
+    GetEventLogString() = "ACB,"

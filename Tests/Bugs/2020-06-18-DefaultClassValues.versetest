@@ -1,0 +1,17 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+super_class := class{}
+
+sub_class_a := class(super_class){}
+sub_class_b := class(super_class):
+    C:subtype(super_class)=sub_class_a
+
+assert:
+    B := sub_class_b{}
+    TestUtils.AreClassesEqual[B.C, sub_class_a]
+
+assert:
+    B := sub_class_b{C:=sub_class_b}
+    TestUtils.AreClassesEqual[B.C, sub_class_b]

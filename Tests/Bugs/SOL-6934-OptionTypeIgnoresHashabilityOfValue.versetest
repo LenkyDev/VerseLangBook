@@ -1,0 +1,4 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_valid               {vpackage(P0, /A, ?Scope:=PublicUser, ?UploadedAtFNVersion:=3040){snippet{Map:[?[]int]int = map{}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?Scope:=PublicUser, ?UploadedAtFNVersion:=3100){snippet{Map:[?[]int]int = map{}}}}

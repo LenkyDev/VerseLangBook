@@ -1,0 +1,1046 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# So concurrency features may be tested
+using { /Verse.org/Tests/VerseTestScriptCmd }
+using { /Verse.org/Restricted }
+using { /Verse.org/Concurrency }
+
+############################################
+# Helper functions
+Log(Msg:string)                    : void   = {CoroUtils.LogEvent(Msg)}
+GetLogStr()<transacts>             : string = {return CoroUtils.GetEventLogString()}
+Wait(Ticks:int)<suspends>          : void   = {CoroUtils.WaitTicks(Ticks)}
+Tick(Ticks:int)                    : void   = {CoroUtils.Tick(Ticks)}
+HasActiveContentScope()<transacts> : logic  = {CoroUtils.HasActiveContentScope()}
+GetNumTasks()                      : int    = {CoroUtils.GetNumActiveCoroutines()}
+
+TestCoroY2Z()<suspends>:void=
+    Log("Y")
+    Wait(2)
+    Log("Z")
+
+
+TestCoroJ1K()<suspends>:void=
+    Log("J")
+    Wait(2)
+    Log("K")
+
+
+TestCoroChildren()<suspends>:void=
+    Log("P")
+    sync:
+        TestCoroY2Z()
+        TestCoroJ1K()
+    Log("Q")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Get task result
+TestSpawn():void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Tick(3)
+    Log("c")
+
+assert:
+    TestSpawn()
+    GetLogStr() = "aYb,,Z,c"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# NextTick should sleep for a single tick
+TestNextTick()<suspends>:void=
+    Log("a")
+    NextTick()
+    Log("b")
+    NextTick()
+    Log("c")
+    Result := GetLogStr()
+    Result = "a>b>c" or Err("expected 'a>b>c', got '{Result}'")
+
+assert:
+    spawn { TestNextTick() }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# A valid content scope should be preserved across ticks
+TestActiveContentScope()<suspends>:void=
+    if (HasActiveContentScope()?):
+        Log("a")
+    NextTick()
+    if (HasActiveContentScope()?):
+        Log("b")
+    NextTick()
+    if (HasActiveContentScope()?):
+        Log("c")
+    Result := GetLogStr()
+    Result = "a>b>c" or Err("expected 'a>b>c', got '{Result}'")
+
+assert:
+    spawn { TestActiveContentScope() }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task result - cancel before complete
+TestTaskCancel():void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Tick(1)
+    spawn{Task1.Cancel()}
+    Tick(2)
+    Log("c")
+
+assert:
+    TestTaskCancel()
+    GetLogStr() = "aYb,,,c"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task with a stack of defers - cancel before complete
+TestTaskUnwind(N:int, L:logic)<suspends>:void=
+    Log("a")
+    if (N = 0):
+        Wait(1)
+    else if (L?):
+        defer:
+            Log("c")
+        TestTaskUnwind(N - 1, false)
+    else:
+        TestTaskUnwind(N - 1, true)
+    Log("b")
+
+assert:
+    Task:task(void) = spawn{TestTaskUnwind(3, true)}
+    spawn{Task.Cancel()}
+    GetLogStr() = "aaaacc"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task with children - cancel before complete
+TestTaskCancelChildren():void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroChildren()}
+    Log("b")
+    Tick(1)
+    spawn{Task1.Cancel()}
+    Tick(2)
+    Log("c")
+
+assert:
+    TestTaskCancelChildren()
+    GetLogStr() = "aPYJb,,,c"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task that ends with an active suspended child
+TestTaskCancelAtEnd()<suspends>:void=
+    defer:
+        Log("d")
+    branch:
+        defer:
+            Log("f")
+        Log("a")
+        Wait(2)
+        Log("e")
+    Log("b")
+    Wait(1)
+    Log("c")
+
+assert:
+    spawn{TestTaskCancelAtEnd()}
+    Tick(2)
+    GetLogStr() = "ab,cdf,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task that ends with an active running child
+TestTaskCancelRunningAtEnd()<suspends>:void=
+    E := event(int){}
+    defer:
+        Log("d")
+    branch:
+        defer:
+            Log("f")
+        Log("a")
+        Wait(1)
+        E.Signal(0)
+        Log("e")
+    Log("b")
+    E.Await()
+    Log("c")
+
+assert:
+    spawn{TestTaskCancelRunningAtEnd()}
+    Tick(2)
+    GetLogStr() = "ab,cdef,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task that creates a child during unwinding
+TestTaskUnwindBranch()<suspends>:void=
+    defer:
+        Log("c")
+        branch:
+            defer:
+                Log("g")
+            Log("d")
+            Wait(1)
+            Log("f")
+        Log("e")
+    Log("a")
+    Wait(1)
+    Log("b")
+
+assert:
+    Task:task(void) = spawn{TestTaskUnwindBranch()}
+    spawn{Task.Cancel()}
+    Tick(1)
+    GetLogStr() = "acdeg,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task result - query uninterrupted / interrupted
+TestTaskUninterrupted():void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Tick(1)
+    if (Task1.Uninterrupted[]):
+        Log("V")
+    spawn{Task1.Cancel()}
+    if (Task1.Interrupted[]):
+        Log("I")
+    Tick(2)
+    Log("c")
+
+assert:
+    TestTaskUninterrupted()
+    GetLogStr() = "aYb,VI,,c"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task result - query active / completed
+TestTaskCompleted():void=
+    Log("1")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    loop:
+        Log("2")
+        if (Task1.Active[]):
+            Log("A")
+        else:
+            break
+        Tick(1)
+    if (Task1.Completed[]):
+        Log("C")
+    Log("3")
+
+assert:
+    TestTaskCompleted()
+    GetLogStr() = "1Y2A,2A,Z2C3"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task result - query canceled
+TestTaskCanceled():void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Tick(1)
+    spawn{Task1.Cancel()}
+    if (Task1.Canceled[]):
+        Log("A")
+    Tick(2)
+    Log("c")
+
+assert:
+    TestTaskCanceled()
+    GetLogStr() = "aYb,A,,c"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Task result - query canceled
+TestTaskSettled():void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Task2:task(void) = spawn{TestCoroJ1K()}
+    Log("b")
+    if (Task1.Unsettled[]):
+        Log("U")
+    if (Task1.Unsettled[]):
+        Log("u")
+    Tick(1)
+    spawn{Task1.Cancel()}
+    Tick(1)
+    if (Task1.Settled[]): # settled due to Cancel()
+        Log("S")
+    if (Task2.Settled[]): # settled due to completion
+        Log("s")
+    Tick(1)
+    Log("c")
+
+assert:
+    TestTaskSettled()
+    GetLogStr() = "aYJbUu,,KSs,c"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Await spawned task
+TestAwait()<suspends>:void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Wait(1)
+    Log("c")
+    if (Task1.Active[]):
+        Log("A")
+    Task1.Await()
+    if (Task1.Completed[]):
+        Log("C")
+    Log("d")
+    Wait(1)
+    Log("e")
+
+assert:
+    spawn{TestAwait()}
+    Tick(4)
+    GetLogStr() = "aYb,cA,ZCd,e,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Multi Await single spawned task
+TestAwait3()<suspends>:void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    sync:
+        block:
+            Log("A1")
+            Task1.Await()
+            Log("A2")
+        block:
+            Log("B1")
+            Wait(1)
+            Log("B2")
+            Task1.Await()
+            Log("B3")
+        block:
+            Log("C1")
+            Task1.Await()
+            Log("C2")
+            Wait(1)
+            Log("C3")
+    Log("c")
+    Wait(1)
+    Log("d")
+
+assert:
+    spawn{TestAwait3()}
+    Tick(5)
+    GetLogStr() = "aYbA1B1C1,B2,ZA2C2B3,C3c,d,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Await already completed spawned task
+TestAwaitCompleted()<suspends>:void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Task1.Await()
+    Log("c")
+    Task1.Await()
+    Log("d")
+
+assert:
+    spawn{TestAwaitCompleted()}
+    Tick(3)
+    GetLogStr() = "aYb,,Zcd,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Await already canceled spawned task
+TestAwaitCanceled()<suspends>:void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Task1.Cancel()
+    Log("c")
+    Task1.Await()
+    Log("d")
+
+assert:
+    spawn{TestAwaitCanceled()}
+    Tick(3)
+    GetLogStr() = "aYbc,,,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel already completed spawned task
+TestCancelCompleted()<suspends>:void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Task1.Await()
+    Log("c")
+    Task1.Cancel()
+    Log("d")
+
+assert:
+    spawn{TestCancelCompleted()}
+    Tick(3)
+    GetLogStr() = "aYb,,Zcd,"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel already canceled spawned task
+TestCancelCanceled()<suspends>:void=
+    Log("a")
+    Task1:task(void) = spawn{TestCoroY2Z()}
+    Log("b")
+    Task1.Cancel()
+    Log("c")
+    Task1.Cancel()
+    Log("d")
+
+assert:
+    spawn{TestCancelCanceled()}
+    Tick(3)
+    GetLogStr() = "aYbcd,,,"
+
+
+task_ref := class{var Task:?task(void)}
+
+TestCoroXCYZ(Task:task(void))<suspends>:void=
+    defer:
+        Log("Z")
+    Log("X")
+    Task.Cancel()
+    Log("Y")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a task suspended in a call to Cancel()
+TestCancelCancel(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("c")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task1 := CurrentTask.Task?):
+        Task2:task(void) = spawn{TestCoroXCYZ(Task1)}
+        spawn{TestCoroXCYZ(Task2)}
+    Log("a")
+    Wait(1) # Canceled here even though the canceler is gone
+    Log("b")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelCancel(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    verse_vm_only{ GetLogStr() = ",XXZYZac," }
+
+    # BPVM cancellation does not suspend, and destructs the target synchronously
+    # When the target is next resumed, its _ContentScope is gone so it re-suspends forever
+    bp_vm_only{ GetLogStr() = ",XYZXYZa," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a task not yet at a cancellation point
+TestCancelRunning(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("c")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        spawn{TestCoroXCYZ(Task)}
+    Log("a")
+    Wait(1)
+    Log("b")
+
+TestCancelRunningAncestor(CurrentTask:task_ref)<suspends>:void=
+    sync:
+        Wait(1)
+        TestCancelRunning(CurrentTask)
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelRunning(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    verse_vm_only{ GetLogStr() = ",XacYZ," }
+    bp_vm_only{ GetLogStr() = ",XYZa," }
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelRunningAncestor(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    verse_vm_only{ GetLogStr() = ",XacYZ," }
+    bp_vm_only{ GetLogStr() = ",XYZa," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a task without a cancellation point
+TestCancelRunningWithoutSuspend(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("b")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        spawn{TestCoroXCYZ(Task)}
+    Log("a")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelRunningWithoutSuspend(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    verse_vm_only{ GetLogStr() = ",XabYZ," }
+    bp_vm_only{ GetLogStr() = ",XYZab," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a running task that ends with a suspended child
+TestCancelRunningSuspendedChild(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("d")
+    Wait(1) # Let the caller populate CurrentTask
+    branch:
+        defer:
+            Log("f")
+        Log("a")
+        Wait(1)
+        Log("e")
+    Log("b")
+    if (Task := CurrentTask.Task?):
+        spawn{Task.Cancel()}
+    Log("c")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelRunningSuspendedChild(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    verse_vm_only{ GetLogStr() = ",abcdf," }
+    bp_vm_only{ GetLogStr() = ",abfcd," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a running task that ends with a running child
+TestTaskCancelRunningRunningChild(CurrentTask:task_ref)<suspends>:void=
+    E := event(int){}
+    defer:
+        Log("d")
+    Wait(1) # Let the caller populate CurrentTask
+    branch:
+        defer:
+            Log("f")
+        Log("a")
+        Wait(1)
+        E.Signal(0)
+        Log("e")
+    Log("b")
+    E.Await()
+    if (Task := CurrentTask.Task?):
+        spawn{Task.Cancel()}
+    Log("c")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestTaskCancelRunningRunningChild(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    GetLogStr() = ",ab,cdef"
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel the current task
+TestCancelSelf(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("c")
+    Wait(1) # Let the caller populate CurrentTask
+    Log("a")
+    if (Task := CurrentTask.Task?):
+        Task.Cancel()
+    Log("b")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelSelf(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(2)
+    verse_vm_only{ GetLogStr() = ",ac," }
+
+    # BPVM cancellation does not suspend, and destructs the target synchronously
+    # Here, the defer runs twice and the target continues to completion
+    bp_vm_only{ GetLogStr() = ",acbc," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a running parent task
+TestCancelRunningParent(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("k")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        sync:
+            block:
+                defer:
+                    Log("g")
+                Log("a")
+                Wait(2)
+                Log("f")
+            block:
+                defer:
+                    Log("e")
+                Log("b")
+                Task.Cancel()
+                Log("d")
+            block:
+                defer:
+                    Log("i")
+                Log("c")
+                Wait(2)
+                Log("h")
+        Log("j")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelRunningParent(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",abciegk,," }
+    bp_vm_only{ GetLogStr() = ",abegde,," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a suspended parent task
+TestCancelSuspendedParent(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("k")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        sync:
+            block:
+                defer:
+                    Log("g")
+                Log("a")
+                Wait(2)
+                Log("f")
+            block:
+                defer:
+                    Log("e")
+                Log("b")
+                Wait(1) # Let the parent task reach a cancellation point
+                Task.Cancel()
+                Log("d")
+            block:
+                defer:
+                    Log("i")
+                Log("c")
+                Wait(2)
+                Log("h")
+        Log("j")
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelSuspendedParent(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",abc,iegk," }
+    bp_vm_only{ GetLogStr() = ",abc,eigde," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cancel a task that is already canceling
+TestCancelCanceling(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("j")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        sync:
+            block:
+                defer:
+                    Log("f")
+                Log("a")
+                Wait(2)
+                Log("e")
+            block:
+                defer:
+                    Log("h")
+                Log("b")
+                Wait(1)                   # Let the parent task reach a cancellation point
+                spawn{TestCoroXCYZ(Task)} # Kick off parent task cancellation
+                Log("c")
+                spawn{TestCoroXCYZ(Task)} # Parent task cancellation is suspended on this sync arm
+                Log("d")
+                Wait(1)                   # Cancellation point resumes parent task cancellation
+                Log("g")
+        Log("i")
+
+TestCancelCancelingAncestor(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("k")
+    sync:
+        Wait(1)
+        TestCancelCanceling(CurrentTask)
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelCanceling(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,XcXdhfjYZYZ," }
+    bp_vm_only{ GetLogStr() = ",ab,XfYZcXYZd," }
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestCancelCancelingAncestor(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,XcXdhfjkYZYZ," }
+    bp_vm_only{ GetLogStr() = ",ab,XfYZcXYZd," }
+
+
+TestCoroUAVW(E:event(int))<suspends>:void=
+    defer:
+        Log("W")
+    Log("U")
+    E.Await()
+    Log("V")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Yield to a task that is already canceling
+TestYieldToCanceling(E1:event(int), CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("h")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task1 := CurrentTask.Task?):
+        E2 := event(int){}
+        Task2:task(void) = spawn{TestCoroUAVW(E2)}
+        branch:
+            defer:
+                Log("f")
+            Log("a")
+            E1.Await()                 # Let the parent task reach a cancellation point
+            spawn{TestCoroXCYZ(Task1)} # Kick off parent task cancellation
+            Log("c")
+            E2.Signal(0)               # Complete spawned task to resume parent via yield (no-op)
+            Log("d")
+            Wait(1)                    # Cancellation point resumes parent task cancellation
+            Log("e")
+        Log("b")
+        Task2.Await()
+        Log("g")
+
+TestYieldToCancelingAncestor(E1:event(int), CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("i")
+    sync:
+        Wait(1)
+        TestYieldToCanceling(E1, CurrentTask)
+
+assert:
+    E1 := event(int){}
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestYieldToCanceling(E1, CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(1)
+    E1.Signal(0)
+    verse_vm_only{ GetLogStr() = ",UabXcVWdfhYZ" }
+    bp_vm_only{ GetLogStr() = ",UabXhYZcVWd" }
+
+assert:
+    E1 := event(int){}
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestYieldToCancelingAncestor(E1, CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(1)
+    E1.Signal(0)
+    verse_vm_only{ GetLogStr() = ",UabXcVWdfhiYZ" }
+    bp_vm_only{ GetLogStr() = ",UabXhYZcVWd" }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Yield to a parent task that is already canceling
+TestYieldToCancelingParent(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("i")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        E := event(int){}
+        sync:
+            block:
+                defer:
+                    Log("e")
+                Log("a")
+                E.Await()
+                Log("d")
+            block:
+                defer:
+                    Log("g")
+                Log("b")
+                Wait(1)                   # Let the parent task reach a cancellation point
+                spawn{TestCoroXCYZ(Task)} # Kick off parent task cancellation
+                Log("c")
+                E.Signal(0)               # Complete sibling to resume parent via yield (no-op)
+                Log("f")
+                Wait(1)                   # Cancellation point resumes parent task cancellation
+        Log("h")
+
+TestYieldToCancelingParentAncestor(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("j")
+    sync:
+        Wait(1)
+        TestYieldToCancelingParent(CurrentTask)
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestYieldToCancelingParent(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,XcdefgiYZ," }
+    bp_vm_only{ GetLogStr() = ",ab,XeYZcf," }
+
+assert:
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestYieldToCancelingParentAncestor(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,XcdefgijYZ," }
+    bp_vm_only{ GetLogStr() = ",ab,XeYZcf," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Yield to a canceling task with other running children
+TestYieldToCancelingRunning(CurrentTask:task_ref)<suspends>:void =
+    defer:
+        Log("j")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task := CurrentTask.Task?):
+        E := event(int){}
+        sync:
+            block:
+                defer:
+                    Log("h")
+                Log("a")
+                Wait(1)
+                Log("c")
+                E.Signal(0)
+                Log("g")
+            block:
+                defer:
+                    Log("f")
+                Log("b")
+                E.Await()
+                Log("d")
+                Task.Cancel()
+                Log("e")
+        Log("i")
+
+assert:
+    CurrentTask := task_ref { Task := false }
+    T:task(void) = spawn{ TestYieldToCancelingRunning(CurrentTask) }
+    set CurrentTask.Task = option{ T }
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,cdfghj," }
+    bp_vm_only{ GetLogStr() = ",ab,cdfefghij," }
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Resume a task that is already canceling
+TestResumeCanceling(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("h")
+    Wait(1) # Let the caller populate CurrentTask
+    if (Task1 := CurrentTask.Task?):
+        E := event(int){}
+        branch:
+            defer:
+                Log("f")
+            Log("a")
+            Wait(1)                    # Let the parent task reach a cancellation point
+            spawn{TestCoroXCYZ(Task1)} # Kick off parent task cancellation
+            Log("c")
+            E.Signal(0)                # Resume parent task (no-op)
+            Log("d")
+            Wait(1)                    # Cancellation point resumes parent task cancellation
+            Log("e")
+        Log("b")
+        E.Await()
+        Log("g")
+
+TestResumeCancelingAncestor(CurrentTask:task_ref)<suspends>:void=
+    defer:
+        Log("i")
+    sync:
+        Wait(1)
+        TestResumeCanceling(CurrentTask)
+
+assert:
+    E1 := event(int){}
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestResumeCanceling(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,XcdfhYZ," }
+    bp_vm_only{ GetLogStr() = ",ab,XhYZcd," }
+
+assert:
+    E1 := event(int){}
+    CurrentTask := task_ref{Task := false}
+    Task:task(void) = spawn{TestResumeCancelingAncestor(CurrentTask)}
+    set CurrentTask.Task = option{Task}
+    Tick(3)
+    verse_vm_only{ GetLogStr() = ",ab,XcdfhiYZ," }
+    bp_vm_only{ GetLogStr() = ",ab,XhYZcd," }
+
+
+# Can't break or return from a spawn.
+assert_semantic_error(3551):
+
+    Coro1(X:void)<suspends>:void={}
+
+    Coro2()<suspends>:void=
+        loop:
+            spawn:
+                Coro1(@ignore_unreachable break)
+            break
+assert_semantic_error(3551):
+
+    Coro1(X:void)<suspends>:void={}
+
+    Coro2()<suspends>:void=
+        spawn:
+            Coro1(@ignore_unreachable return)
+
+# Test awaiting a task that may already have completed.
+completion_flag:=class{var Value:logic=false}
+AsyncFunctionThatWaits(Ticks:int)<suspends>:void=Wait(Ticks)
+AwaitTask(Task:task(t), WaitTicks:int, CompletionFlag:completion_flag where t:type)<suspends>:void=
+    Wait(WaitTicks)
+    Task.Await()
+    set CompletionFlag.Value = true
+# SOL-2800: These don't work correctly, maybe because of something different with how a spawned task that immediately returns works.
+verse_vm_only{
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(0)}; spawn{AwaitTask(Task, 0, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(0)}; spawn{AwaitTask(Task, 1, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(0)}; spawn{AwaitTask(Task, 2, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+} #verse_vm_only
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(1)}; spawn{AwaitTask(Task, 0, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(1)}; spawn{AwaitTask(Task, 1, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(1)}; spawn{AwaitTask(Task, 2, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(2)}; spawn{AwaitTask(Task, 1, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(2)}; spawn{AwaitTask(Task, 2, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+assert{CompletionFlag := completion_flag{}; Task := spawn{AsyncFunctionThatWaits(2)}; spawn{AwaitTask(Task, 3, CompletionFlag)}; Tick(3); CompletionFlag.Value=true}
+
+# Test using the task result of spawn.
+comparable_pointer := class:
+    var Pointer:?comparable=false
+AwaitResultAndSetPointer(Task:task(comparable), ResultPointer:comparable_pointer)<suspends>:void=
+    Result := Task.Await()
+    set ResultPointer.Pointer = option{Result}
+SyncGetResultFromTask(Task:task(comparable))<decides>:comparable=
+    ResultPointer := comparable_pointer{}
+    spawn{AwaitResultAndSetPointer(Task, ResultPointer)}
+    Tick(1)
+    return ResultPointer.Pointer?
+AsyncFunctionWithResult(Result:comparable)<suspends>:comparable=
+    Wait(1)
+    return Result
+test_enum := enum {A,B,C}
+test_class := class<unique>{}
+assert{Task := spawn{AsyncFunctionWithResult(100                       )}; SyncGetResultFromTask[Task]=100}
+assert{Task := spawn{AsyncFunctionWithResult(101                       )}; SyncGetResultFromTask[Task]=101}
+assert{Task := spawn{AsyncFunctionWithResult(1.0                       )}; SyncGetResultFromTask[Task]=1.0}
+assert{Task := spawn{AsyncFunctionWithResult(1.1                       )}; SyncGetResultFromTask[Task]=1.1}
+assert{Task := spawn{AsyncFunctionWithResult('a'                       )}; SyncGetResultFromTask[Task]='a'}
+assert{Task := spawn{AsyncFunctionWithResult("a"                       )}; SyncGetResultFromTask[Task]="a"}
+assert{Task := spawn{AsyncFunctionWithResult(option{100}               )}; SyncGetResultFromTask[Task]=option{100}}
+assert{Task := spawn{AsyncFunctionWithResult(option{101}               )}; SyncGetResultFromTask[Task]=option{101}}
+assert{Task := spawn{AsyncFunctionWithResult(array{'a'}                )}; SyncGetResultFromTask[Task]=array{'a'}}
+assert{Task := spawn{AsyncFunctionWithResult(array{100,101}            )}; SyncGetResultFromTask[Task]=array{100,101}}
+assert{Task := spawn{AsyncFunctionWithResult(map{100=>"100",101=>"101"})}; SyncGetResultFromTask[Task]=map{100=>"100",101=>"101"}}
+assert{Task := spawn{AsyncFunctionWithResult(map{"100"=>100,"101"=>101})}; SyncGetResultFromTask[Task]=map{"100"=>100,"101"=>101}}
+assert{Task := spawn{AsyncFunctionWithResult(1,2.0                     )}; SyncGetResultFromTask[Task]=(1,2.0)}
+assert{Task := spawn{AsyncFunctionWithResult(3,4.0                     )}; SyncGetResultFromTask[Task]=(3,4.0)}
+assert{Task := spawn{AsyncFunctionWithResult(5.0,6                     )}; SyncGetResultFromTask[Task]=(5.0,6)}
+assert{Task := spawn{AsyncFunctionWithResult(test_enum.A               )}; SyncGetResultFromTask[Task]=test_enum.A}
+assert{Task := spawn{AsyncFunctionWithResult(test_enum.B               )}; SyncGetResultFromTask[Task]=test_enum.B}
+assert{Task := spawn{AsyncFunctionWithResult(test_enum.C               )}; SyncGetResultFromTask[Task]=test_enum.C}
+assert{Instance:=test_class{}; Task := spawn{AsyncFunctionWithResult(Instance)}; SyncGetResultFromTask[Task]=Instance}
+assert{Instance:=test_class{}; Task := spawn{AsyncFunctionWithResult(option{Instance})}; SyncGetResultFromTask[Task]=option{Instance}}
+
+# Test awaiting a single task multiple times.
+assert:
+    Task := spawn{AsyncFunctionWithResult(100)};
+    SyncGetResultFromTask[Task]=100
+    SyncGetResultFromTask[Task]=100
+
+# Test that spawn without a subexpression produces an error.
+assert_semantic_error(3508){F():void=spawn{}}
+
+# Test that spawn with an erronous subexpression doesn't crash.
+assert_semantic_error(3506){F():void=spawn{Error}}
+assert_semantic_error(3538){F():void=spawn{0}}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TestDeepSpawn(value:int, ?limit:int := -1)<suspends>:void=
+    Wait(1)
+    if (Mod[value, 71] = 0):
+        Log("{value}")
+    if (limit < 0):
+        TestDeepSpawn(value+1)   # YOLO!
+    else if (value < limit):
+        TestDeepSpawn(value+1, ?limit := limit)
+
+    # will never get here unless we've specified a limit
+    Wait(1)
+    if (Mod[value, 71] = 0):
+        Log("{value}")
+
+# Pile up 10000 tasks and then exit so they're terminated. We shouldn't overflow the runtime stack.
+assert:
+    Log("A")
+    startTasks:int = GetNumTasks()
+    Task1:task(void) = spawn{TestDeepSpawn(0)}
+    Tick(10000)
+    endTasks:int = GetNumTasks()
+    Log("B")
+
+    GetLogStr() = "A,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,71,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,142,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,213,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,284,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,355,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,426,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,497,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,568,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,639,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,710,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,781,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,852,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,923,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,994,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1065,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1136,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1207,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1278,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1349,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1420,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1491,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1562,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1633,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1704,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1775,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1846,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1917,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1988,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2059,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2130,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2201,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2272,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2343,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2414,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2485,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2556,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2627,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2698,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2769,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2840,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2911,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2982,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3053,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3124,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3195,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3266,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3337,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3408,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3479,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3550,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3621,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3692,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3763,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3834,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3905,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3976,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4047,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4118,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4189,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4260,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4331,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4402,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4473,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4544,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4615,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4686,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4757,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4828,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4899,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4970,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5041,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5112,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5183,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5254,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5325,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5396,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5467,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5538,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5609,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5680,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5751,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5822,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5893,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5964,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6035,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6106,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6177,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6248,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6319,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6390,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6461,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6532,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6603,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6674,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6745,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6816,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6887,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6958,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7029,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7100,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7171,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7242,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7313,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7384,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7455,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7526,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7597,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7668,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7739,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7810,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7881,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7952,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8023,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8094,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8165,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8236,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8307,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8378,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8449,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8520,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8591,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8662,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8733,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8804,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8875,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8946,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9017,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9088,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9159,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9230,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9301,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9372,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9443,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9514,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9585,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9656,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9727,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9798,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9869,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9940,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,B"
+    startTasks = 0
+    endTasks > 0
+
+
+# Pile up 10000 tasks and then cancel them. We shouldn't overflow the runtime stack.
+assert:
+    Log("A")
+
+    startTasks:int = GetNumTasks()
+    Task1:task(void) = spawn{TestDeepSpawn(0)}
+    Tick(10000)
+    midTasks:int = GetNumTasks()
+    spawn{Task1.Cancel()}
+    endTasks:int = GetNumTasks()
+    Log("B")
+    GetLogStr() = "A,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,71,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,142,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,213,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,284,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,355,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,426,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,497,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,568,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,639,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,710,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,781,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,852,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,923,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,994,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1065,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1136,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1207,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1278,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1349,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1420,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1491,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1562,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1633,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1704,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1775,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1846,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1917,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1988,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2059,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2130,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2201,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2272,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2343,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2414,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2485,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2556,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2627,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2698,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2769,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2840,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2911,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2982,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3053,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3124,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3195,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3266,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3337,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3408,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3479,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3550,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3621,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3692,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3763,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3834,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3905,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3976,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4047,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4118,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4189,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4260,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4331,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4402,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4473,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4544,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4615,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4686,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4757,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4828,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4899,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,4970,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5041,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5112,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5183,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5254,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5325,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5396,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5467,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5538,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5609,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5680,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5751,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5822,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5893,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5964,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6035,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6106,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6177,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6248,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6319,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6390,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6461,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6532,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6603,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6674,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6745,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6816,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6887,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6958,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7029,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7100,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7171,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7242,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7313,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7384,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7455,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7526,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7597,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7668,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7739,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7810,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7881,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,7952,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8023,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8094,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8165,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8236,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8307,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8378,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8449,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8520,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8591,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8662,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8733,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8804,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8875,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,8946,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9017,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9088,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9159,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9230,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9301,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9372,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9443,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9514,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9585,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9656,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9727,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9798,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9869,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,9940,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,B"
+
+    startTasks = endTasks
+    midTasks > 0
+
+
+# Grow a chain of 500 tasks and then let them complete naturally.
+assert:
+    Log("A")
+    startTasks:int = GetNumTasks()
+    Task1:task(void) = spawn{TestDeepSpawn(0, ?limit:=500)}
+    Tick(1002)
+    endTasks:int = GetNumTasks()
+    Log("B")
+    GetLogStr() = "A,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,71,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,142,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,213,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,284,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,355,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,426,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,497,,,,,,,497,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,426,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,355,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,284,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,213,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,142,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,71,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0B"
+
+    startTasks = 0
+    endTasks = endTasks # anything goes
+
+# Test that spawning a parametric function works correctly.
+ParametricAsyncFunction(X:t where t:type)<suspends>:t=X
+assert. spawn. ParametricAsyncFunction(0)

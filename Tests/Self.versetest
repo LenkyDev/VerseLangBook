@@ -1,0 +1,29 @@
+C:=class<unique>:
+    X:int
+    GetSelf():C= { return(Self); }
+    SelfGetX():int= { return(Self.X); }
+    SelfGetSelf():C= { return(Self.GetSelf()); }
+
+assert{ C1 := C {X:=1}; C1.GetSelf() = C1 }
+assert{ C2 := C {X:=2}; C2.GetSelf() = C2 }
+assert{ C1 := C {X:=1}; C1.SelfGetX() = 1 }
+assert{ C2 := C {X:=2}; C2.SelfGetX() = 2 }
+assert{ C1 := C {X:=1}; C1.SelfGetSelf() = C1 }
+assert{ C2 := C {X:=2}; C2.SelfGetSelf() = C2 }
+
+D:=class(C):
+	C0:C= C{X:=1}
+	f():D= {D {X:=1,C0:=Self}}
+	
+assert{ D1 := D {X:=2}; D2 := D1.f(); D2.C0.X = D1.X }
+
+assert_semantic_error(3514){Self := class {}}
+assert_semantic_error(3514){D := class {Self():void={}}}
+assert_semantic_error(3514){D := class {f(Self:int):void={}}}
+assert_semantic_error(3514){D := class {f(i:int):void={Self:int=0}}}
+assert_semantic_error(3514){D := class {Self:int}}
+
+assert_semantic_error(3548){D := class(Self) {}}
+assert_semantic_error(3547){D := class {f(d:Self):void={}}}
+assert_semantic_error(3506){D := class {f(d:D):void={d.Self}}}
+assert_semantic_error(3502){D := class {d:D = Self}}

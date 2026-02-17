@@ -1,0 +1,22 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Restricted }
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+MyParametricInterface(t:type):= interface {
+    MyMethod(X:t):t
+}
+
+assert:
+    # This should not crash
+    Types := for (I:=1..4) { MyParametricInterface(int) }
+    Types.Length = 4
+
+    # TODO: FORT-521668, we should be able to do the below
+    <#
+    TestUtils.AreClassesEqual[Types[0], MyParametricInterface(int)]
+    TestUtils.AreClassesEqual[Types[0], Types[1]]
+    TestUtils.AreClassesEqual[Types[0], Types[2]]
+    TestUtils.AreClassesEqual[Types[0], Types[3]]
+    #>
+

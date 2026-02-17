@@ -1,0 +1,169 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Rollback of += of array failed before. There are tests for 
+# array, strings, int and float here (3 out of 4 failed before fix!)
+
+# array
+assert:
+    var X:[]int = array{1}
+    var Y:[]int = array{2}
+    if:
+      set X = X + Y
+      if:
+        X = array{1, 2}
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = array{1}
+
+assert:
+    var X:[]int = array{1}
+    var Y:[]int = array{2}
+    if:
+      set X += Y
+      if:
+        X = array{1, 2}
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = array{1}
+
+# string
+assert:
+    var X:[]char = "a"
+    var Y:[]char = "b"
+    if:
+      set X = X + Y
+      if:
+        X = "ab"
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = "a"
+ 
+assert:
+    var X:[]char = "a"
+    var Y:[]char = "b"
+    if:
+      set X += Y
+      if:
+        X = "ab"
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = "a"
+
+# int
+assert:
+    var X:int = 44
+    var Y:int = 2
+    if:
+      set X = X - Y
+      if:
+        X = 42
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = 44
+
+assert:
+    var X:int = 44
+    var Y:int = 2
+    if:
+      set X -= Y
+      if:
+        X = 42
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = 44
+
+# float
+assert:
+    var X:float = 21.0
+    var Y:float = 2.0
+    if:
+      set X = X * Y
+      if:
+        X = 42.0
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = 21.0
+
+assert:
+    var X:float = 21.0
+    var Y:float = 2.0
+    if:
+      set X *= Y
+      if:
+        X = 42.0
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = 21.0
+
+# + is not defined for maps, but we test rollback here anyway.
+assert:
+    var X:[char]int = map{'a' => 1}
+    if:
+      set X['b'] = 2
+      if:
+        X = map{'a' => 1, 'b' => 2}
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = map{'a' => 1}
+
+# Arrays with non basic elements leaked in first implementation.
+assert:
+    var X:[]string = array{"123"}
+    var Y:[]string = array{"456789"}
+    if:
+      set X += Y
+      if:
+        X = array{"123", "456789"}
+      then:
+        false?
+      else:
+        true?
+    then:
+      false?
+    else:
+      X = array{"123"}

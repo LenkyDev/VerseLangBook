@@ -1,0 +1,377 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# This error is the goal of jira sol-1893
+assert_semantic_error(3532):
+    F(X:int):int= X+1
+    c := class:
+        F(X:int):int= X+2
+
+# ... and that this works
+F80(X:int):int= X+1
+c80 := class:
+    (c80:)F80(X:int):int=X+2
+    
+assert:
+    F80(10) = 11
+    c80{}.F80(10) = 12
+    c80{}.(c80:)F80(10) = 12
+
+# The rest are lot of tests that everything behaves as expected
+
+# This example is a simplification of real code that somehow failed when every other example succeeded. 
+# At that time it was ok to overload a class, but this is disabled for now.
+assert_semantic_error (3588, 3588, 3532, 3588):
+    vmodule(XInterop):
+        snippet:
+            I:int=1
+
+    vmodule(B):
+        snippet:
+            using{XInterop}
+
+            versetris_interop := class:
+                Y:int
+
+            versetris_game := class:
+                (versetris_game:)XInterop:versetris_interop 
+
+            versetris_game(X:int):versetris_game=
+                versetris_game{XInterop:=versetris_interop{ Y:=X } }
+
+# Only here because it at one point crashed the compiler
+assert_semantic_error (3523,3609,3591,3591,3532,3532):
+    common_interface := interface:
+        FSol(X:int):int
+    interface_method_collision_A := interface(common_interface):
+        A(X:int):int
+    interface_method_collision_B := interface(common_interface):
+        FSol(X:int):int
+    class_method_collision := class(interface_method_collision_A, interface_method_collision_B):
+        A<override>(X:int):int = 10 + X 
+        FSol(X:int):int = 30 + X 
+
+# Ok, normal inheritance
+c10 := class<abstract> { F(X:int) : int }
+c11 := class(c10):
+    F<override>(X:int) : int = X+1
+c12 := class(c11):
+    F<override>(X:int) : int = X+2
+
+assert:
+    o12:c12= c12{}
+    o12.F(10) = 12 
+
+# Ok, normal inheritance, but we are a bit more explicit
+c20 := class<abstract> { F(X:int) : int }
+c21 := class(c20):
+    F<override>(X:int) : int = X+1
+c22 := class(c21):
+    (c20:)F<override>(X:int) : int = X+2 # Explict about where F comes from
+
+assert:
+    o22:c22= c22{}
+    o22.F(10) = 12
+    o22.(c20:)F(20) = 22
+
+# Error, didn't use defining class as qualifier
+assert_semantic_error(3591, 3523):
+    c0 := class { F(X:int) : int }
+    c1 := class(c0):
+        F<override>(X:int) : int = X+1
+    c2 := class(c1):
+        (c1:)F<override>(X:int) : int = X+2 # F was not defined in c1
+
+assert_semantic_error(3523):
+    c0 := class<abstract> { F(X:int) : int }
+    c1 := class(c0):
+        F<override>(X:int) : int = X+1
+    c2 := class(c1):
+        (c1:)F<override>(X:int) : int = X+2 # F was not defined in c1
+
+# As previous but using interfaces
+assert_semantic_error(3523, 3591):
+    c0 := interface { F(X:int) : int }
+    c1 := interface(c0) {}
+    c2 := class(c1):
+        (c1:)F<override>(X:int) : int = X+2 # F was not defined in c1
+
+# Error, F in c2 is new, not an override
+assert_semantic_error(3523):
+    c0 := class<abstract> { F(X:int) : int }
+    c1 := class(c0):
+        F<override>(X:int) : int = X+1
+    c2 := class(c1):
+        (c2:)F<override>(X:int) : int = X+2 # F is not overriding (c1:)F, it's a new F
+
+# Ok, defining a new F in addition to the inherited  one.
+c50 := class<abstract> { F(X:int) : int }
+c51 := class(c50):
+    F<override>(X:int) : int = X+1
+c52 := class(c51):
+    (c52:)F(X:int) : int = X+2 # c2 contains both (c50:)F (with implementation from (c51:)F) and (c52:)F
+
+assert:
+    o52:c52= c52{}
+    o52.(c50:)F(10) = 11   
+    o52.(c52:)F(10) = 12   
+
+# (super:) should also work
+i60 := interface { F(X:int) : int }
+c61 := class(i60):
+     (i60:)F<override>(X:int) : int = X+1
+    (c61:)F(X:int) : int = X+2
+
+c62 := class(c61):
+     (i60:)F<override>(X:int) : int = 100 + (super:)F(X)
+     (c61:)F<override>(X:int) : int = 200 + (super:)F(X)
+
+assert:
+    o62:c62= c62{}
+    o62.(i60:)F(10) = 111   
+    o62.(c61:)F(10) = 212     
+
+
+# Andrew's example
+t0 := interface { F(X:int) : int }
+
+b10 := class(t0):
+     (t0:)F<override>(X:int) : int = X+1
+    (b10:)F(X:int) : int = X+10
+
+b802 := class(b10):  # Can't inherit from both b10 and t10 since t10 is redundant
+     (t0:)F<override>(X:int) : int = (super:)F(X)
+    (b10:)F<override>(X:int) : int = (super:)F(X)
+
+assert{b802{}.(t0:)F(0)=1}
+assert{b802{}.(b10:)F(0)=10}
+
+
+# Test Method Collision between interfaces
+interface_A1 := interface:
+    A(X:int):int
+    B(X:int):int
+interface_B1 := interface:
+    B(X:int):int
+    C(X:int):int
+collision1 := class(interface_A1, interface_B1):
+    
+    A<override>(X:int):int= 10 + X
+    
+    (interface_A1:)B<override>(X:int):int= 20 + X 
+    
+    (interface_B1:)B<override>(X:int):int= 30 + X 
+    
+    C<override>(X:int):int= 40 + X 
+assert:
+    Collision := collision1{}
+    Collision.A(1) = 11
+    Collision.(interface_A1:)B(1) = 21
+    Collision.(interface_B1:)B(1) = 31
+    Collision.C(1) = 41
+
+# Only here because it at one point crashed the compiler
+assert_semantic_error (3523,3609,3591,3591,3532,3532):
+    interface_C2 := interface:
+        C(X:int):int
+    interface_A2 := interface(interface_C2):
+        A(X:int):int
+    interface_B2 := interface(interface_C2):
+        B(X:int):int
+        C(X:int):int
+    collision2 := class(interface_A2, interface_B2):
+        A<override>(X:int):int = 10 + X 
+        B<override>(X:int):int = 20 + X 
+        C(X:int):int = 30 + X 
+
+# The above code with the needed qualifiers
+interface_C3 := interface:
+    C(X:int):int
+interface_A3 := interface(interface_C3):
+    A(X:int):int
+interface_B3 := interface(interface_C3):
+    B(X:int):int
+    (interface_B3 :)C(X:int):int
+collision3 := class(interface_A3, interface_B3):
+    A<override>(X:int):int = 10 + X 
+    B<override>(X:int):int = 20 + X 
+    (interface_C3:)C<override>(X:int):int = 30 + X 
+    (interface_B3:)C<override>(X:int):int = 40 + X 
+assert:
+    Collision := collision3{}
+    Collision.A(1) = 11
+    Collision.B(1) = 21
+    Collision.(interface_C3:)C(1) = 31
+    Collision.(interface_B3:)C(1) = 41
+
+
+# Test everything all the way to execution
+# The outer module sees the inner module due to the use of 'using' below.
+TopLevel := module:
+    (TopLevel:)module_a<public> := module:
+        (TopLevel.module_a:)Value<public>:int:= 1
+        (TopLevel.module_a:)Enum<public> := enum {E1, E2, E3}
+        (TopLevel.module_a:)Function<public>(x:int):int:= { x + 10 }
+        (TopLevel.module_a:)struct_a<public>:= struct { A<public>:int }
+        (TopLevel.module_a:)interface_a<public>:= interface:
+            Method<public>(x:int):int
+        (TopLevel.module_a:)class_a<public>:= class((TopLevel.module_a:)interface_a):
+            Method<override>(x:int):int= { x + 20 }
+            (TopLevel.module_a.class_a:)Value<public>:int= 2
+
+        (TopLevel.module_a:)module_a<public> := module:
+            (TopLevel.module_a.module_a:)Value<public>:int:= 3
+            (TopLevel.module_a.module_a:)Enum<public> := enum {E1, E2, E3}
+            (TopLevel.module_a.module_a:)Function<public>(x:int):int:= { x + 100 }
+            (TopLevel.module_a.module_a:)struct_a<public>:= struct { A<public>:int }
+            (TopLevel.module_a.module_a:)interface_a<public>:= interface:
+                Method<public>(x:int):int
+            (TopLevel.module_a.module_a:)class_a<public>:= class((TopLevel.module_a.module_a:)interface_a):
+                Method<override>(x:int):int= { x + 200 }
+                (TopLevel.module_a.module_a.class_a:)Value<public>:int= 4
+
+
+using { TopLevel.module_a }
+using { TopLevel.module_a.module_a }
+
+assert:
+    (TopLevel.module_a:)Function(0) = 10
+    (TopLevel.module_a.module_a:)Function(0) = 100
+
+    TopLevel.module_a.Function(1) = 11
+    TopLevel.module_a.module_a.Function(1) = 101
+
+assert:
+    Object1:(TopLevel.module_a:)class_a= (TopLevel.module_a:)class_a{}
+    Object2:TopLevel.module_a.module_a.class_a= TopLevel.module_a.module_a.class_a{}
+
+    TopLevel.module_a.Value = 1
+    Object1.Value = 2
+    (TopLevel.module_a.module_a:)Value = 3
+    Object2.Value = 4
+
+    TopLevel.module_a.Value = 1
+    Object1.Value = 2
+    (TopLevel.module_a.module_a:)Value = 3
+    Object2.Value = 4
+
+    Object1.Method(2) = 22
+    Object2.Method(2) = 202
+
+
+# must be the correct class, the one with implementation!!!!!
+assert_semantic_error(3506):
+    c1 := class:
+            F1(X:int):int = 10 + X        
+    c2 := class(c1):
+            F2(X:int):int = 20 + X    
+    c3 := class(c2):
+            (c3:)F2(X:int):int= 200 + (c2:)F1(X)
+
+# Verify error when defining other things than methods
+assert_semantic_error(3532):
+    Something := class {}
+    M := module:
+        Something := class {}
+
+assert_semantic_error(3532):
+    Something := class {}
+    M := module:
+        Something := interface {}
+
+assert_semantic_error(3532):
+    Something := interface {}
+    M := module:
+        Something := class {}
+        
+assert_semantic_error(3532):
+    Something := interface {}
+    M := module:
+        Something := interface {}
+
+assert_semantic_error(3532):
+    Something:int= 1
+    M := module:
+        Something:int= 2
+
+assert_semantic_error(3532):
+    Something:int= 1
+    C := class:
+        Something:int= 2
+
+# Wrong qualifier
+assert_semantic_error(3612):
+    C := class:
+        f():void=
+            (C:)X:int=0
+
+# Unsupported qualifier
+assert_semantic_error(3506):
+    C := class:
+        f():void=
+            (C.f:)X:int=0
+
+# This should be qualified using `(local:)` instead.
+assert_semantic_error(3612):
+    M := module:
+        f():void=
+            (M.f:)X:int=0
+
+# Qualifier needed for (local:)I but it's not supported (yet).
+assert_semantic_error(3588,3532):
+    A := class:
+        I:int
+        F(X:int):int=
+            I:int = 5
+            I
+
+# Data member shadowing other definitions in the outside scope, independent of definition order.
+assert_semantic_error(3532){ c:=class{A:int}; A():void={} }
+assert_semantic_error(3532){ A():void={}; c:=class{A:int} }
+
+assert_semantic_error(3532){ m:=module{A:int=0}; A():void={} }
+assert_semantic_error(3532){ A():void={}; m:=module{A:int=0} }
+
+# Test that it's not possible to defined a module and a function with the same name.
+assert_semantic_error(3532){           id():void={} ;           id:=module{} }
+assert_semantic_error(3532){ m:=module{id():void={}};           id:=module{} }
+assert_semantic_error(3532){           id():void={} ; m:=module{id:=module{}} }
+
+assert_semantic_error(3532){           id:=module{} ;           id():void={} }
+assert_semantic_error(3532){ m:=module{id:=module{}};           id():void={} }
+assert_semantic_error(3532){           id:=module{} ; m:=module{id():void={}} }
+
+# Shadowing errors in external packages should be ignored, with the exception of two symbols shadowing each other in the same scope.
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { A<public>:int = 0         ; A<public>:int = 0          } } }
+assert_semantic_error(3532){ vpackage(P,/Root,?Role:=External) { snippet { A<public>:int = external{}; A<public>:int = external{} } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { A<public>:int = 0         ; m := module{ A<public>:int = 0          } } } }
+assert_valid               { vpackage(P,/Root,?Role:=External) { snippet { A<public>:int = external{}; m := module{ A<public>:int = external{} } } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { F():void={}        ; F():void={}         } } }
+assert_semantic_error(3532){ vpackage(P,/Root,?Role:=External) { snippet { F():void=external{}; F():void=external{} } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { F():void={}        ; m := module{ F():void={}         } } } }
+assert_valid               { vpackage(P,/Root,?Role:=External) { snippet { F():void=external{}; m := module{ F():void=external{} } } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { A<public>:int = 0         ; F<public>(A:int):void = 0          } } }
+assert_valid               { vpackage(P,/Root,?Role:=External) { snippet { A<public>:int = external{}; F<public>(A:int):void = external{} } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { A<public>:int = 0         ; c := class{A:int = 0          } } } }
+assert_valid               { vpackage(P,/Root,?Role:=External) { snippet { A<public>:int = external{}; c := class{A:int = external{} } } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { A<public>:int = 0         ; m := module{A:int = 0          } } } }
+assert_valid               { vpackage(P,/Root,?Role:=External) { snippet { A<public>:int = external{}; m := module{A:int = external{} } } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { m := module{A:int = 0         }; m := module{B:int = 0          } } } }
+assert_semantic_error(3532){ vpackage(P,/Root,?Role:=External) { snippet { m := module{A:int = external{}}; m := module{B:int = external{} } } } }
+
+assert_semantic_error(3532){ vpackage(P,/Root                ) { snippet { m := module{ m := module{} } } } }
+assert_valid               { vpackage(P,/Root,?Role:=External) { snippet { m := module{ m := module{} } } } }
+
+# Test shadowing error suggestion to use 'set' instead.
+assert_semantic_error(3547,3532){c:=class {var A:int=0; A:=1}}
+assert_semantic_error(3532     ){F():void={A:int=0; A:=1}}
+assert_semantic_error(3532     ){F():void={var A:int=0; A:int=1}}
+assert_semantic_error(3601,3532){F():void={var A:int=0; A:int}}
+assert_semantic_error(3532     ){F():void={A:=1; var A:int=0}}
+assert_semantic_error(3653     ){F():void={var A:int=0; A:=1}}

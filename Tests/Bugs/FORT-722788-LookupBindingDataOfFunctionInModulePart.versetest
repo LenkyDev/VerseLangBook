@@ -1,0 +1,13 @@
+my_class_thing<public> := class:
+  var X:int = 55
+
+SomeModule<public> := module:      # used to crash unless this line was commented out
+
+SomeModule<public> := module:
+  (I:my_class_thing).SomeFunction<public>():int = 9
+
+using { SomeModule }
+
+assert:
+  T := my_class_thing{}
+  T.SomeFunction() = 9

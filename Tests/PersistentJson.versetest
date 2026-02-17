@@ -1,0 +1,595 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# SH island
+A := module:
+    B<public> := module:
+        (B:)class1<public> := class:
+            Data<public>:int
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse/A_B_class1\",\"$class_name\":\"class1\",\"i___verse_0x43DE830E_Data\":1\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-B-class1\",\"x_Data\":1\}"
+    X := Persistence.FromJson[Old, A.B.class1]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-B-class1\",\"x_Data\":1\}"
+    X := Persistence.FromJson[Expected, A.B.class1]
+    Expected = Persistence.ToJson[X]
+
+# Live test island
+A := module:
+    (A:)enum1<public> := enum<persistable>:
+        One
+        Two
+        Three
+
+    (A:)struct1<public> := struct<persistable>:
+        Data1<public>:int
+
+    (A:)class1<public> := class<persistable><final>:
+        Data1<public>:int
+        Data2<public>:float
+        Data3<public>:?int
+        Data4<public>:tuple()
+        Data5<public>:tuple(int, int)
+        Data6<public>:logic
+        Data7<public>:(A:)enum1
+        Data8<public>:char
+        Data9<public>:char32
+        Data10<public>:string
+        Data11<public>:[]int
+        Data12<public>:[int]int
+        Data13<public>:(A:)struct1
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse/A_class1\",\"$class_name\":\"class1\",\"i___verse_0xBE497390_Data1\":1,\"d___verse_0x50E6C682_Data2\":2,\"op___verse_0x35817A3A_Data3\":\{\"i___verse_0x35817A3A_Data3\":3\},\"s___verse_0x8CB9ADA7_Data4\":\{\"c_$StructPaddingDummy\":0\},\"s___verse_0xE9DE111F_Data5\":\{\"i___verse_0x18E3F084_Elem0\":4,\"i___verse_0x7D844C3C_Elem1\":5\},\"b___verse_0x0771A40D_Data6\":true,\"e___verse_0x621618B5_Data7\":\"enum1::Two\",\"c___verse_0x34067BED_Data8\":97,\"i___verse_0x5161C755_Data9\":128640,\"vs___verse_0x2A1194A7_Data10\":\"hello\",\"a[i]___verse_0x4F76281F_Data11\":[6,7,8],\"m[i]i___verse_0xA1D99D0D_Data12\":[\{\"k\":\{\"i___verse_0xA1D99D0D_Data12\":9\},\"v\":\{\"i___verse_0xA1D99D0D_Data12\":10\}\},\{\"k\":\{\"i___verse_0xA1D99D0D_Data12\":11\},\"v\":\{\"i___verse_0xA1D99D0D_Data12\":12\}\}],\"s___verse_0xC4BE21B5_Data13\":\{\"i___verse_0xBE497390_Data1\":13\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"A-class1\",\"x_Data1\":1,\"x_Data2\":2,\"x_Data3\":\{\"\":3\},\"x_Data4\":[],\"x_Data5\":[4,5],\"x_Data6\":true,\"x_Data7\":\"A-enum1::Two\",\"x_Data8\":97,\"x_Data9\":128640,\"x_Data10\":\"hello\",\"x_Data11\":[6,7,8],\"x_Data12\":[\{\"k\":\{\"\":9\},\"v\":\{\"\":10\}\},\{\"k\":\{\"\":11\},\"v\":\{\"\":12\}\}],\"x_Data13\":\{\"x_Data1\":13\}\}"
+    X := Persistence.FromJson[Old, A.class1]
+    New = Persistence.ToJson[X]
+
+# Int
+int_ref := class:
+    Contents:int
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_ref\",\"x_Contents\":1\}"
+    X := Persistence.FromJson[Expected, int_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    X := int_ref{Contents := 1}
+    Y := Persistence.FromJson[Persistence.ToJson[X], int_ref]
+    X.Contents = Y.Contents
+
+# Ensure new VM errors if BigInts are serialized
+assert_runtime_error:
+    var X:int = 1
+    for (I := 1..63):
+        set X *= 2
+    Persistence.ToJson[int_ref{Contents := X}]
+
+# Ensure `double` isn't used internally when serializing or deserializing
+# excepting legacy behavior.
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_ref\",\"x_Contents\":1000000000000000000\}"
+    X := Persistence.FromJson[Expected, int_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_ref\",\"___verse_0x32BCE81F_Contents\":9.2233720368547748e+18\}"
+    # Note silent loss of precision.  This matches legacy behavior.
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_ref\",\"x_Contents\":9223372036854774784\}"
+    X := Persistence.FromJsonV1[Old, int_ref]
+    New = Persistence.ToJson[X]
+
+# Float
+float_ref := class:
+    Contents:float
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":2\}"
+    X := Persistence.FromJson[Expected, float_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    X := float_ref{Contents := 2.0}
+    Y := Persistence.FromJson[Persistence.ToJson[X], float_ref]
+    X.Contents = Y.Contents
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"___verse_0x32BCE81F_Contents\":1.23e2\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"float_ref\",\"x_Contents\":123\}"
+    X := Persistence.FromJsonV1[Old, float_ref]
+    New = Persistence.ToJson[X]
+
+# Option
+option_ref := class:
+    Contents:?int
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"option_ref\",\"x_Contents\":false\}"
+    X := Persistence.FromJson[Expected, option_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"option_ref\",\"x_Contents\":\{\"\":3\}\}"
+    X := Persistence.FromJson[Expected, option_ref]
+    Expected = Persistence.ToJson[X]
+
+# Empty tuple
+empty_tuple_ref := class:
+    Contents:tuple()
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"empty_tuple_ref\",\"___verse_0x32BCE81F_Contents\":\{\"c_$StructPaddingDummy\":0\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"empty_tuple_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, empty_tuple_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"empty_tuple_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Expected, empty_tuple_ref]
+    Expected = Persistence.ToJson[X]
+
+# Pair
+pair_ref := class:
+    Contents:tuple(int, int)
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"pair_ref\",\"___verse_0x32BCE81F_Contents\":\{\"___verse_0x18E3F084_Elem0\":4,\"___verse_0x7D844C3C_Elem1\":5\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"pair_ref\",\"x_Contents\":[4,5]\}"
+    X := Persistence.FromJson[Old, pair_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"pair_ref\",\"x_Contents\":[4,5]\}"
+    X := Persistence.FromJson[Expected, pair_ref]
+    Expected = Persistence.ToJson[X]
+
+# Char pair
+char_pair_ref := class:
+    Contents:tuple(char, char)
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char_pair_ref\",\"___verse_0x32BCE81F_Contents\":\{\"___verse_0x18E3F084_Elem0\":97,\"___verse_0x7D844C3C_Elem1\":98\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char_pair_ref\",\"x_Contents\":\"ab\"\}"
+    X := Persistence.FromJson[Old, char_pair_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char_pair_ref\",\"x_Contents\":\"ab\"\}"
+    X := Persistence.FromJson[Expected, char_pair_ref]
+    Expected = Persistence.ToJson[X]
+
+# Logic
+logic_ref := class:
+    Contents:logic
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"logic_ref\",\"x_Contents\":false\}"
+    X := Persistence.FromJson[Expected, logic_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"logic_ref\",\"x_Contents\":true\}"
+    X := Persistence.FromJson[Expected, logic_ref]
+    Expected = Persistence.ToJson[X]
+
+# Enum
+enum1 := enum:
+    One
+    Two
+    Three
+
+enum_ref := class:
+    Contents:enum1
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"x_Contents\":\"enum1::One\"\}"
+    X := Persistence.FromJson[Expected, enum_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"x_Contents\":\"enum1::Two\"\}"
+    X := Persistence.FromJson[Expected, enum_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"x_Contents\":\"enum1::Three\"\}"
+    X := Persistence.FromJson[Expected, enum_ref]
+    Expected = Persistence.ToJson[X]
+
+# Enum name lookup in `UEnum` permits unqualified arguments.
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"___verse_0x32BCE81F_Contents\":\"blah::One\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"x_Contents\":\"enum1::One\"\}"
+    X := Persistence.FromJson[Old, enum_ref]
+    New = Persistence.ToJson[X]
+
+# Enum name lookup in `UEnum` permits erroneously qualified arguments.
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"x_Contents\":\"blah::One\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"enum_ref\",\"x_Contents\":\"enum1::One\"\}"
+    X := Persistence.FromJson[Old, enum_ref]
+    New = Persistence.ToJson[X]
+
+
+# Char
+char_ref := class:
+    Contents:char
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char_ref\",\"x_Contents\":97\}"
+    X := Persistence.FromJson[Expected, char_ref]
+    Expected = Persistence.ToJson[X]
+
+char32_ref := class:
+    Contents:char32
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char32_ref\",\"x_Contents\":128640\}"
+    X := Persistence.FromJson[Expected, char32_ref]
+    Expected = Persistence.ToJson[X]
+
+# String
+string_ref := class:
+    Contents:string
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"___verse_0x32BCE81F_Contents\":\{\"c_$StructPaddingDummy\":0\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, string_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"___verse_0x32BCE81F_Contents\":\"\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, string_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"___verse_0x32BCE81F_Contents\":\{\"___verse_0x18E3F084_Elem0\":97\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"x_Contents\":\"a\"\}"
+    X := Persistence.FromJson[Old, string_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"___verse_0x32BCE81F_Contents\":[97]\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"x_Contents\":\"a\"\}"
+    X := Persistence.FromJson[Old, string_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_ref\",\"x_Contents\":\"hello\"\}"
+    X := Persistence.FromJson[Expected, string_ref]
+    Expected = Persistence.ToJson[X]
+
+string_with_def_ref := class:
+    Contents:string = "foobar"
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"x_Contents\":\"foobar\"\}"
+    X := Persistence.FromJson[Old, string_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"___verse_0x32BCE81F_Contents\":\{\"c_$StructPaddingDummy\":0\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, string_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"___verse_0x32BCE81F_Contents\":\"\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, string_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"___verse_0x32BCE81F_Contents\":\{\"___verse_0x18E3F084_Elem0\":97\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"x_Contents\":\"a\"\}"
+    X := Persistence.FromJson[Old, string_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"___verse_0x32BCE81F_Contents\":[97]\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"x_Contents\":\"a\"\}"
+    X := Persistence.FromJson[Old, string_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_with_def_ref\",\"x_Contents\":\"hello\"\}"
+    X := Persistence.FromJson[Expected, string_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+# Array
+int_array_ref := class:
+    Contents:[]int
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"___verse_0x32BCE81F_Contents\":\{\"c_$StructPaddingDummy\":0\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, int_array_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"___verse_0x32BCE81F_Contents\":\{\"___verse_0x18E3F084_Elem0\":4,\"___verse_0x7D844C3C_Elem1\":5\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"x_Contents\":[4,5]\}"
+    X := Persistence.FromJson[Old, int_array_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Expected, int_array_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"x_Contents\":[1]\}"
+    X := Persistence.FromJson[Expected, int_array_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_ref\",\"x_Contents\":[1,2]\}"
+    X := Persistence.FromJson[Expected, int_array_ref]
+    Expected = Persistence.ToJson[X]
+
+int_array_with_def_ref := class:
+    Contents:[]int = (6, 7)
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"x_Contents\":[6,7]\}"
+    X := Persistence.FromJson[Old, int_array_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"___verse_0x32BCE81F_Contents\":\{\"c_$StructPaddingDummy\":0\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Old, int_array_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"___verse_0x32BCE81F_Contents\":\{\"___verse_0x18E3F084_Elem0\":4,\"___verse_0x7D844C3C_Elem1\":5\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"x_Contents\":[4,5]\}"
+    X := Persistence.FromJson[Old, int_array_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Expected, int_array_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"x_Contents\":[1]\}"
+    X := Persistence.FromJson[Expected, int_array_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_array_with_def_ref\",\"x_Contents\":[1,2]\}"
+    X := Persistence.FromJson[Expected, int_array_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+char32_array_ref := class:
+    Contents:[]char32
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char32_array_ref\",\"x_Contents\":[]\}"
+    Persistence.ToJson[char32_array_ref{Contents := ()}] = Expected
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char32_array_ref\",\"x_Contents\":[128640]\}"
+    Persistence.ToJson[char32_array_ref{Contents := array{'🚀'}}] = Expected
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"char32_array_ref\",\"x_Contents\":[128640,128640]\}"
+    Persistence.ToJson[char32_array_ref{Contents := array{'🚀', '🚀'}}] = Expected
+
+string_array_ref := class:
+    Contents:[]string
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_ref\",\"x_Contents\":[]\}"
+    Persistence.ToJson[string_array_ref{Contents := ()}] = Expected
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_ref\",\"x_Contents\":[\"hello\"]\}"
+    Persistence.ToJson[string_array_ref{Contents := array{"hello"}}] = Expected
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_ref\",\"x_Contents\":[\"hello\",\"world\"]\}"
+    Persistence.ToJson[string_array_ref{Contents := array{"hello", "world"}}] = Expected
+
+string_array_with_def_ref := class:
+    Contents:[]string = array{"foo", "bar"}
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_with_def_ref\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_with_def_ref\",\"x_Contents\":[\"foo\",\"bar\"]\}"
+    X := Persistence.FromJson[Old, string_array_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_with_def_ref\",\"x_Contents\":[]\}"
+    Persistence.ToJson[string_array_with_def_ref{Contents := ()}] = Expected
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_with_def_ref\",\"x_Contents\":[\"hello\"]\}"
+    Persistence.ToJson[string_array_with_def_ref{Contents := array{"hello"}}] = Expected
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"string_array_with_def_ref\",\"x_Contents\":[\"hello\",\"world\"]\}"
+    Persistence.ToJson[string_array_with_def_ref{Contents := array{"hello", "world"}}] = Expected
+
+int_int_array_ref := class:
+    Contents:[][]int
+
+# assert:
+#     Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_int_array_ref\",\"x_Contents\":[[1,2],[3,4],[5]]\}"
+#     X := Persistence.FromJson[Expected, int_int_array_ref]
+#     Expected = Persistence.ToJson[X]
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_int_array_ref\",\"a[a]___verse_0x43DE830E_Contents\":[[1,2],[3,4],[5]]\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"int_int_array_ref\",\"x_Contents\":[[1,2],[3,4],[5]]\}"
+    X := Persistence.FromJson[Old, int_int_array_ref]
+    New = Persistence.ToJson[X]
+
+# Map
+map_ref := class:
+    Contents:[string]string
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Expected, map_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"a\"\},\"v\":\{\"\":\"b\"\}\}]\}"
+    X := Persistence.FromJson[Expected, map_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"c\"\},\"v\":\{\"\":\"d\"\}\},\{\"k\":\{\"\":\"e\"\},\"v\":\{\"\":\"f\"\}\}]\}"
+    X := Persistence.FromJson[Expected, map_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"g\"\},\"v\":\{\"\":\"h\"\}\},\{\"k\":\{\"\":\"i\"\},\"v\":\{\"\":\"j\"\}\}]\}"
+    X := Persistence.FromJson[Expected, map_ref]
+    X.Contents["g"] = "h"
+    X.Contents["i"] = "j"
+
+map_with_def_ref := class:
+    Contents:[string]string = map{"foo" => "bar"}
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_with_def_ref\"\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_with_def_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"foo\"\},\"v\":\{\"\":\"bar\"\}\}]\}"
+    X := Persistence.FromJson[Old, map_with_def_ref]
+    New = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_with_def_ref\",\"x_Contents\":[]\}"
+    X := Persistence.FromJson[Expected, map_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_with_def_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"a\"\},\"v\":\{\"\":\"b\"\}\}]\}"
+    X := Persistence.FromJson[Expected, map_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_with_def_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"c\"\},\"v\":\{\"\":\"d\"\}\},\{\"k\":\{\"\":\"e\"\},\"v\":\{\"\":\"f\"\}\}]\}"
+    X := Persistence.FromJson[Expected, map_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"map_with_def_ref\",\"x_Contents\":[\{\"k\":\{\"\":\"g\"\},\"v\":\{\"\":\"h\"\}\},\{\"k\":\{\"\":\"i\"\},\"v\":\{\"\":\"j\"\}\}]\}"
+    X := Persistence.FromJson[Expected, map_with_def_ref]
+    X.Contents["g"] = "h"
+    X.Contents["i"] = "j"
+
+# Struct
+struct1 := struct:
+    Data1:int
+    Data2:float
+
+struct_ref := class:
+    Contents:struct1
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"struct_ref\",\"x_Contents\":\{\"x_Data1\":1,\"x_Data2\":2\}\}"
+    X := Persistence.FromJson[Expected, struct_ref]
+    Expected = Persistence.ToJson[X]
+
+struct_with_def := struct:
+    Data1:[]int = (1, 2)
+
+struct_with_def_ref := class:
+    Contents:struct_with_def
+
+verse_vm_only {
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"struct_with_def_ref\",\"x_Contents\":\{\}\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"struct_with_def_ref\",\"x_Contents\":\{\"x_Data1\":[1,2]\}\}"
+    X := Persistence.FromJson[Old, struct_with_def_ref]
+    New = Persistence.ToJson[X]
+}
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"struct_with_def_ref\",\"x_Contents\":\{\"x_Data1\":[3,4]\}\}"
+    X := Persistence.FromJson[Expected, struct_with_def_ref]
+    Expected = Persistence.ToJson[X]
+
+# Class
+class1 := class:
+    Data1:int
+    Data2:int = 42
+
+assert:
+    Old := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class1\",\"x_Data1\":1\}"
+    New := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class1\",\"x_Data1\":1,\"x_Data2\":42\}"
+    X := Persistence.FromJson[Old, class1]
+    New = Persistence.ToJson[X]
+
+class2 := class:
+    Data1:int
+    block:
+        CoroUtils.LogEvent("a")
+
+assert:
+    CoroUtils.Reset()
+    X := Persistence.FromJson["\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class2\",\"x_Data1\":1\}", class2]
+    CoroUtils.GetEventLogString() = ""
+    X.Data1 = 1
+
+# Persistable class field initializers must be effect-free, assuming the field
+# initializer is evaluated each time the default value is needed.
+assert_semantic_error(3582):
+    F()<transacts>:void = {}
+    class3 := class<persistable><final>:
+        Data1:int = (F(); 1)
+
+# Class containing native class
+class4 := class:
+    Data1:native_persistable_class1
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class4\",\"x_Data1\":\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"native_persistable_class1\",\"x_A\":1\}\}"
+    X := Persistence.FromJson[Expected, class4]
+    Expected = Persistence.ToJson[X]
+
+# Class containing native struct
+class5 := class:
+    Data1:native_persistable_struct1
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class5\",\"x_Data1\":\{\"x_A\":1\}\}"
+    X := Persistence.FromJson[Expected, class5]
+    Expected = Persistence.ToJson[X]
+
+# Class containing native enum
+class6 := class:
+    Data1:native_persistable_enum1
+
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class6\",\"x_Data1\":\"native_persistable_enum1::A\"\}"
+    X := Persistence.FromJson[Expected, class6]
+    Expected = Persistence.ToJson[X]
+
+# Native class containing a class
+assert:
+    Expected := "\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"native_persistable_class2\",\"x_A\":\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"external_persistable_class1\",\"x_A\":1\}\}"
+    X := Persistence.FromJson[Expected, native_persistable_class2]
+    Expected = Persistence.ToJson[X]
+
+class7 := class:
+    Data1:native_persistable_struct2
+
+# Native struct containing a class
+assert:
+    Expected := "\{\"$package_name\":\"/SolIdeDataSources/_Verse\",\"$class_name\":\"class7\",\"x_Data1\":\{\"x_A\":\{\"$package_name\":\"/Engine/_Verse/VNI/VerseTestScriptCmd\",\"$class_name\":\"external_persistable_class1\",\"x_A\":1\}\}\}"
+    X := Persistence.FromJson[Expected, class7]
+    Expected = Persistence.ToJson[X]

@@ -1,0 +1,40 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Concatenating any number of empty arrays results in the empty array.
+assert{Concatenate()=array{}}
+assert{Concatenate(array{})=array{}}
+assert{Concatenate(array{},array{})=array{}}
+assert{Concatenate(array{},array{},array{})=array{}}
+assert{Concatenate(for(I:=0..100) do array{})=array{}}
+
+# Concatenating a single array results in the same array.
+assert{Concatenate(array{array{1}})=array{1}}
+assert{Concatenate(array{array{1,2}})=array{1,2}}
+assert{Concatenate(array{array{1,2,3}})=array{1,2,3}}
+
+# Concatenating two arrays
+assert{Concatenate(array{1,2,3},array{})=array{1,2,3}}
+assert{Concatenate(array{1,2},array{3})=array{1,2,3}}
+assert{Concatenate(array{1},array{2,3})=array{1,2,3}}
+assert{Concatenate(array{},array{1,2,3})=array{1,2,3}}
+
+# Concatenating three arrays
+assert{Concatenate(array{1},array{2},array{3,4})=array{1,2,3,4}}
+assert{Concatenate(array{1},array{2,3},array{4})=array{1,2,3,4}}
+assert{Concatenate(array{1,2},array{3},array{4})=array{1,2,3,4}}
+
+# Concatenating four arrays
+assert{Concatenate(array{1},array{2},array{3},array{4,5})=array{1,2,3,4,5}}
+assert{Concatenate(array{1},array{2},array{3,4},array{5})=array{1,2,3,4,5}}
+assert{Concatenate(array{1},array{2,3},array{4},array{5})=array{1,2,3,4,5}}
+assert{Concatenate(array{1,2},array{3},array{4},array{5})=array{1,2,3,4,5}}
+
+# Concatenating five arrays
+assert{Concatenate(array{1},array{2},array{3},array{4},array{5,6})=array{1,2,3,4,5,6}}
+assert{Concatenate(array{1},array{2},array{3},array{4,5},array{6})=array{1,2,3,4,5,6}}
+assert{Concatenate(array{1},array{2},array{3,4},array{5},array{6})=array{1,2,3,4,5,6}}
+assert{Concatenate(array{1},array{2,3},array{4},array{5},array{6})=array{1,2,3,4,5,6}}
+assert{Concatenate(array{1,2},array{3},array{4},array{5},array{6})=array{1,2,3,4,5,6}}
+
+# Concatenating strings
+assert{Concatenate("a","b","c")="abc"}

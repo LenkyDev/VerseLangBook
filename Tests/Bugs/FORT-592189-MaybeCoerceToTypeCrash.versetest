@@ -1,0 +1,44 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+bp_vm_only:
+    assert_ir_error(3502):
+        closure(payload: type, context: type) := class:
+            Callback: tuple(payload, context)->void
+            Context: context
+            Handle(Payload: payload):void=
+                Callback(Payload, Context)
+
+        MakeClosure<public>(Callback: tuple(payload, context)->void, Context: context where payload: type, context: type):(payload->void)=
+            return closure(payload, context) { Callback := Callback, Context := Context }.Handle
+
+        arg1 := class {}
+        arg2 := class {}
+
+        test := class:
+            Test():void=
+                Arg2 := arg2 {}
+                Closure := MakeClosure(OnCallback, Arg2)
+
+            OnCallback(Arg1: arg1, Arg2: arg2):void={}
+
+verse_vm_only:
+    closure(payload: type, context: type) := class:
+        Callback: tuple(payload, context)->void
+        Context: context
+        Handle(Payload: payload):void=
+            Callback(Payload, Context)
+
+    MakeClosure<public>(Callback: tuple(payload, context)->void, Context: context where payload: type, context: type):(payload->void)=
+        return closure(payload, context) { Callback := Callback, Context := Context }.Handle
+
+    arg1 := class {}
+    arg2 := class {}
+
+    test := class:
+        Test():void=
+            Arg2 := arg2 {}
+            Closure := MakeClosure(OnCallback, Arg2)
+
+        OnCallback(Arg1: arg1, Arg2: arg2):void={}
+
+    assert{test{}.Test()}

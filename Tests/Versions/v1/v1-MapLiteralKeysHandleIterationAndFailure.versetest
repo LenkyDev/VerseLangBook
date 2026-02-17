@@ -1,0 +1,9 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# v1 deprecates failure/iteration inside map literal keys.
+assert_semantic_error(2012){vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void=map{(0=0)=>0}}}}
+assert_semantic_error(3502){vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void=map{(0=0)=>0}}}}
+
+# Failure in map literal values is still allowed.
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=0){snippet{F()<decides>:void=map{0=>(0=0)}}}}
+assert_valid               {vpackage(P0, /A, ?VerseVersion:=1){snippet{F()<decides>:void=map{0=>(0=0)}}}}

@@ -1,0 +1,32 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+F(X:[]comparable)<transacts>:[]comparable=X
+
+G(X:int)<transacts><decides>:[]comparable=
+    case(X):
+        0=>F(array{0})
+        1=>F(array{1})
+
+H(X:int):[]comparable=
+    case(X):
+        0=>F(array{0})
+        _=>F(array{X})
+
+assert{G[0]=array{0}}
+assert{G[1]=array{1}}
+assert{not G[2]}
+
+assert{H(0)=array{0}}
+assert{H(1)=array{1}}
+assert{H(2)=array{2}}
+
+assert_semantic_error(3560, 3560):
+    F(X:int)=
+        case(X):
+            0=>
+                Y:int=2
+                Y
+            _=>
+                Z:int=3
+                Z
+        Y+Z

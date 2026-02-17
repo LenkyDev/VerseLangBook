@@ -1,0 +1,83 @@
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+# Test functions that could fail but just return an integer.
+f1()<transacts><decides>:int=return(1)
+f2():int=return(2)
+f3():int = { return(f1[] or f2()) }
+assert{f1[] = 1}
+assert{f2() = 2}
+assert{f3() = 1}
+
+# Test functions that can fail or return an integer.
+f4(x:int)<transacts><decides>:int=return(x>=1)
+f5(x:int)<transacts><decides>:int=return(f4[x+1])
+assert{ not f4[-1]}
+assert{ not f4[0]}
+assert{     f4[1] = 1}
+assert{     f4[2] = 2}
+
+assert{ not f5[-1]}
+assert{     f5[0] = 1}
+assert{     f5[1] = 2}
+assert{     f5[2] = 3}
+
+# Test functions that can fail or return void.
+f6(x:int)<transacts><decides>:void=x<1
+assert{     f6[-1]}
+assert{     f6[0]}
+assert{ not f6[1]}
+assert{ not f6[2]}
+
+f7()<transacts><decides>:void=return
+
+assert{f7[]}
+
+# Test functions that can fail or return an object.
+C1 := class:
+    y:int
+
+f8(x:int)<transacts><decides>:C1=return(C1{y:=x<>1})
+
+assert{     f8[0].y = 0}
+assert{not  f8[1]}
+assert{     f8[2].y = 2}
+
+# Test dynamic casts as fallible functions.
+C2 := class { AsC3()<transacts><decides>:C3=return(C3[Self]) }
+C3 := class(C2) {}
+assert{     C3{}.AsC3[]}
+assert{not  C2{}.AsC3[]}
+
+# Test a function that returns an optional int.
+f9(x:int)<transacts><decides>:?int =
+    x <> 0
+    return(option{x <= 1})
+assert{     f9[-1]? = -1}
+assert{ not f9[0]}
+assert{     f9[1]? = 1}
+assert{ not f9[2]?}
+
+# Test a function that returns an optional object.
+C4 := class:
+    y:int
+
+C4Module := module:
+    
+    f1<public>(x:int)<transacts><decides>:?C4 =
+        x <> 0
+        return(option{C4{y:=x <= 1}})
+assert{     C4Module.f1[-1]?.y = -1}
+assert{ not C4Module.f1[0]}
+assert{     C4Module.f1[1]?.y = 1}
+assert{ not C4Module.f1[2]?}
+
+# Test a nested <decides> + <native> call
+IsNegative(Num:int)<computes><decides>:void = Num < 0
+assert { TestUtils.InvokeDecides(IsNegative, -1) = true}
+assert { TestUtils.InvokeDecides(IsNegative, 1) = false}
+
+# test optional-tuple element access
+assert_valid:
+    F():void =
+        T:?tuple(int, float) = option{(1, 2.3)}
+        if (T?(0)) {}

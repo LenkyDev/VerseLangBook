@@ -1,0 +1,9 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert_semantic_error(3593,3596){A<intrinsic>():void={}}
+assert_semantic_error(3593,3596){A<intrinsic>:=class{}}
+assert_semantic_error(3593,3596){A<intrinsic>(t:type):=class{}}
+assert_semantic_error(3593,3596){A<intrinsic> := type{F():void}}
+assert_semantic_error(3593,3596){A()<intrinsic>:void={}}
+assert_semantic_error(3596     ){A(B<intrinsic>:int):void={}}
+assert_semantic_error(3593,3596){c:=class{A<intrinsic>:void}}

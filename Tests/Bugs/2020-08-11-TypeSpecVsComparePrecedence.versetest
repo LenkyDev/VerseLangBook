@@ -1,0 +1,3 @@
+assert_semantic_error(3549, 3591):
+    C := class:
+        f(x:int):int<3:=1

@@ -1,0 +1,183 @@
+
+# A simplified example of how partial modules are supposed to be used
+
+assert_valid:
+    vmodule(Devices):
+        snippet:
+            button_device<public>:= class<abstract>:
+                Value<public>():int
+
+    vmodule(Devices):
+        snippet:
+            radio_device<public>:= class<abstract>:
+                Volume<public>():int 
+
+    vmodule(Main):
+        snippet:
+            using { Devices }
+            button<public> := class(button_device):
+                Value<override>():int=100
+            radio<public> := class(radio_device):
+                Volume<override>():int=42
+
+            f3<public>():int=radio{}.Volume()+button{}.Value()
+
+assert_valid:
+    vmodule(Devices):
+        snippet:
+            Classes<public> := module:
+                top<public> := class {}
+
+    vmodule(Devices):
+        snippet:
+            button_device<public>:= class<abstract>(Classes.top):
+                Value<public>():int
+
+    vmodule(Devices):
+        snippet:
+            radio_device<public>:= class<abstract>(Classes.top):
+                Volume<public>():int 
+
+    vmodule(Main):
+        snippet:
+            using { Devices }
+            button<public> := class(button_device):
+                Value<override>():int=100
+            radio<public> := class(radio_device):
+                Volume<override>():int=42
+
+            xxx := class(Classes.top):
+
+            f3<public>():int=radio{}.Volume()+button{}.Value()
+
+<# This is now detected via package VerseScope instead
+# Only allow partial modules if epic internal
+assert_semantic_error(3532):
+    vpackage(Localhost,/localhost):
+        vmodule(A){}
+        vmodule(A){}
+#>
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            f1<public>():int=42
+    vmodule(A):
+        snippet:
+            f2<public>():int=4200
+    vmodule(B):
+        snippet:
+            using { A }
+            f3<public>():int=f1()+f2()
+
+# Test that using statements in the parent scopes of partial modules work.
+assert_valid:
+    vmodule(A):
+        snippet:
+            using{B}
+            M := module:
+                F1():bc=bc{}
+        snippet:
+            using{C}
+            M := module:
+                F2():cc=cc{}
+        snippet:
+            using{D}
+            M := module:
+                F3():dc=dc{}
+    vmodule(B){snippet{bc<public> := class{}}}
+    vmodule(C){snippet{cc<public> := class{}}}
+    vmodule(D){snippet{dc<public> := class{}}}
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            using{B}
+            M := module:
+                using{C}
+                F1(:cc):bc=bc{}
+        snippet:
+            using{C}
+            M := module:
+                using{D}
+                F2(:dc):cc=cc{}
+        snippet:
+            using{D}
+            M := module:
+                using{B}
+                F3(:bc):dc=dc{}
+    vmodule(B){snippet{bc<public> := class{}}}
+    vmodule(C){snippet{cc<public> := class{}}}
+    vmodule(D){snippet{dc<public> := class{}}}
+
+assert_semantic_error(3506,3506,3506,3506,3506,3506):
+    vmodule(A):
+        snippet:
+            using{B}
+            M := module:
+                F1():cc=cc{}
+        snippet:
+            using{C}
+            M := module:
+                F2():dc=dc{}
+        snippet:
+            using{D}
+            M := module:
+                F3():bc=bc{}
+    vmodule(B){snippet{bc<public> := class{}}}
+    vmodule(C){snippet{cc<public> := class{}}}
+    vmodule(D){snippet{dc<public> := class{}}}
+
+assert_valid:
+    vmodule(A):
+        snippet:
+            using{B}
+            M := module:
+                F1(:bc):void={}
+        snippet:
+            using{C}
+            M := module:
+                F2(:cc):void={}
+        snippet:
+            using{D}
+            M := module:
+                F3(:dc):void={}
+    vmodule(B):
+        snippet:
+            bc<public> := class{}
+    vmodule(C):
+        snippet:
+            cc<public> := class{}
+    vmodule(D):
+        snippet:
+            dc<public> := class{}
+
+# Test the matching of attibutes of partial module definitions
+assert_valid:
+    A<public> := module:
+    A<public> := module:
+assert_valid:
+    A<internal> := module:
+    A<internal> := module:
+assert_semantic_error(3623,3623):
+    A<internal> := module:
+    A<public> := module:
+
+# Test the matching of qualifiers of partial module definitions
+assert_valid:
+    A := module:
+        B := module:
+        B := module:
+assert_valid:
+    A := module:
+        (A:)B := module:
+        (A:)B := module:
+assert_valid: # We previously prohibited this, but there isn't any reason why as long as there's separate verification that the correct qualifier is used.
+    A := module:
+        (A:)B := module:
+        B := module:
+assert_semantic_error(3612):
+    A := module:
+        (A:)B := module:
+        (C:)B := module:
+    C := module:

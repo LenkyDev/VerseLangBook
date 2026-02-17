@@ -1,0 +1,186 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+assert{map{false=>true }<>map{false=>false}}
+
+<#> TODO:
+    test other types of keys/values
+    more ordering tests
+
+# Basic tests with a single pair of int->int.
+assert{map{1=>1}=map{1=>1}}
+assert{map{1=>2}=map{1=>2}}
+assert{map{2=>1}=map{2=>1}}
+
+assert{map{1=>2}<>map{1=>3}} # different value
+assert{map{1=>2}<>map{2=>2}} # different key
+assert{map{1=>1}<>map{2=>2}} # different key and value
+
+# Tests with multiple pairs.
+assert{map{1=>1,2=>2}=map{1=>1,2=>2}} # multiple elements
+assert{map{1=>1,2=>2}=map{1=>1,2=>2}=map{1=>1,2=>2}} # success returns LHS
+
+assert{map{1=>1,2=>2}<>map{1=>1,3=>3}} # first pair equal, second not equal
+assert{map{1=>1,2=>2}<>map{2=>2,1=>1}} # different order
+assert{map{1=>1,1=>2}<>map{1=>2,1=>1}} # same key, different order
+
+# Exhaustive tests with a single logic key+value pair
+assert{map{false=>false}= map{false=>false}}
+assert{map{false=>false}<>map{false=>true }}
+assert{map{false=>false}<>map{true=>false }}
+assert{map{false=>false}<>map{true=>true  }}
+assert{map{false=>true }<>map{false=>false}}
+assert{map{false=>true }= map{false=>true }}
+assert{map{false=>true }<>map{true=>false }}
+assert{map{false=>true }<>map{true=>true  }}
+
+assert{map{true=>false}<>map{false=>false}}
+assert{map{true=>false}<>map{false=>true }}
+assert{map{true=>false}= map{true=>false }}
+assert{map{true=>false}<>map{true=>true  }}
+assert{map{true=>true }<>map{false=>false}}
+assert{map{true=>true }<>map{false=>true }}
+assert{map{true=>true }<>map{true=>false }}
+assert{map{true=>true }= map{true=>true  }}
+
+# Test different key and value types.
+e := enum{Zero, One}
+c := class<unique><computes><allocates>{}
+
+assert{map{0=>0}=map{0=>0}}
+assert{map{'0'=>0}=map{'0'=>0}}
+assert{map{"0"=>0}=map{"0"=>0}}
+assert{map{e.Zero=>0}=map{e.Zero=>0}}
+assert:
+    C0 : c = c{}
+    map{C0=>0}=map{C0=>0}
+assert{map{option{0}=>0}=map{option{0}=>0}}
+assert{map{(0,0)=>0}=map{(0,0)=>0}}
+# These tests are dependent on SOL-2126:
+assert_semantic_error(3502){Map :void= map{array{0}=>0}}  # assert{map{array{0}=>0}=map{array{0}=>0}}
+assert_semantic_error(3502){Map :void= map{map{0=>0}=>0}} # assert{map{map{0=>0}=>0}=map{map{0=>0}=>0}}
+
+assert{map{0=>0}<>map{1=>0}}
+assert{map{"0"=>0}<>map{"1"=>0}}
+assert{map{e.Zero=>0}<>map{e.One=>0}}
+assert:
+    C0 : c = c{}
+    C1 : c = c{}
+    map{C0=>0}<>map{C1=>0}
+assert{map{option{0}=>0}<>map{option{1}=>0}}
+assert{map{(0,0)=>0}<>map{(1,1)=>0}}
+# These tests are dependent on SOL-2126:
+assert_semantic_error(3502){Map :void= map{array{0}=>0}}  # assert{map{array{0}=>0}<>map{array{1}=>0}}
+assert_semantic_error(3502){Map :void= map{map{0=>0}=>0}} # assert{map{map{0=>0}=>0}<>map{map{1=>1}=>0}}
+
+assert{map{0=>0.0}=map{0=>0.0}}
+assert{map{0=>'0'}=map{0=>'0'}}
+assert{map{0=>"0"}=map{0=>"0"}}
+assert{map{0=>e.Zero}=map{0=>e.Zero}}
+assert:
+    C0 : c = c{}
+    map{0=>C0}=map{0=>C0}
+assert{map{0=>option{0}}=map{0=>option{0}}}
+assert{map{0=>(0,0)}=map{0=>(0,0)}}
+
+assert{map{0=>0.0}<>map{0=>1.0}}
+assert{map{0=>'0'}<>map{0=>'1'}}
+assert{map{0=>"0"}<>map{0=>"1"}}
+assert{map{0=>option{0}}<>map{0=>option{1}}}
+assert{map{0=>(0,0)}<>map{0=>(1,1)}}
+
+assert{map{e.Zero=>0}=map{e.Zero=>0}}
+assert{map{e.Zero=>0}<>map{e.One=>0}}
+assert{map{0=>e.Zero}=map{0=>e.Zero}}
+assert{map{0=>e.Zero}<>map{0=>e.One}}
+
+assert:
+    C0 : c = c{}
+    C1 : c = c{}
+    map{0=>C0}<>map{0=>C1}
+assert{map{'0'=>0}=map{'0'=>0}}
+assert{map{'0'=>0}<>map{'1'=>0}}
+assert{map{0=>'0'}=map{0=>'0'}}
+assert{map{0=>'0'}<>map{0=>'1'}}
+
+assert{
+    C0 : c = c{}
+    map{0=>C0}=map{0=>C0}
+}
+assert{
+    C0 : c = c{}
+    map{C0=>0}=map{C0=>0}
+}
+assert{
+    C0 : c = c{}
+    C1 : c = c{}
+    map{C0=>0}<>map{C1=>0}
+}
+assert{
+    C0 : c = c{}
+    C1 : c = c{}
+    map{0=>C0}<>map{0=>C1}
+}
+
+assert{map{0=>option{0}}<>map{0=>option{1}}}
+assert{map{0=>(0,0)}<>map{0=>(1,1)}}
+
+# Test comparing maps with a different number of pairs.
+assert{map{1=>1}<>map{2=>2,3=>3}}
+assert{map{2=>2,3=>3}<>map{1=>1}}
+
+assert{map{1=>1}<>map{1=>1,2=>2}} # larger map is a superset of smaller map
+
+# Maps of incomparable types should not be comparable.
+assert_semantic_error(3509){incomparable_class := class{}; F(A:[int]incomparable_class, B:[int]incomparable_class)<transacts><decides>:incomparable_class=A=B}
+assert_semantic_error(3509){incomparable_class := class{}; F(A:[int]incomparable_class, B:[int]incomparable_class)<transacts><decides>:incomparable_class=A<>B}
+
+# Maps of disjoint comparable types are comparable
+assert_valid {F(A:[int]int, B:[int]float)<transacts><decides>:void=A=B}
+assert_valid {F(A:[int]int, B:[int]float)<transacts><decides>:void=A<>B}
+
+assert_valid {F(A:[int]int, B:[string]int)<transacts><decides>:void=A=B}
+assert_valid {F(A:[int]int, B:[string]int)<transacts><decides>:void=A<>B}
+
+# Comparing two maps for equality should fail or return the first map.
+super_class := class<unique>{}
+sub_class := class(super_class){}
+assert:
+    SubClass := sub_class{}
+    SuperMap:[int]super_class = map{0=>SubClass}
+    SubMap:[int]sub_class = map{0=>SubClass}
+    MeetMap:[int]super_class = SuperMap=SubMap
+    MeetMap.Length=1 <#and MeetMap[0] = SubClass#>
+
+# Comparing two maps for inequality should fail or return the first map.
+assert:
+    SubClass1 := sub_class{}
+    SubClass2 := sub_class{}
+    SuperMap:[int]super_class = map{0=>SubClass1}
+    SubMap:[int]sub_class = map{0=>SubClass2}
+    MeetMap:[int]super_class = SuperMap<>SubMap
+    MeetMap=SuperMap
+
+assert_semantic_error(3509):
+    super_class := class<unique>{}
+    sub_class := class(super_class){}
+    F()<transacts><decides>:void=
+        SubClass1 := sub_class{}
+        SubClass2 := sub_class{}
+        SuperMap:[int]super_class = map{0=>SubClass1}
+        SubMap:[int]sub_class = map{0=>SubClass2}
+        MeetMap:[int]sub_class = SuperMap<>SubMap
+
+
+# Test comparing map{} to other forms of false: false, (), (?t)(false), array{}, "".
+assert{X:[int]int=map{}; Y:logic=false  ; X=Y}
+assert{X:[int]int=map{}; Y:void={}      ; X=Y}
+assert{X:[int]int=map{}; Y:tuple()=()   ; X=Y}
+assert{X:[int]int=map{}; Y:?int=false   ; X=Y}
+assert{X:[int]int=map{}; Y:[]int=array{}; X=Y}
+assert{X:[int]int=map{}; Y:string=""    ; X=Y}
+
+assert{X:[int]int=map{0=>0}; Y:logic=false  ; X<>Y}
+assert{X:[int]int=map{0=>0}; Y:void={}      ; X<>Y}
+assert{X:[int]int=map{0=>0}; Y:tuple()=()   ; X<>Y}
+assert{X:[int]int=map{0=>0}; Y:?int=false   ; X<>Y}
+assert{X:[int]int=map{0=>0}; Y:[]int=array{}; X<>Y}
+assert{X:[int]int=map{0=>0}; Y:string=""    ; X<>Y}

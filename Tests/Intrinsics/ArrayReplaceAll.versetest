@@ -1,0 +1,15 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+assert{array{1,2}.ReplaceAll(array{0}, array{10})=array{1,2}}
+assert{array{1,2}.ReplaceAll(array{1,2}, array{10})=array{10}}
+assert{array{1,2,1,2,1}.ReplaceAll(array{1,2,1}, array{50})=array{50,2,1}}
+assert{array{1,2,1,2,1}.ReplaceAll(array{1,2,1}, array{})=array{2,1}}
+assert{array{1,2,1,1,2,1}.ReplaceAll(array{1,2,1}, array{50})=array{50,50}}
+assert{array{1,2,1,1,2,1}.ReplaceAll(array{1,2,1}, array{})=array{}}
+assert{array{10,20}.ReplaceAll(array{}, array{50})=array{10,20}}
+assert{array{}.ReplaceAll(array{20}, array{50})=array{}}
+assert{array{}.ReplaceAll(array{}, array{50})=array{}}
+assert{array{}.ReplaceAll(array{}, array{})=array{}}
+assert{array{42,42,42}.ReplaceAll(array{42,42}, array{50})=array{50,42}}
+assert{array{1,2,1,2}.ReplaceAll(array{1,2}, array{})=array{}}
+assert{array{1,1,1,1}.ReplaceAll(array{1}, array{1,1})=array{1,1,1,1,1,1,1,1}}

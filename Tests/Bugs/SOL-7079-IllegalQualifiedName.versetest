@@ -1,0 +1,37 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# Did not verify that qualified names was correct in all cases
+
+assert_semantic_error(3612, 3612, 3612, 3612, 3612, 3612):  
+    Module1 := module:
+        (Module1:)Module := module:
+        (Module1:)Class := class:
+        (Module1:)Interface := interface:
+        (Module1:)Function():int = 1
+        (Module1:)Data:int = 1
+        (Module1:)Enum := enum { e }
+
+    Module2 := module:
+        (Module1:)Module := module:
+        (Module1:)Class := class:
+        (Module1:)Interface := interface:
+        (Module1:)Function():int = 2
+        (Module1:)Data:int = 2
+        (Module1:)Enum := enum { e }
+
+assert_semantic_error(3612, 3612):
+    Class1 := class:
+        (Class1:)Method():int = 1
+        (Class1:)Data:int := 1
+
+    Class2 := class:
+        (Class1:)Method():int = 2
+        (Class1:)Data:int := 2
+
+assert_semantic_error(3612):
+    Interface1 := interface:
+        (Interface1:)Method():int
+
+    Interface2 := interface:
+        (Interface1:)Method():int
+

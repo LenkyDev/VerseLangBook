@@ -1,0 +1,8 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+# v1 deprecates use of the <unique> specifier without the <allocates> effect.
+assert_valid               {vpackage(P0, /A, ?Scope:=PublicUser, ?VerseVersion:=0){snippet{c := class<allocates><unique>{}}}}
+assert_valid               {vpackage(P0, /A, ?Scope:=PublicUser, ?VerseVersion:=1){snippet{c := class<allocates><unique>{}}}}
+
+assert_semantic_error(2018){vpackage(P0, /A, ?Scope:=PublicUser, ?VerseVersion:=0){snippet{c := class<computes><unique>{}}}}
+assert_semantic_error(3512){vpackage(P0, /A, ?Scope:=PublicUser, ?VerseVersion:=1){snippet{c := class<computes><unique>{}}}}

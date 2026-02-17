@@ -1,0 +1,875 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+assert_valid:
+    Base := class {
+        Foo<protected>:int = 42
+    }
+    Child := class(Base) {
+        Foo<override>:int = 50
+    }
+
+assert_semantic_error(3650) {
+    Base := class {
+        Foo<protected>:int = 42
+    }
+
+    Child := class(Base) {
+        Foo<private><override>:int = 50
+    }
+}
+
+assert_semantic_error(3650) {
+    Base := class {
+        Foo<protected>:int = 42
+    }
+
+    Child := class(Base) {
+        Foo<public><override>:int = 50
+    }
+}
+
+assert_semantic_error(3593) {
+    Base := class {
+        Foo<private>:int = 42
+    }
+
+    Child := class(Base) {
+        Foo<override>:int = 50
+    }
+}
+
+assert_semantic_error(3593) {
+    M1<public> := module:
+        Base<public> := class {
+            Field<internal>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<internal><override>:int = 50
+        }
+}
+
+assert_semantic_error(3593) {
+    M1<public> := module:
+        Base<public> := class {
+            Field<internal>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<public><override>:int = 50
+        }
+}
+
+assert_semantic_error(3593) {
+    M1<public> := module:
+        Base<public> := class {
+            Field<internal>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            Field<protected>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    Base<public> := class {
+        Field<protected>:int = 42
+    }
+    Child<public> := class(Base) {
+        Field<override>:int = 50
+        GetField():int = {
+            Field
+        }
+    }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            Field<protected>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<override>:int = 50
+            GetField():int = {
+                Field
+            }
+        }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            Field<protected>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<override>:int = 50
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            Field<protected>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<public><override>:int = 50
+        }
+}
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            Field<Scoped_M1_M2>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field<override>:int = 50
+        }
+
+        AccessField(X:Child):int = {
+            X.Field
+        }
+}
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            Field<Scoped_M1_M2>:int = 42
+        }
+
+        AccessField(X:M2.Child):int = {
+            X.Field
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # by default, this is only accessible in M1/M2
+            Field<override>:int = 50
+        }
+
+        AccessField(X:Child):int = {
+            X.Field
+        }
+}
+
+assert_valid {
+    Scoped_M1 := scoped{M1}
+    M1<public> := module:
+        Base<public> := class {
+            Field<Scoped_M1>:int = 42
+        }
+
+        AccessField(X:M2.Child):int = {
+            X.Field
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) { }
+}
+            
+assert_semantic_error(3593) {
+    Scoped_M1 := scoped{M1}
+    M1<public> := module:
+        Base<public> := class {
+            Field<Scoped_M1>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # by default, this is only accessible in M1, so can't override
+            Field<override>:int = 50
+        }
+}
+
+
+
+assert_semantic_error(3593) {
+    Scoped_M1 := scoped{M1}
+    M1<public> := module:
+        Base<public> := class {
+            Field<Scoped_M1>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) { }
+
+        AccessField(X:Child):int = {
+            # by default, this is only accessible in M1
+            X.Field
+        }
+}
+
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            Field<Scoped_M1_M2_M3>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # Can't narrow scope
+            Field<override><Scoped_M1_M2>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Base<public> := class {
+        var<protected> Field<public>:int = 42
+    }
+
+    Child<public> := class(Base) {
+        # Can't narrow var accessibility
+        var<private> Field<override>:int = 50
+    }
+}
+
+assert_valid {
+    Base<public> := class {
+        var<protected> Field<public>:int = 42
+    }
+
+    Child<public> := class(Base) {
+        var Field<override>:int = 50
+        SetField(X:int):void = {
+            set Field = X;
+        }
+    }
+}
+
+assert_valid {
+    Base<public> := class {
+        var<internal> Field<public>:int = 42
+    }
+
+    Child<public> := class(Base) {
+        var Field<override>:int = 50
+        SetField(X:int):void = {
+            set Field = X;
+        }
+    }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override><public>:int = 50
+            SetField(X:int):void = {
+                set Field = X;
+            }
+        }
+}
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+            SetField(X:int):void = {
+                set Field = X;
+            }
+        }
+}
+
+assert_semantic_error(3509) {
+    M1<public> := module:
+        Base<public> := class {
+            var<internal> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+            SetField(X:int):void = {
+                # Can't set since var in M1 is internal
+                set Field = X;
+            }
+        }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<public> Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            var<protected> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            var<protected> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            var<protected> Field<protected>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override><public>:int = 50
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            var<protected> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<private> Field<override>:int = 50
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            var<public> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<private> Field<override>:int = 50
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            var<public> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<protected> Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            var<private> Field<public>:int = 42
+            SetField(X:int):void = {
+                set Field = X;
+            }
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    Base<public> := class {
+        var<private> Field<public>:int = 42
+        SetField(X:int):void = {
+            set Field = X;
+        }
+    }
+
+    Child<public> := class(Base) {
+        var Field<override>:int = 50
+    }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            var<private> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<private> Field<override>:int = 50
+        }
+}
+
+assert_semantic_error(3650) {
+    Base<public> := class {
+        var<private> Field<public>:int = 42
+    }
+
+    Child<public> := class(Base) {
+        var<private> Field<override>:int = 50
+    }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        BaseBase<public> := class {
+            var<private> Field<public>:int = 42
+        }
+        Base<public> := class(BaseBase) {
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<private> Field<override>:int = 50
+        }
+}
+
+assert_valid {
+    Scoped_M1_M2 := scoped{M1, M2}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<Scoped_M1_M2_M3> Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2_M3> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            var<Scoped_M1_M2_M3> Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2_M3> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # Can't narrow var accessibility
+            var<Scoped_M1_M2> Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2_M3> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # Can't narrow var accessibility
+            var<internal> Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2_M3> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # Can't narrow var accessibility
+            var<protected> Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            var<Scoped_M1_M2_M3> Field<public>:int = 42
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            # Can't narrow var accessibility
+            var<private> Field<override>:int = 50
+        }
+
+    M3<public> := module { }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            Field<internal>:int = 42
+        }
+        M2<public> := module:
+            Child<public> := class(Base) {
+                Field<override>:int = 50
+            }
+       GetChildField(X:M2.Child):int = {
+           X.Field
+       }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            var<internal> Field<internal>:int = 42
+        }
+        M2<public> := module:
+            Child<public> := class(Base) {
+                var Field<override>:int = 50
+            }
+       SetChildField(X:M2.Child, Y:int):void = {
+           set X.Field = Y;
+       }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            Field<internal>:int = 42
+        }
+        M2<public> := module:
+            Child<public> := class(Base) {
+                # can't narrow scope
+                Field<internal><override>:int = 50
+            }
+       GetChildField(X:M2.Child):int = {
+           X.Field
+       }
+}
+
+Scoped_M1 := scoped{M1}
+M1<public> := module{}
+M1<public> := module:
+    Base<public> := class {
+        Field<Scoped_M1>:int = 42
+        Field2<public>:int = 42
+        Field3<protected>:int = 42
+        Field4<protected>:int = 42
+    }
+    AccessField<public>(X:M2.Child):int = {
+        X.Field
+    }
+M2<public> := module:
+    Child<public> := class(M1.Base) {
+        Field2<override>:int = 50
+        Field3<override>:int = 10
+        Field4<override>:int = 100
+        GetField3<public>():int = {
+            Field3
+        }
+    }
+assert {
+    C:M2.Child = M2.Child { }
+    M1.AccessField(C) = 42
+    C.Field2 = 50
+    C.GetField3() = 10
+}
+
+assert_semantic_error(3593) {
+    M1<public> := module:
+        Base<public> := class {
+            Field4<protected>:int = 42
+        }
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Field4<override>:int = 100
+        }
+    Foo()<decides>:void = {
+        C:M2.Child = M2.Child { }
+        C.Field4 = 100
+    }
+}
+
+assert_valid {
+    Base := class {
+        Foo<protected>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<override>():void = {}
+    }
+}
+
+assert_valid {
+    Base := class {
+        Foo<protected>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<override>():void = {}
+    }
+}
+
+assert_semantic_error(3650) {
+    Base := class {
+        Foo<protected>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<public><override>():void = {}
+    }
+}
+
+assert_valid {
+    Base := class {
+        Foo<public>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<override>():void = {}
+    }
+}
+
+assert_valid {
+    Base := class {
+        Foo<internal>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<override>():void = {}
+    }
+}
+
+assert_valid {
+    Base := class {
+        Foo():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<override>():void = {}
+    }
+}
+
+assert_semantic_error(3593, 3593) {
+    Base := class {
+        Foo<private>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<override>():void = {}
+    }
+}
+
+assert_semantic_error(3650) {
+    Base := class {
+        Foo<protected>():void = {}
+    }
+
+    Child := class(Base) {
+        Foo<private><override>():void = {}
+    }
+}
+
+assert_semantic_error(3650) {
+    Scoped_M1_M2 := scoped{M1, M2}
+    Scoped_M1_M2_M3 := scoped{M1, M2, M3}
+    M1<public> := module:
+        Base<public> := class {
+            Foo<Scoped_M1_M2_M3>():void = {}
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Foo<Scoped_M1_M2><override>():void = {}
+        }
+
+    M3<public> := module { }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            Foo<protected>():void = {}
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Foo<private><override>():void = {}
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            Foo<public>():void = {}
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Foo<protected><override>():void = {}
+        }
+}
+
+assert_semantic_error(3650) {
+    M1<public> := module:
+        Base<public> := class {
+            Foo<public>():void = {}
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Foo<internal><override>():void = {}
+        }
+}
+
+assert_semantic_error(3593, 3593) {
+    M1<public> := module:
+        Base<public> := class {
+            Foo<internal>():void = {}
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+            Foo<override>():void = {}
+        }
+}
+
+assert_semantic_error(3593) {
+    M1<public> := module:
+        Base<public> := class {
+            Foo<internal>():void = {}
+        }
+
+    M2<public> := module:
+        Child<public> := class(M1.Base) {
+        }
+        CallFoo(X:Child):void = {
+            X.Foo()
+        }
+}
+
+assert_valid {
+    M1<public> := module:
+        Base<public> := class {
+            Foo<internal>():void = {}
+        }
+        M2<public> := module:
+            Child<public> := class(Base) {
+                Foo<override>():void = {}
+            }
+       InvokeFooOnChild(X:M2.Child):void = {
+           X.Foo()
+       }
+}
+
+assert_valid {
+    M1<public> := module:
+        T1<public> := class { }
+        T2<internal> := class(T1) { }
+
+        Base<public> := class {
+            Foo<public>:T1;
+        }
+        Child<internal> := class(Base) {
+            Foo<override>:T2;
+        }
+}
+

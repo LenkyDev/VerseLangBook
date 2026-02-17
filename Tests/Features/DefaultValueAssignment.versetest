@@ -1,0 +1,330 @@
+# Copyright Epic Games, Inc. All Rights Reserved.
+
+using { /Verse.org/Tests/VerseTestScriptCmd }
+
+c0 := class:
+    M0:int = 11
+    M1:float = 24.7
+    M2:?int = option{0xFACE0FF}
+    M3:[]int = array{0,1,2}
+
+    F0():int=c0Module.M4 + M0
+
+c0Module := module:
+    
+    M4<public>:int = 7
+
+
+# Test that module data members are initialized correctly.
+assert {c0Module.M4=7}
+
+# Test that instance data members of various types are initialized correctly.
+assert:
+    C := c0{}
+    C.M0=11
+assert:
+    C := c0{}
+    C.M1=24.7
+assert:
+    C := c0{}
+    C.M2? = 0xFACE0FF
+assert:
+    C := c0{}
+    C.M3 = array{0,1,2}
+
+# Test that default values are inherited
+c1 := class(c0){}
+assert:
+    C0 := c0{}
+    C1 := c1{}
+    C1.M0 = C0.M0 and C1.M1 = C0.M1
+
+# Test that overriding default values for instance variables in an archetype works.
+assert:
+    C := c0{}
+    D := c0{M0:=C.F0()}
+    C.M0 <> D.M0 and D.M0 = C.F0()
+
+# Test that we get a error for incompatible types
+assert_semantic_error(3509):
+    c2 := class {M0:c2 = c3{}}
+    c3 := class {}
+
+# Test that a data member initializer can't refer to itself.
+assert_semantic_error(3502):
+    c4 := class:
+        M0:int = M0
+
+# Test that instance variable initializers can refer to instance variables in other instances.
+c5 := class {M0:int = 1}
+c6 := class {M0:int = c5{}.M0+1}
+assert{c6{}.M0=2}
+
+# Test that instance variable initializers can't refer to other variables in the same instance.
+assert_semantic_error(3502):
+    c7 := class:
+        M0:int = 1
+        M1:int = M0+1
+assert_semantic_error(3502):
+    c8 := class:
+        M0:int = M1+1
+        M1:int = 1
+assert_semantic_error(3502):
+    c9 := class {M0:int = 0xFACE0FF}
+    c10 := class(c9) {M1:int = M0}
+assert_semantic_error(3502):
+    c11 := class:
+        M0:int = 1
+        M1:int = Self.M0 + 1
+assert_semantic_error(3502):
+    c12 := class:
+        M0:int = 1
+        M1:int = c12{}.M0 + 1
+assert_semantic_error(3502,3582):
+    F1(C:c13):int=C.M0
+    c13 := class:
+        M0:int = 1
+        M1:int = F1(Self)
+
+# Test that instance variable initializers can refer to variables in other modules.
+c15 := module{M0<public>:int=1}
+c16 := class{M1:int=c15.M0}
+assert{c16{}.M1=1}
+
+# Test that module variable initializers can refer to other module variables that precede them in the same module.
+c17 := module:
+    M0<public>:int = 1
+    M1<public>:int = M0+1
+assert{c17.M0=1}
+assert{c17.M1=2}
+
+# Test that module variable initializers can't refer to module variables that succeed them in the same module.
+assert_semantic_error(3502):
+    c18 := module:
+        M0:int = M1+1
+        M1:int = 1
+
+# Test that module variable initializers can refer to module variables in other modules.
+c19 := module{M0<public>:int=1}
+c20 := module{M0<public>:int=c19.M0+1}
+assert{c20.M0=2}
+
+# Test that module variable initializers can refer to outer module variables.
+V0:int=1
+c21 := module{M0<public>:int = V0+1}
+assert{c21.M0=2}
+
+c22 := module{M0<public>:int = V1+1}
+V1:int=1
+assert{c22.M0=2}
+
+# Test that module variable initializers can refer to other module variables that precede them in the same module.
+V2:int = 1
+V3:int = V2+1
+assert{V2=1}
+assert{V3=2}
+
+# Test that module variable initializers can't refer to other module variables that succeed them in the same module.
+assert_semantic_error(3502):
+    V4:int = V5+1
+    V5:int = 1
+
+auto_qualify_todo
+{
+# Test that module variable initializers can refer to module variables in a different module.
+vmodule(Module0){snippet{                V6<public>:int=1   }}
+vmodule(Module1){snippet{using{Module0}; V7<public>:int=V6+1}}
+using{Module1}
+assert{V7=2}
+
+vmodule(Module2){snippet{using{Module3}; V8<public>:int=V9+1}}
+vmodule(Module3){snippet{                V9<public>:int=1   }}
+using{Module2}
+assert{V8=2}
+}
+# Test that module variable initializers cannot refer to module variables in the same module but a different snippet.
+assert_semantic_error(3502):
+    vmodule(Module4){snippet{V10:int=1}; snippet{V11:int=V10+1}}
+assert_semantic_error(3502):
+    vmodule(Module5){snippet{V11:int=V10+1}; snippet{V10:int=1}}
+
+# Test that outer module variable initializers can refer to inner module variables.
+c24 := module{M0<public>:int=1}
+V10:int = c24.M0+1
+assert{V10=2}
+
+V11:int = c25.M0+1
+c25 := module{M0<public>:int=1}
+assert{V11=2}
+
+# Test that local data variable initializers can refer to preceding variables in the same scope.
+F2():?int=
+    L0 := 0xFACE0FF
+    L1 := option{L0}
+    return L1
+assert{F2()?=0xFACE0FF}
+
+# Test that local variable initializers can't refer to succeeding variables in the same scope.
+assert_semantic_error(3506):
+    F3():void=
+        L0 := optional{L1}
+        L1 := 0xFACE0FF
+
+# Test that local data definitions can't refer to subsequent data definitions in a parent scope.
+assert_semantic_error(3506):
+    F4():void=
+        if(true?):
+            L0 := optional{L1}
+            return
+        L1 := 0xFACE0FF
+
+# Test that local variable initializers can have side effects.
+a0 := class:
+    var Num:int = 4
+
+F5(A:a0):int=
+    L0 := (set A.Num += 1)
+    return L0
+
+F6(A:a0):int=
+    L0 := F5(A)
+    return L0
+
+assert:
+    A:a0 = a0{}
+    F5(A) = 5
+    F5(A) = 6
+    F6(A) = 7
+
+# Test that all non-local variables initializers (module, instance) can't have side effects.
+assert_semantic_error(3582,3512):
+    c0 := class:
+        var V13:int = 0
+    Foo(C:c0):int=
+        set C.V13 += 1
+    V14:int = (Foo(c0{}))
+    
+assert_semantic_error(3582):
+    c0 := class:
+        var V13:int = 0
+    Foo():int=
+        C0 := c0{}
+        set C0.V13 += 1
+    c27 := class{M0:int = Foo()}
+
+assert_semantic_error(3582):
+    c0 := class:
+        var V15:int = 0
+    Foo():int=
+        C0 := c0{}
+        set C0.V15 += 1
+        return C0.V15
+    F7():int=Foo()
+    V16:int = F7()
+
+assert_semantic_error(3582):
+    c0 := class:
+        var V17:int = 0
+    Foo():int=
+        C0 := c0{}
+        set C0.V17 += 1
+        return C0.V17
+    F8():int=Foo()
+    c28 := module{M0 :int = F8()}
+
+assert_semantic_error(3582):
+    c0 := class:
+        var V18:int = 0
+    Foo():int=
+        C0 := c0{}
+        set C0.V18 += 1
+        return C0.V18
+    F9():int=Foo()
+    c29 := class{ M0 :int = F9()}
+
+# Test that access levels are still respected
+assert_semantic_error(3593):
+    c30 := module:
+        M0:int = 123
+    c31 := module:
+        M1<public>:int = c30.M0
+
+# Test that class default values that create another class instance evaluate that creation every time the owner class is instantiated.
+c32 := class:
+    var M:int = 0
+
+c33 := class:
+    M:c32 = c32{}
+
+c34 := class(c33) {}
+
+assert{C := c33{}; C.M.M = 0; set C.M.M = 1; C.M.M = 1}
+assert{C := c33{}; C.M.M = 0; set C.M.M = 2; C.M.M = 2}
+assert{C := c34{}; C.M.M = 0; set C.M.M = 3; C.M.M = 3}
+assert{C := c34{}; C.M.M = 0; set C.M.M = 4; C.M.M = 4}
+
+# Test that struct default values that create another class instance evaluate that creation every time the owner struct is instantiated.
+c35 := struct:
+    M:c32 = c32{}
+
+assert{C := c35{}; C.M.M = 0; set C.M.M = 5; C.M.M = 5}
+assert{C := c35{}; C.M.M = 0; set C.M.M = 6; C.M.M = 6}
+
+# Test that class default values that instantiate another class get the correct default values.
+c37 := class{M:int = 100}
+c38 := class{M:int = c37{}.M}
+c39 := class{M:int = c40{}.M}
+c40 := class{M:int = 200}
+assert{c38{}.M=100}
+assert{c39{}.M=200}
+
+bp_vm_only{
+# Test that class default values that instantiate other classes can't infinitely recurse.
+assert_link_error(9000):
+    c41 := class{M:c42=c42{}}
+    c42 := class{M:c41=c41{}}
+} #bp_vm_only
+verse_vm_only
+{
+assert_valid:
+    c41 := class{M:c42=c42{}}
+    c42 := class{M:c41=c41{}}
+}
+    
+# Test that a class's default initializers can't call a pure function that constructs an instance of the class.
+assert_semantic_error(3582):
+    F8()<computes>:c43=c43{}
+    c43 := class<computes>:
+        C:c43=F8()
+        
+# Test that users can't define a convergent function that constructs and instance of a class, and can be called from a default initializer for that class.
+assert_semantic_error(3565,3565):
+    F8()<converges>:c43=c43{}
+    c43 := class<converges>:
+        C:c43=F8()
+
+# Test that class optional default values that create another class instance evaluate that creation every time the owner class is instantiated.
+c44 := class:
+    var M:?int = option{0}
+    var N:?int = false
+
+c45 := class:
+    M:?c44 = option { c44{} }
+
+c46 := class(c45) {}
+
+# Test M with option{0}
+assert{C := c44{}; C.M? = 0; set C.M = option {10}; C.M? = 10}
+assert{C := c44{}; C.M? = 0; set C.M = option {20}; C.M? = 20}
+assert{C := c45{}; C.M?.M? = 0; set C.M?.M = option {1}; C.M?.M? = 1}
+assert{C := c45{}; C.M?.M? = 0; set C.M?.M = option {2}; C.M?.M? = 2}
+assert{C := c46{}; C.M?.M? = 0; set C.M?.M = option {3}; C.M?.M? = 3}
+assert{C := c46{}; C.M?.M? = 0; set C.M?.M = option {4}; C.M?.M? = 4}
+
+# Test N with false
+assert{C := c44{}; C.N = false; set C.N = option {10}; C.N? = 10}
+assert{C := c44{}; C.N = false; set C.N = option {20}; C.N? = 20}
+assert{C := c45{}; C.M?.N = false; set C.M?.N = option {1}; C.M?.N? = 1}
+assert{C := c45{}; C.M?.N = false; set C.M?.N = option {2}; C.M?.N? = 2}
+assert{C := c46{}; C.M?.N = false; set C.M?.N = option {3}; C.M?.N? = 3}
+assert{C := c46{}; C.M?.N = false; set C.M?.N = option {4}; C.M?.N? = 4}
