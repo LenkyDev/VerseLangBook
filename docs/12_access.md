@@ -991,9 +991,6 @@ ConfigMessage<localizes>(?MaxPlayers:int = 8, ?TimeLimit:int = 300):message =
 -->
 <!-- 26 -->
 ```verse
-ConfigMessage<localizes>(?MaxPlayers:int = 8, ?TimeLimit:int = 300):message =
-    "Game settings: {MaxPlayers} players, {TimeLimit} seconds"
-
 # Can be called with any combination
 Localize(ConfigMessage())                           # Uses defaults
 Localize(ConfigMessage(?MaxPlayers := 16))          # Override one
@@ -1004,10 +1001,7 @@ Localize(ConfigMessage(?TimeLimit := 600, ?MaxPlayers := 32))  # Override both
 
 Messages can accept tuple parameters, which are destructured in the parameter list:
 
-<!--versetest
-LocationMessage<localizes>(Player:string, (X:int, Y:int)) : message =
-    "{Player} is at position ({X}, {Y})"
--->
+<!--versetest-->
 <!-- 27 -->
 ```verse
 LocationMessage<localizes>(Player:string, (X:int, Y:int)) : message =

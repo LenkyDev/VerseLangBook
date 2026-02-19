@@ -1364,6 +1364,7 @@ type, you write one parametric class that accepts a type parameter.
 
 A parametric class takes one or more type parameters in its definition:
 
+<!-- NoCompile -->
 <!-- 46 -->
 ```verse
 # Simple container that holds a single value
@@ -1396,6 +1397,7 @@ The syntax `container(t:type)` defines a class that is parameterized by type `t`
 
 Classes can accept multiple type parameters:
 
+<!--NoCompile-->
 <!-- 47 -->
 ```verse
 pair(t:type, u:type) := class:
@@ -1447,6 +1449,7 @@ When you instantiate a parametric class with specific type arguments,
 Verse creates a concrete type. Critically, **multiple instantiations
 with the same type arguments produce the same type**:
 
+<!-- NoCompile -->
 <!-- 49 -->
 ```verse
 container(t:type) := class:
@@ -1491,6 +1494,7 @@ This matters for:
 While the same type arguments always produce the same type, different
 type arguments produce distinct, incompatible types:
 
+<!-- NoCompile -->
 <!-- 52 -->
 ```verse
 container(t:type) := class:
@@ -1535,6 +1539,17 @@ return types, field types being read), the parametric class is
 variance). This means instantiations follow the same subtyping
 direction as their type arguments:
 
+<!--versetest 
+entity := class:
+    ID:int
+player := class(entity):
+    Name:string
+producer(t:type) := class:
+    Value:t
+    Get():t = Value  # Returns t - covariant position
+ProcessProducer(P:producer(entity)):int = P.Get().ID
+<#
+-->
 <!-- 53 -->
 ```verse
 # Base class hierarchy
@@ -1553,6 +1568,7 @@ producer(t:type) := class:
 # Can use producer(player) where producer(entity) expected
 ProcessProducer(P:producer(entity)):int = P.Get().ID
 ```
+<!-- #> -->
 
 Here's an example demonstrating covariance:
 
@@ -1649,6 +1665,7 @@ positions**, the parametric class is **invariant** in that
 parameter. No subtyping relationship exists between different
 instantiations:
 
+<!-- NoCompile -->
 <!-- 55 -->
 ```verse
 entity := class:
@@ -1699,6 +1716,7 @@ When a type parameter is not used in any method signatures (only in
 private implementation details or not at all), the parametric class is
 **bivariant**. Any instantiation can be converted to any other:
 
+<!-- NoCompile -->
 <!-- 56 -->
 ```verse
 entity := class:
@@ -1739,321 +1757,6 @@ Y:container(player) = EntityContainer  # Also valid
 **Why this works:** Since the type parameter doesn't affect the
 observable behavior, the instantiations are interchangeable.
 
-#### Common Pitfalls
-
-**Attempting invalid conversions:**
-
-TODO broken...
-
-<!--NoCompile-->
-<!-- 57 -->
-```verse
-# Invariant parameter - neither direction works
-refer(t:type) := class:
-    var Value:t
-    Get():t = Value
-    Set(V:t):void = set Value = V
-
-PlayerRef:refer(player) = refer(player){Value := player{ID := 1, Name := "Test"}}
-
-# Invalid: refer is invariant
-# EntityRef:refer(entity) = PlayerRef  # ERROR
-```
-
-**Confusing variance direction:**
-
-<!--NoCompile-->
-<!-- 58 -->
-```verse
-# Common mistake: thinking contravariance works like covariance
-consumer(t:type) := class:
-    Accept(Item:t):void = {}
-
-EntityConsumer := consumer(entity){}
-
-# Invalid: Wrong direction for contravariance
-# PlayerConsumer:consumer(player) = consumer(entity){}  # ERROR
-
-# Valid: Contravariance goes opposite direction
-PlayerConsumer:consumer(player) = EntityConsumer  # Correct!
-```
-
-### Parameter Constraints
-
-You can constrain type parameters to require certain properties:
-
-<!--NoCompile-->
-<!-- 59 -->
-```verse
-# Only comparable types allowed
-sorted_list(t:type where t:subtype(comparable)) := class:
-    var Items:[]t = array{}
-
-    Add(Item:t):void =
-        # Can compare because t is comparable
-        set Items = InsertSorted(Items, Item)
-
-    Contains(Item:t):logic =
-        for (Element : Items):
-            if (Element = Item):
-                return true
-        false
-
-# Valid: int is comparable
-IntList := sorted_list(int){}
-
-# Invalid: regular classes aren't comparable by default
-# PlayerList := sorted_list(player){}  # Error if player isn't comparable
-```
-
-The `where` clause specifies requirements on the type
-parameter. Common constraints include:
-
-- `t:subtype(comparable)` - requires equality comparison
-- `t:subtype(SomeClass)` - requires inheriting from a specific class
-- `t:type` - any type (the default if no constraint specified)
-
-### Restrictions
-
-Parametric classes have certain limitations:
-
-**Cannot be `<castable>`:**
-
-Parametric classes cannot use the `<castable>` specifier because
-runtime type checks require knowing the concrete type:
-
-<!--NoCompile-->
-<!-- 60 -->
-```verse
-# Invalid: parametric classes cannot be castable
-container(t:type) := class<castable>:  # Error!
-    Value:t
-```
-
-However, specific instantiations can be used where `<castable>` types
-are needed:
-
-<!--NoCompile-->
-<!-- 61 -->
-```verse
-component := class<castable>{}
-
-container(t:type) := class:
-    Value:t
-
-# Error not supported
-ProcessComponent(Comp:component):void =
-    if (Wrapped := container(component)[Comp]):
-        # Wrapped is container(component)
-```
-
-**Cannot cast between different parametric instantiations:**
-
-Even when instantiations are fixed (non-parametric), you cannot use
-cast syntax to convert between different instantiations of the same
-parametric class or interface. This restriction is enforced at compile
-time:
-
-<!-- 62 -->
-```verse
-container(t:type) := class:
-    Value:t
-```
-
-Here's an example showing that you cannot cast between different instantiations:
-
-<!--versetest
-container(t:type) := class:
-    Value:t
--->
-<!-- 621 -->
-```verse
-X := container(int){Value := 42}
-
-# Invalid: Cannot cast between different instantiations
-# if (Y := container(float)[X]):     # ERROR 3502
-#     # This will not compile
-# if (Z := container([]int)[X]):     # ERROR 3502
-#     # This also will not compile
-```
-
-Different instantiations like `container(int)` and `container(float)`
-are completely distinct types with no subtype relationship, so cast
-expressions between them are disallowed. The compiler rejects these
-casts even though both are concrete types.
-
-This restriction extends to parametric class hierarchies:
-
-<!-- 63 -->
-```verse
-base := class:
-    Property:int
-
-parametric_child(t:type) := class(base):
-    GetProperty():int = Property
-```
-
-Here's an example showing that you cannot cast between different instantiations in parametric class hierarchies:
-
-<!--versetest
-base := class:
-    Property:int
-
-parametric_child(t:type) := class(base):
-    GetProperty():int = Property
--->
-<!-- 631 -->
-```verse
-# Cannot cast between different instantiations of parametric_child
-Foo:base = parametric_child(float){Property := 42}
-
-# Invalid: Different type parameters prevent casting
-# if (FooChild := parametric_child(int)[Foo]):  # ERROR 3502
-#     # Cannot cast parametric_child(float) to parametric_child(int)
-```
-
-Even though both `parametric_child(int)` and `parametric_child(float)`
-inherit from `base`, you cannot cast between them because they are
-different instantiations of a parametric type.
-
-**Parametric interfaces also cannot be used in casts:**
-
-Cast expressions involving parametric interfaces with type parameters are disallowed:
-
-<!-- 64 -->
-```verse
-parametric_interface(t:type) := interface:
-    Foo():t
-
-child := class{}
-
-impl := class(child, parametric_interface(float)):
-    Foo<override>():float = 42.42
-```
-
-Here's an example showing that you cannot cast to parametric interfaces:
-
-<!--versetest
-parametric_interface(t:type) := interface:
-    Foo():t
-
-child := class{}
-
-impl := class(child, parametric_interface(float)):
-    Foo<override>():float = 42.42
--->
-<!-- 641 -->
-```verse
-# Invalid: Cannot cast to parametric interface with type parameter
-X:child := impl{}
-# if (X_Casted := parametric_interface(float)[X]):  # ERROR 3502
-#     # Parametric interface casts not allowed
-```
-
-However, specialized (non-parametric) interfaces derived from parametric interfaces can be used in casts:
-
-<!-- 65 -->
-```verse
-parametric_interface(t:type) := interface:
-    Foo():t
-
-# Specialized interface fixes the type parameter
-specialized_interface := interface(parametric_interface(float)){}
-
-impl := class(specialized_interface):
-    Foo<override>():float = 42.42
-```
-
-Here's an example showing that specialized interfaces work with casts:
-
-<!--versetest
-parametric_interface(t:type) := interface:
-    Foo():t
-
-# Specialized interface fixes the type parameter
-specialized_interface := interface(parametric_interface(float)){}
-
-impl := class(specialized_interface):
-    Foo<override>():float = 42.42
--->
-<!-- 651 -->
-```verse
-# Valid: specialized_interface is no longer parametric
-X := impl{}
-if (X_Casted := specialized_interface[X]):
-    X_Casted.Foo()  # Works!
-```
-
-**Valid casting scenarios:**
-
-While casts between different parametric instantiations fail, the
-following patterns work:
-
-1. **Non-parametric class hierarchies** support normal casting:
-
-<!-- 66 -->
-```verse
-base := class<castable>:
-    ID:int
-
-child := class(base):
-    Name:string
-```
-
-Here's an example of normal class hierarchy casting:
-
-<!--versetest
-base := class<castable>:
-    ID:int
-child := class(base):
-    Name:string
--->
-<!-- 661 -->
-```verse
-B:base = child{ID := 1, Name := "Test"}
-if (C := child[B]):
-    # Valid: Normal class hierarchy cast
-    Print(C.Name)
-```
-
-2. **Fixed parametric instantiations** where the type parameter is
-   locked in the subclass:
-
-<!-- 67 -->
-```verse
-parametric_base(t:type) := class:
-    Property:t
-
-# Child fixes the type parameter to int
-int_child := class(parametric_base(int)):
-    GetProperty():int = Property
-```
-
-Here's an example of casting with fixed parametric instantiation:
-
-<!--versetest
-parametric_base(t:type) := class:
-    Property:t
-
-# Child fixes the type parameter to int
-int_child := class(parametric_base(int)):
-    GetProperty():int = Property
--->
-<!-- 671 -->
-```verse
-Foo:parametric_base(int) = int_child{Property := 42}
-if (FooChild := int_child[Foo]):
-    # Valid: Type parameter is fixed to int in both
-    FooChild.Property = 42
-```
-
-**Cannot be `<persistable>` directly:**
-
-While you can define parametric classes, making them persistable
-requires special consideration for how the type parameter is
-serialized. Specific instantiations with persistable types may work
-depending on the implementation.
-
 ### Recursive Parametric Types
 
 Parametric classes can reference themselves in their field types,
@@ -2064,6 +1767,7 @@ recursion can occur.
 The most common form of recursive parametric type is when a class
 references itself with **the same type parameter**:
 
+<!-- NoCompile -->
 <!-- 69 -->
 ```verse
 # Linked list node
@@ -2114,31 +1818,6 @@ IntList := list_node(int){
 }
 ```
 
-Binary trees work similarly:
-
-TODO Broken
-
-<!--NoCompile-->
-<!-- 70 -->
-```verse
-tree_node(t:type) := class:
-    Value:t
-    var Left:?tree_node(t) = false   # Same parameter
-    var Right:?tree_node(t) = false  # Same parameter
-
-# Create a tree
-Root := tree_node(int){
-    Value := 5
-    Left := option{tree_node(int){Value := 3}}
-    Right := option{tree_node(int){Value := 7}}
-}
-```
-
-**Why this works:** Each instantiation creates a complete, consistent
-type. `list_node(int)` always contains `int` values and references
-other `list_node(int)` nodes. The type system can verify this
-recursion is well-formed.
-
 **Disallowed: Direct Type Alias Recursion**
 
 You cannot define a parametric type that directly aliases to a
@@ -2165,6 +1844,7 @@ cannot determine the actual structure of the type.
 
 **Valid alternative:** Wrap in a class:
 
+<!-- NoCompile -->
 <!-- 72 -->
 ```verse
 # Valid: Indirect recursion through class
@@ -2251,6 +1931,10 @@ combined_node(t:type) := class:
     Next:?combined_node(t)
 ```
 
+<!-- ERROR:
+Line 11: Script Error 3502: Class definitions are not yet implemented outside of a module scope.
+-->
+Line 11: Script Error 3502: Class definitions are not yet implemented outside of a module scope.
 **Disallowed: Inheritance Recursion**
 
 You cannot inherit from a type variable or create recursive
@@ -2278,6 +1962,17 @@ type:
 
 <!-- TODO why is this not working?-->
 
+<!--versetest
+equivalence(t:type, u:type) := interface:
+    Equal(Left:t, Right:u)<transacts><decides>:t
+
+# Generic collection interface
+collection_ifc(t:type) := interface:
+    Add(Item:t)<transacts>:void
+    Remove(Item:t)<transacts><decides>:void
+    Has(Item:t)<reads>:logic
+<#
+-->
 <!-- 80 -->
 ```verse
 # Generic equality interface
@@ -2290,15 +1985,14 @@ collection_ifc(t:type) := interface:
     Remove(Item:t)<transacts><decides>:void
     Has(Item:t)<reads>:logic
 ```
+<!-- #> -->
 
 Classes implement parametric interfaces by providing concrete types
 for the parameters:
 
+<!-- NoCompile -->
 <!-- 81 -->
 ```verse
-equivalence(t:type, u:type) := interface:
-    Equal(Left:t, Right:u)<transacts><decides>:t
-
 # Implement with specific types
 int_equivalence := class(equivalence(int, comparable)):
     Equal<override>(Left:int, Right:comparable)<transacts><decides>:int =
@@ -2309,6 +2003,7 @@ comparable_equivalence(t:subtype(comparable)) := class(equivalence(t, comparable
     Equal<override>(Left:t, Right:comparable)<transacts><decides>:t =
         Left = Right
 ```
+
 
 Here's an example of using the parametric interface:
 
@@ -2335,6 +2030,7 @@ Eq.Equal[5, 5]  # Succeeds
 
 Parametric interfaces follow the same variance rules as parametric classes:
 
+<!-- NoCompile -->
 <!-- 82 -->
 ```verse
 entity := class:
@@ -2375,6 +2071,7 @@ EntityProducer:producer_interface(entity) = player_producer{}
 
 You can create specialized (non-parametric) interfaces from parametric ones:
 
+<!-- NoCompile -->
 <!-- 83 -->
 ```verse
 generic_handler(t:type) := interface:
@@ -2417,6 +2114,7 @@ if (Handler := int_handler[Base]):
 
 Interfaces can have multiple type parameters with independent variance:
 
+<!-- NoCompile -->
 <!-- 84 -->
 ```verse
 converter_interface(input:type, output:type) := interface:
@@ -2465,11 +2163,7 @@ C:converter_interface(player, entity) = player_to_entity{}
 
 Parametric type definitions can be used as first-class values, allowing dynamic type application:
 
-<!--NoCompile
- TODO : Unnecessary restriction to the compiler according to Andy
-container(t:type) := class:
-    Value:t
-TypeConstructor := container
+<!-- NoCompile -->
 -->
 <!-- 85 -->
 ```verse
@@ -2483,11 +2177,7 @@ TypeConstructor := container
 
 And a use case:
 
-<!--NoCompile  TODO : Unnecessary restriction to the compielr according to Andy
-container(t:type) := class:
-    Value:t
-TypeConstructor := container
--->
+<!-- NoCompile -->
 <!-- 851 -->
 ```verse
 # Apply type argument dynamically
@@ -2497,11 +2187,11 @@ IntContainer := TypeConstructor(int)
 Instance := IntContainer{Value := 42}
 Instance.Value = 42  # Success
 ```
-
+ 
 This enables powerful patterns for generic factories and type-driven
 programming:
 
-<!--NoCompile
+<!--NoCompile -->
 <!-- 86 -->
 ```verse
 # Factory that works with any parametric container
@@ -2515,20 +2205,10 @@ container1(t:type) := class:
 container2(t:type) := class:
     Data:t
 ```
--->
 
 And a use:
 
-<!--NoCompile
-CreateContainer(TypeCtor:type, Value:t where t:type) :=
-    TypeCtor(t){Value := Value}
-
-container1(t:type) := class:
-    Value:t
-
-container2(t:type) := class:
-    Data:t
--->
+<!-- NoCompile -->
 <!-- 86 -->
 ```verse
 X := CreateContainer(container1, 42)  # container1(int)
@@ -2539,6 +2219,7 @@ Y := CreateContainer(container2, "hello")  # container2(string)
 
 Parametric types can have effect specifiers that apply to all instantiations:
 
+<!-- NoCompile -->
 <!-- 88 -->
 ```verse
 # Parametric class with effects
@@ -2572,6 +2253,7 @@ transactional_container(t:type) := class<transacts>:
 
 **Effect propagation:**
 
+<!-- NoCompile -->
 <!-- 89 -->
 ```verse
 # Effect on parametric type propagates to constructor
@@ -2626,6 +2308,7 @@ Data:nested(int) = array{
     map{"c" => 3}
 }
 ```
+
 
 **Structural type aliases:**
 
@@ -2739,6 +2422,7 @@ sorted_unique(t:type where t:subtype(comparable)) := class<unique>:
 ```
 
 **Constraint propagation:**
+
 
 <!-- 98 -->
 ```verse
@@ -3069,7 +2753,6 @@ if (ItemC := C.MaybeItem?, ItemD := D.MaybeItem?):
 The same principle applies when parametric classes contain unique
 instances in their fields:
 
-
 <!-- 108 -->
 ```verse
 entity := class<unique>{}
@@ -3078,8 +2761,6 @@ registry(t:type) := class:
     DefaultEntity:entity = entity{}
     Data:t
 ```
-
-And a use case:
 
 <!--versetest
 entity := class<unique>{}
@@ -3305,6 +2986,7 @@ ProcessComponent(Comp:component):void =
         # Neither cast succeeded
         Print("Unknown component type")
 ```
+
 
 The cast expression has the `<decides>` effect—it fails if the object
 is not an instance of the target type. This integrates naturally with

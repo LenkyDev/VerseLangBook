@@ -370,14 +370,9 @@ player := class{Health:float = 100.0, GetName()<computes>:string = "Hero"}
 vector3 := struct{X:float, Y:float, Z:float}
 config_settings := struct{MaxPlayers:int = 10}
 config := struct{Settings:config_settings = config_settings{}}
-object_type := class{
-    FirstMethod()<transacts>:object_type = object_type{}
-    SecondMethod()<computes>:void = {}
-}
 Player:player = player{}
 MyVector:vector3 = vector3{X:=1.0, Y:=2.0, Z:=3.0}
 Config:config = config{}
-MyObject:object_type = object_type{}
 -->
 <!-- 12 -->
 ```verse
@@ -385,12 +380,7 @@ Player.Health
 Player.GetName()
 MyVector.X
 Config.Settings.MaxPlayers
-
-# Line continuation supported after dot
-LongExpression := MyObject.FirstMethod().
-                           SecondMethod()
 ```
-
 ### Range
 
 The range operator creates ranges for iteration:

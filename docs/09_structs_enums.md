@@ -784,11 +784,11 @@ StateIDs:[game_state]int = map{
 }
 
 # In generic functions
-FindStateID(States:[]game_state, Target:game_state)<decides>:int =
+FindStateID(States:[]game_state, Target:game_state):int =
     for (
         State : States, State = Target,
         ID := StateIDs[State]
     ):
         return ID
-    false? # fails if state is not found
+    -1 # Return -1 if state is not found
 ```

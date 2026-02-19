@@ -660,15 +660,14 @@ Extending arrays:
 <!--versetest-->
 <!-- 44 -->
 ```verse
-(Numbers:[]int).Sum()<transacts>:int =
+(Vals:[]int).Sum()<transacts>:int =
     var Total:int = 0
-    for (N:Numbers):
+    for (N:Vals):
         set Total += N
     Total
 
 array{1, 2, 3, 4, 5}.Sum()  # Returns 15
 ```
-
 Extending maps:
 
 <!--versetest-->
@@ -883,7 +882,6 @@ Origin := point{X := 0, Y := 0}
 Delta := (5, 10)
 NewPoint := Origin.Translate(Delta)  # Tuple expands to two arguments
 ```
-<!-- #> -->
 
 This works when the tuple type matches the parameter list.
 
@@ -955,18 +953,17 @@ are **covariant** (fewer effects = subtype):
 
 <!--versetest
 using{/Verse.org/Concurrency}
--->
-<!-- 65 -->
-```verse
-Pure():int = 42
+Pure()<computes>:int = 42
 Transactional()<transacts>:int = 42
 Suspendable()<suspends>:int = 42
 
 # Functions expecting specific effects
-UsePure(F():int):int = F()
+UsePure(F()<computes>:int):int = F()
 UseTransactional(F()<transacts>:int):int = F()
 UseSuspendable(F()<suspends>:int):task(int) = spawn{ F() }
-
+-->
+<!-- 65 -->
+```verse
 UsePure(Pure)                    # OK
 UseTransactional(Transactional)  # OK
 UseSuspendable(Suspendable)      # OK
@@ -977,7 +974,6 @@ UseTransactional(Pure)           # OK: ():int <: ()<transacts>:int
 # Invalid: more effects cannot substitute for fewer
 # UsePure(Transactional)         # ERROR: ()<transacts>:int </: ():int
 ```
-
 A `<computes>` function can be passed where `<transacts>` is expected
 because fewer effects means the function is more constrained.
 
@@ -1036,13 +1032,17 @@ Double(X:int):int = X * 2
 Process(Double, 5)  # Returns 10
 ```
 
-The `type{}` construct *exclusively declares function type signatures*. It cannot be used for general type expressions or to extract types from values:
+The `type{}` construct *declares function type signatures*:
 
 <!--versetest
 m:= module:
+    ValidType1 := type{_():int}
+    ValidType2 := type{_(:string, :int):float}
+    ValidType3 := type{_()<transacts><decides>:void}
 -->
 <!-- 73 -->
 ```verse
+# Type definitions for function signatures
 ValidType1 := type{_():int}
 ValidType2 := type{_(:string, :int):float}
 ValidType3 := type{_()<transacts><decides>:void}
@@ -1157,16 +1157,16 @@ Fold(Items:[]t, Initial:u, F(:u, :t)<transacts>:u where t:type, u:type)<transact
     Acc
 
 # Usage with nested functions
-Numbers := array{1, 2, 3, 4, 5}
+Values := array{1, 2, 3, 4, 5}
 
 # Define nested functions for operations
 Square(X:int)<computes>:int = X * X
 IsEven(X:int)<computes><decides>:void = X = 0 or Mod[X,2] = 0
 AddTo(Acc:int, X:int)<computes>:int = Acc + X
 
-Squared := Map(Numbers, Square)
-Evens := Filter(Numbers, IsEven)
-Sum := Fold(Numbers, 0, AddTo)
+Squared := Map(Values, Square)
+Evens := Filter(Values, IsEven)
+Sum := Fold(Values, 0, AddTo)
 ```
 
 **Function composition**:
@@ -1453,10 +1453,9 @@ Inference with collections:
 # Generic first element function
 First(Items:[]t where t:type)<decides>:t = Items[0]
 
-Numbers := array{1, 2, 3}
-Result :int= First[Numbers]  # t inferred as int from []int
+Values := array{1, 2, 3}
+Result :int= First[Values]  # t inferred as int from []int
 ```
-
 When you pass multiple values to a parametric function expecting a single type parameter, Verse can infer either a tuple or an array:
 
 <!--versetest-->
@@ -1545,17 +1544,14 @@ car := class(vehicle):
 ProcessVehicle(V:t where t:subtype(vehicle))<transacts>:t =
     Print("Speed: {V.Speed}")
     V
-
-M()<transacts>:void={
 -->
 <!-- 96 -->
 ```verse
+# Type-preserving function with subtype constraint
 MyCar := car{NumDoors:=4, Speed:=60.0}
 Result:car= ProcessVehicle(MyCar)  # Result has type car, not vehicle
 Result.NumDoors                  # Can access car-specific fields
 ```
-<!-- } -->
-
 The `subtype(comparable)` constraint enables equality comparisons:
 
 <!--versetest-->
@@ -1835,30 +1831,27 @@ c := class<allocates>{}
 d := class<allocates>(c){}
 
 e := class<allocates>:
-    f(C:c):c = C
-    f(E:e):e = E
+    func(C:c):c = C
+    func(E:e):e = E
 
-f := class<allocates>(e):
-    f<override>(C:c):d = d{}
-<#
+myf := class<allocates>(e):
+    func<override>(C:c):d = d{}
+<#>
 -->
 <!-- 109 -->
 ```verse
-c := class{}
-d := class(c){}
-
 # Parent class with overloads
 e := class:
-    f(C:c):c = C
-    f(E:e):e = E
+     func(C:c):c = C
+     func(E:e):e = E
 
 # Valid: Overrides one parent overload
-f := class(e):
-    f<override>(C:c):d = d{}
+myf := class(e):
+     func<override>(C:c):d = d{}
 
 # ERROR: d is subtype of c, overlaps but doesn't override
 # g := class(e):
-#     f(D:d):d = D  # ERROR - ambiguous with f(C:c)
+#     func(D:d):d = D  # ERROR - ambiguous with func(C:c)
 ```
 <!-- #> -->
 
