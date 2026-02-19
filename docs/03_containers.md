@@ -929,7 +929,7 @@ RemoveKeyFromMap(TheMap:[string]int, ToRemove:string):[string]int =
     return NewMap
 ```
 
-The key type of a map must belong to the class `comparable`, which guarantees that two keys can be checked for equality. All basic scalar types such as `int`, `float`, `rational`, `logic`, `char`, and `char32` are comparable, and so are compound types like arrays, maps, tuples, and `struct`s whose components are comparable. Regular classes and interfaces (without the `<unique>` specifier) cannot be used as keys, since their instances do not provide a built-in notion of equality. However, classes and interfaces marked with `<unique>` can be used as keys because they support identity-based equality.
+The key type of a map must belong to the class `comparable`, which guarantees that two keys can be checked for equality. All basic scalar types such as `int`, `float`, `rational`, `logic`, `char`, and `char32` are comparable, and so are compound types like arrays, maps, tuples, and `struct`s whose components are comparable.  Classes and interfaces (without the `<unique>` specifier) cannot be used as keys, since their instances do not provide a built-in notion of equality. However, classes and interfaces marked with `<unique>` can be used as keys because they support identity-based equality.
 
 Not all types can be used as map keys. A type must be comparable—meaning values of that type can be checked for equality. Here's a comprehensive guide to what can and cannot be used as map keys:
 
@@ -952,7 +952,7 @@ Not all types can be used as map keys. A type must be comparable—meaning value
 - `type` - type values themselves
 - Function types like `t -> u`
 - `subtype(t)` - subtype expressions
-- Regular classes (without `<unique>`)
+- Classes (without `<unique>`)
 - Interfaces (without `<unique>`)
 
 Attempting to use a non-comparable type as a key results in a compile-time error.
@@ -1025,36 +1025,61 @@ Without type context, you may need to provide explicit type annotations.
 
 ### Variance
 
-Maps exhibit different variance behavior for keys and values. A map type `[K1]V1` is a subtype of `[K2]V2` when:
+Maps are **covariant** in both their key and value types. A map type `[K1]V1` is a subtype of `[K2]V2` when:
 
-- **Keys are contravariant**: `K2` is a subtype of `K1` (more general keys → more specific keys)
+- **Keys are covariant**: `K1` is a subtype of `K2` (more specific keys → more general keys)
 - **Values are covariant**: `V1` is a subtype of `V2` (more specific values → more general values)
 
-You can create maps with class hierarchy types as keys and values:
+This covariance is necessary because map iteration exposes the key type. When you iterate a map, you receive the actual key objects, which must be safely usable as the declared key type.
+
+While map types are covariant, map lookup operations accept keys that are `comparable` to the key type, which may appear contravariant. This is a convenience for lookups but doesn't affect the variance of the map type itself.
 
 <!--versetest
-class1 := class<unique> {}
-class2 := class<unique>(class1) {}
+animal := class<unique> {}
+dog := class<unique>(animal) {}
 -->
 <!-- 61 -->
 ```verse
-# Map with general keys, specific values: [class1]class2
-GeneralKeyMap : [class1]class2 = map{class1{} => class2{}}
+# assume
+# animal := class<unique> {}
+# dog := class<unique>(animal) {}
+
+# Map TYPE variance is COVARIANT
+DogMap : [dog]int = map{dog{} => 1}
+AnimalMap : [animal]int = DogMap  # ✓ Works - covariant assignment
+
+# Map LOOKUP operations appear contravariant-like
+MyDogMap : [dog]int = map{dog{} => 42}
+DogKey : dog = dog{}
+SupertypeKey : animal = DogKey  # Points to the same dog instance
+
+# Lookup with exact key type:
+if (Val1 := MyDogMap[DogKey]) {}  # ✓ Works
+
+# Lookup with supertype key - also works!
+if (Val2 := MyDogMap[SupertypeKey]) {}  # ✓ Also works
+
+# This works because lookup only requires the key to be `comparable`
+# to the map's key type. Both keys refer to the same unique object.
 ```
 
 When modifying a mutable map through `set`, you can only insert keys and values that match the map's declared types:
 
 <!--versetest
+
+animal := class<unique> {}
+dog := class<unique>(animal) {}
+
 class1 := class<unique> {}
 class2 := class<unique>(class1) {}
 -->
 <!-- 62 -->
 ```verse
-var Map : [class2]int = map{}
-Key2 : class2 = class2{}
-Key1 : class1 = Key2
+var Map : [dog]int = map{}
+Key2 : dog = dog{}
+Key1 : animal = Key2
 
-set Map[Key2] = 1      # Succeeds - exact type match
+set Map[Key2] = 1      # Valid - exact type match
 # set Map[Key1] = 2    # ERROR - cannot use supertype as key
 ```
 
@@ -1096,7 +1121,7 @@ ConcatenateMaps(Maps:[]map(k,v)...):map(k,v)
 ```
 <!-- #> -->
 
-`ConcatenateMaps()` is variadic—it accepts any number of maps and combines them into one. When maps contain duplicate keys, values from **later** maps override values from earlier ones:
+`ConcatenateMaps()` is variadic—it accepts two or more maps and combines them into one. When maps contain duplicate keys, values from **later** maps override values from earlier ones:
 
 <!--versetest-->
 <!-- 65 -->

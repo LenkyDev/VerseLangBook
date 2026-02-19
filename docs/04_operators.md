@@ -25,9 +25,15 @@ Infix operators appear between their two operands:
 
 **Postfix Operators**
 
-Postfix operators appear after their single operand:
+Postfix operators bind to the expression on their left. While some (like `.`) appear between two elements, they're classified as postfix because they operate on the left-hand expression:
 
 - `Value?` - Query operator for logic values
+- `Object.Member` - Member access (the `.` operates on the object to its left)
+- `Array[Index]` - Array indexing (the `[]` operates on the array to its left)
+- `Function()` - Function call (the `()` operates on the function to its left)
+- `Constructor{}` - Object construction (the `{}` operates on the type to its left)
+
+**Note:** Although `.` appears *between* `Player` and `Respawn` in `Player.Respawn()`, it's considered postfix because it binds to `Player` and selects a member from it. The right side (`Respawn`) is not a separate operand but a member selector
 
 ## Precedence
 
@@ -47,6 +53,12 @@ The precedence levels from highest to lowest are:
 | 3 | `..` | Range | Infix | Left | `0..100`, `-15..50` |
 | 2 | ~~Lambda expressions~~ | ~~Function literals~~ (not yet supported) | Special | N/A | N/A |
 | 1 | `:=`, `set =` | Assignment | Infix | Right | `X := 15`, `set Y = 25` |
+
+**Note on `=` operator:** The `=` symbol serves two distinct purposes in Verse:
+- **Relational comparison** (precedence 7): When used as an operator in expressions, `A = B` tests equality and returns a logic value
+- **Assignment** (precedence 1): When used with the `set` keyword, `set X = Value` assigns a new value to an existing variable
+
+This is different from `:=`, which always means "define and initialize" for new variables. The context determines which meaning of `=` applies.
 
 ## Arithmetic Operators
 
@@ -239,9 +251,12 @@ The `and` operator succeeds only if both operands succeed:
 <!--versetest
 EnterRoom()<computes>:void={}
 AllowQuestAccess()<computes>:void={}
+ProcessResult()<computes>:void={}
 HasKey:?int = option{1}
 DoorUnlocked:?int = option{1}
 player := struct{Level:int, HasItem:?int}
+QuickCheck()<computes><decides>:void = {}
+ExpensiveCheck()<computes><decides>:void = {}
 -->
 <!-- 07 -->
 ```verse
@@ -249,9 +264,9 @@ Player:player = player{Level:=10, HasItem:=option{1}}
 if (HasKey? and DoorUnlocked?):
     EnterRoom()
 
-# Both expressions must succeed
-if (Player.Level > 5 and Player.HasItem?):
-    AllowQuestAccess()
+# Short-circuit evaluation - second operand not evaluated if first fails
+if (QuickCheck[] and ExpensiveCheck[]):
+    ProcessResult()
 ```
 
 ### Or Operator
@@ -289,21 +304,23 @@ Consider two expressions `P` and `Q` which may either succeed or fail, the follo
 
 ## Assignment and Initialization
 
-The `:=` operator initializes constants and variables:
+When initializing constants and variables, both `=` and `:=` can be used if an explicit type is provided. For type inference (no type annotation), you must use `:=`.
 
 <!--versetest-->
 <!-- 09 -->
 ```verse
-# Constant initialization (immutable)
+# Constant initialization with explicit types - both = and := work
 MaxHealth:int = 100
-PlayerName:string = "Hero"
+PlayerName:string := "Hero"
 
-# Variable initialization (mutable)
+# Variable initialization with explicit types - both = and := work
 var CurrentHealth:int = 100
-var Score:int = 0
+var Score:int := 0
 
-# Type inference
+# Type inference requires := (no type annotation)
 AutoTyped := 42  # Inferred as int
+
+# Note: var requires explicit type - var X := value is not allowed
 ```
 
 The `set =` operator updates variable values:
@@ -328,7 +345,6 @@ The square bracket operator is used for multiple purposes in Verse:
 
 1. **Array/Map indexing** - Access elements in collections
 2. **Function calls** - Call functions which may fail
-3. **Computed member access** - Access object members dynamically
 
 <!--versetest
 MyFunction1(X:int, Y:int)<decides>:void={}
@@ -395,19 +411,32 @@ for (I := 0..4):
 
 ### Object Construction
 
-Curly braces are used to construct objects when placed after a type:
+Verse provides multiple syntaxes for constructing objects. All of the following are equivalent:
 
 <!--versetest
-point:=struct{X:int, Y:int}
+point:=struct{X:int = 0, Y:int = 0}
 player_data:=struct{Name:string,Level:int,Health:float}
 game_config:=struct{MaxPlayers:int,EnablePvP:logic}
 -->
 <!-- 14 -->
 ```verse
-# Object construction with type name
-Point := point{X:= 10, Y:= 20}
+# Curly braces with commas
+Point1 := point{X:= 10, Y:= 20}
 
-# Fields can be separated by commas or newlines
+# Curly braces with semicolons
+Point2 := point{X:= 10; Y:= 20}
+
+# Colon syntax with newlines (no braces)
+Point3 := point:
+    X:= 10
+    Y:= 20
+
+# Colon syntax with commas and newlines
+Point4 := point:
+    X:= 10,
+    Y:= 20
+
+# Fields can be separated by newlines inside braces
 Player := player_data {
     Name := "Hero"
     Level := 5
@@ -419,6 +448,10 @@ Config := game_config{
     MaxPlayers := 100,
     EnablePvP := true # ,  -- comma not allowed here
 }
+
+# Dot syntax for single field (requires defaults for other fields)
+Point5 := point . X:=10  # Y gets default value 0
+Point6 := point . Y:=20  # X gets default value 0
 ```
 
 ### Tuple Access
@@ -462,5 +495,5 @@ Result := 5 * 2.0  # Result is 10.0 (float)
 # Comparisons must be same type
 if (5 = 5):     # OK
 if (5.0 = 5.0): # OK
-# if (5 = 5.0):   # Error: different types
+# if (5 = 5.0):   # Fails
 ```
