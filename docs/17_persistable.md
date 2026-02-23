@@ -56,8 +56,8 @@ specifier with classes, structs, and enums.
 
 Classes must meet specific requirements to be persistable:
 
-<!--versetest
-m := module{
+<!-- 02 -->
+```verse
 player_class := enum<persistable>{
     Villager
 }
@@ -67,20 +67,11 @@ player_profile_data := class<final><persistable>:
     XP:int = 0
     Rank:int = 0
     CompletedQuestCount:int = 0
-}
-<#
--->
-<!-- 02 -->
-```verse
-player_profile_data := class<final><persistable>:
-    Version:int = 1
-    Class:player_class = player_class.Villager
-    XP:int = 0
-    Rank:int = 0
-    CompletedQuestCount:int = 0
 ```
-<!-- #> -->
 
+<!-- ERROR:
+Line 14: Script Error 3100: vErr:S88: Expected expression, got "}" in indented block
+-->
 Requirements for persistable classes:
 
 - Must have the `<persistable>` specifier

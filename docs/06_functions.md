@@ -458,14 +458,14 @@ values:
 <!-- 32-->
 ```verse
 # Named parameter inside nested tuple
-SumValues(A:int, (X:int, (Y:int, (?Z:int = 0)))):int =
+SumValues(A:int, (X:int, (Y:int, ?Z:int = 0))):int =
     A + X + Y + Z
 
 # Can provide Z explicitly
-SumValues(1, (2, (3, (?Z := 4))))  # Returns 10
+SumValues(1, (2, (3, ?Z := 4)))  # Returns 10
 
 # Can omit Z to use default
-SumValues((1, (2, (3))))           # Returns 6
+SumValues((1, (2, 3)))           # Returns 6
 ```
 
 A tuple can contain multiple named parameters, and they can be
@@ -511,21 +511,6 @@ This is a known limitation in the current implementation. When the
 tuple contains at least one positional parameter, this restriction
 doesn't apply.
 
-Refined types with `where` clauses are not allowed in destructured
-tuple parameters:
-
-<!--versetest-->
-<!-- 35-->
-```verse
-# ERROR 3624: Refined types not supported in tuple destructuring
-# H(A:int, ((B:int where B > 0), C:int), D:int):int =
-#     A + B + C + D
-```
-
-This restriction applies to the types within the tuple
-destructuring. Regular parameter refinements outside tuples work
-normally.
-
 ### Flattening and Unflattening
 
 Verse provides automatic conversion between tuples and multiple
@@ -566,6 +551,13 @@ F(X:tuple()):int = 42
 F(())   # Explicit empty tuple
 F()     # No arguments - automatically creates empty tuple
 ```
+
+**Overload restrictions:** Because of automatic flattening and
+unflattening, you cannot define overloads that would be ambiguous. If
+you define `F(P:tuple(int, int))`, you cannot also define `F(X:int,
+Y:int)` because the call `F(3, 5)` could match either signature.
+Similarly, `F(P:tuple(int, int))` and `F(Xs:[]int)` are indistinct
+because arrays can also be called with the same syntax.
 
 ### Evaluation Order
 
@@ -636,11 +628,11 @@ Extending primitives:
 <!--versetest-->
 <!-- 42-->
 ```verse
-(N:int).IsEven()<decides>:void = N = 0 or Mod[N,2] = 0
-(S:string).FirstChar()<decides>:char = S[0]
+(N:int).IsEven()<decides><computes>:void = Mod[N,2] = 0
+(S:string).FirstChar()<decides><computes>:char = S[0]
 
-42.IsEven[]           # Returns true
-"Hello".FirstChar[]   # Returns 'H'
+42.IsEven[]           # Succeeds
+"Hello".FirstChar[] = 'H' 
 ```
 
 Extending tuples:
@@ -653,6 +645,22 @@ Extending tuples:
     Sqrt( (Point(0) * Point(0) + Point(1) * Point(1)) * 1.0)
 
 (3, 4).Distance()  # Returns 5.0
+```
+
+When extending tuples, you must specify the tuple type
+explicitly (e.g., `(Point:tuple(int, int))`). You cannot use
+destructured parameter syntax (e.g., `(X:int, Y:int)`) for extension
+method contexts.
+
+The empty tuple `tuple()` represents the unit type and can have
+extension methods:
+
+<!--versetest-->
+<!-- 49-->
+```verse
+(Unit:tuple()).GetMagicNumber():int = 42
+
+().GetMagicNumber()  # Returns 42
 ```
 
 Extending arrays:
@@ -739,21 +747,6 @@ true.Format()    # Returns "logic:true"
 ```
 
 The compiler selects the appropriate overload based on the receiver type.
-
-### On the Empty Tuple
-
-The empty tuple `tuple()` represents the unit type and can have
-extension methods:
-
-<!--versetest-->
-<!-- 49-->
-```verse
-(Unit:tuple()).GetMagicNumber():int = 42
-
-().GetMagicNumber()  # Returns 42
-```
-
-This can be useful for creating namespace-like groupings of functions.
 
 ### Rules
 
@@ -853,7 +846,8 @@ GM.ProcessScore(5)  # Returns 50
 This creates a lexical closure where the extension method can
 reference the enclosing class's members.
 
-**Tuple Argument Conversion:** When an extension method has multiple parameters, you can pass a tuple to provide all arguments at once:
+**Tuple Argument Conversion:** When an extension method has multiple 
+parameters, you can pass a tuple to provide all arguments at once:
 
 <!--versetest-->
 <!-- 54 -->
@@ -894,6 +888,9 @@ Function types follow specific subtyping rules based on *variance*:
 - *Returns are covariant*: A function returning more specific types
   can substitute for one returning general types.
 
+
+Consider the following three classes:
+
 <!--NoCompile-->
 <!--264-->
 ```verse
@@ -902,47 +899,69 @@ animal := class:
 
 dog := class(animal):
     Breed:string
+
+working_dog := class(dog):
+    Work:string
 ```
+
+And some use cases:
 
 <!--versetest
 animal := class:
     Name:string
-
 dog := class(animal):
     Breed:string
+working_dog := class(dog):
+    Work:string
+
+AnimalToDog(X:animal):dog = dog{Name := X.Name, Breed := "Unknown"}
+DogToWorkingDog(X:dog):working_dog =
+    working_dog{Name := X.Name, Breed := "Unknown", Work := "Guard"}
+DogToAnimal(X:dog):animal = X
+WorkingDogToDog(X:working_dog):dog = X
+
+TestValid():void =
+    var ProcessDog:type{_(:dog):dog} = AnimalToDog
+    set ProcessDog = AnimalToDog  # OK: tuple(animal)->dog <: tuple(dog)->dog
+    set ProcessDog = DogToWorkingDog  # OK: tuple(dog)->working_dog <: tuple(dog)->dog
+<#
 -->
-<!-- 64-->
-```verse 
-# Functions with different parameter/return types
-F1(X:animal):dog = dog{Name := X.Name, Breed := "Unknown"}
-F2(X:dog):animal = X     # Returns supertype
-F3(X:dog):dog = X
+<!-- 64 -->
+```verse
+# Some functions on animals
+AnimalToDog(X:animal):dog = dog{Name := X.Name, Breed := "Unknown"}
+DogToWorkingDog(X:dog):working_dog = working_dog{Name := X.Name, Breed := "Unknown", Work := "Guard"}
+DogToAnimal(X:dog):animal = X
+WorkingDogToDog(X:working_dog):dog = X
 
-# Function type accepting dog, returning animal
-var ProcessDog:type{_(:dog):animal} = F1  #############TODO
+# Example of valid assignments
+var ProcessDog:type{_(:dog):dog} = AnimalToDog
 
-# Valid: F1 accepts animal (more general), returns dog (more specific)
-set ProcessDog = F1  # OK: tuple(animal)->dog <: tuple(dog)->animal
+# Valid: Accepts more general (animal), returns exact (dog)
+# Contravariant parameter: animal <: dog allows this
+set ProcessDog = AnimalToDog  # OK: tuple(animal)->dog <: tuple(dog)->dog
 
-# Valid: F3 accepts dog, returns dog (more specific than animal)
-set ProcessDog = F3  # OK: tuple(dog)->dog <: tuple(dog)->animal
+# Valid: Accepts exact (dog), returns more specific (working_dog)
+# Covariant return: working_dog <: dog allows this
+set ProcessDog = DogToWorkingDog  # OK: tuple(dog)->working_dog <: tuple(dog)->dog
 
-# Invalid: F2 returns animal but parameter is not contravariant enough
-# ProcessDog = F2  # ERROR: tuple(dog)->animal </: tuple(dog)->animal
-#                  # (same parameters, same return - no variance issue here)
+
+ProcessDog1 := AnimalToDog  # Inferred as type{_(:animal):dog}
+set ProcessDog1 = DogToAnimal  # ERROR: incompatible assignment
+
+ProcessDog2 := AnimalToDog  # Inferred as type{_(:animal):dog}
+set ProcessDog2 = WorkingDogToDog  # ERROR: incompatible assignment
 ```
+<!--  #> -->
 
 Effects are part of the function type. A function with fewer effects
 can be used where a function with more effects is expected - effects
 are **covariant** (fewer effects = subtype):
 
 <!--versetest
-using{/Verse.org/Concurrency}
 Pure()<computes>:int = 42
 Transactional()<transacts>:int = 42
 Suspendable()<suspends>:int = 42
-
-# Functions expecting specific effects
 UsePure(F()<computes>:int):int = F()
 UseTransactional(F()<transacts>:int):int = F()
 UseSuspendable(F()<suspends>:int):task(int) = spawn{ F() }
@@ -1633,12 +1652,12 @@ Type parameters must be used consistently according to variance rules. This ensu
 
 - Function return types
 - Tuple/array element types (as return)
+- Map key types (as return)
 - Map value types (as return)
 
 **Contravariant positions** (safe for parameter types):
 
 - Function parameter types
-- Map key types
 
 **The polarity check:** Verse validates that type parameters appear
 only in positions compatible with their intended use:
@@ -1676,12 +1695,12 @@ The error occurs because `c(t)` contains a mutable field of type `t`,
 making it invariant - neither covariant nor contravariant. Returning
 such a type from a parametric function is unsafe.
 
-**Map polarity:** Maps are contravariant in keys and covariant in values:
+**Map polarity:** Maps are covariant in both keys and values:
 
 <!--versetest-->
 <!-- 103-->
 ```verse
-# Valid: contravariant key, covariant value
+# Valid: covariant key and value
 ProcessMap(M:[t]u where t:subtype(comparable), u:type):[t]u = M
 ```
 
@@ -2050,7 +2069,8 @@ The following type pairs are **not distinct** and cannot be used to
 overload functions:
 
 **1. Optional and Logic.** `?t` and `logic` are not distinct because
-`logic` (true or false) is internally equivalent to `?t` (value or false):
+both types include `false` as a value, creating overload ambiguity when
+`false` is passed as an argument:
 
 <!--versetest
 assert_semantic_error(3532):
@@ -2065,6 +2085,11 @@ F(:?any):void = {}
 F(:logic):void = {}
 ```
 <!-- #>-->
+
+Note that `?t` and `logic` are not equivalent types—`logic` contains
+`true` and `false`, while `?t` contains `false` and option values like
+`option{false}`. However, their shared `false` value means the compiler
+cannot distinguish between them for overload resolution.
 
 **2. Arrays and Maps.**  Arrays `[]t` and maps `[k]t` are not distinct:
 

@@ -94,9 +94,8 @@ For simple operations, the single-line dot format keeps code concise:
 ```verse
 HasPowerup()<computes><decides>:void={}
 ApplyBoost():void={}
-IncrementCounter():void={}
 F():void=
-    if (HasPowerup[]). ApplyBoost(); IncrementCounter()
+    if (HasPowerup[]). ApplyBoost()
 ```
 
 Since everything is an expression, blocks themselves have values. The
@@ -437,24 +436,21 @@ The `break` expression exits the loop entirely, terminating iteration.
 never returns normally. Since the bottom type is a subtype of all
 other types, `break` can be used in any type context:
 
-<!--versetest
-ShouldExit()<computes><decides>:void={}
-ComputeValue()<computes>:int=1
--->
+<!--versetest-->
 <!-- 55 -->
 ```verse
-var X:int = 0
-loop:
-    if (ShouldExit[]):
-        break
-    else:
-        set X = ComputeValue()
-    # break is compatible in the control flow
+NumberOfBits(X:int):int =
+    var B:int = 1
+    var C:int = 0
+    loop:
+        set B = if (B > X) { break } else { 2*B }
+        set C = C+1
+    C
 ```
 
-This allows `break` to be used flexibly in expressions where a value
-is expected, since the compiler knows that path never produces a
-value.
+This demonstrates bottom type: `break` unifies with `int` (from `2*B`)
+in the if-expression. The assignment `set B = ...` uses the value of
+the if-expression, showing that `break` is compatible in any type context.
 
 **Loop Return Value:** The loop expression itself produces a value of type
 `true` (the top type), regardless of what expressions appear in its body.
@@ -560,8 +556,8 @@ for (V : Values). DoSomething(V)
 
 **Index and Value Pairs:**
 
-When iterating arrays, you can access both the index and the value
-using the pair syntax `Index -> Value`:
+When iterating arrays or maps, you can access both the index/key and the value
+using the pair syntax `Index -> Value` or `Key -> Value`:
 
 <!--versetest
 player:=struct{ Name:string }
@@ -599,8 +595,8 @@ reference earlier variables in the same clause.
 
 **Multiple Filters:**
 
-You can chain multiple filter conditions using comma-separated
-expressions. Each filter must be failable, and if any fails, that
+You can chain multiple filter conditions using comma-separated or
+semicolon-separated expressions. Each filter must be failable, and if any fails, that
 iteration is skipped:
 
 <!--versetest-->
@@ -644,14 +640,13 @@ which keys were added to the map.
 
 Strings can be iterated character by character:
 
-<!--NoCompile-->
+<!--versetest-->
 <!-- 32 -->
 ```verse
 CountVowels(Text:string):int =
     var Count:int = 0
-    for (Char : Text):
-        if (Char = 'a' or Char = 'e' or Char = 'i' or Char = 'o' or Char = 'u'):
-            set Count += 1
+    for (Char : Text, Char = 'a' or Char = 'e' or Char = 'i' or Char = 'o' or Char = 'u'):
+        set Count += 1
     Count
 ```
 
